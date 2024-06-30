@@ -1,0 +1,202 @@
+cmake_minimum_required(VERSION 3.10)
+
+
+
+# Project setup
+
+project(realmz)
+
+set(CMAKE_C_STANDARD 90)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+# TODO(martin): We should eventually get everything to built without warnings and enable these flags.
+# if (MSVC)
+#     add_compile_options(/W4 /WX)
+# else()
+#     add_compile_options(-Wall -Wextra -Werror)
+# endif()
+
+set(LOCAL_INCLUDE_DIR "/usr/local/include")
+set(LOCAL_LIB_DIR "/usr/local/lib")
+list(APPEND CMAKE_PREFIX_PATH ${LOCAL_LIB_DIR})
+include_directories(${LOCAL_INCLUDE_DIR})
+link_directories(${LOCAL_LIB_DIR})
+
+
+
+# Library search
+
+find_package(resource_file REQUIRED)
+find_package(SDL3 REQUIRED)
+
+
+
+# Executable definition
+
+set(SOURCES
+    src/realmz_orig/Display.c
+    src/realmz_orig/DrawString.c
+    src/realmz_orig/GWorldInit.c
+    src/realmz_orig/GetVersStr.c
+    src/realmz_orig/MacrocosmMain.c
+    src/realmz_orig/MyrRealmz.c
+    src/realmz_orig/actionpicker.c
+    src/realmz_orig/age.c
+    src/realmz_orig/attack.c
+    src/realmz_orig/beast.c
+    src/realmz_orig/bodycount.c
+    src/realmz_orig/bodyfield.c
+    src/realmz_orig/bodyground.c
+    src/realmz_orig/booty.c
+    src/realmz_orig/buildmonster.c
+    src/realmz_orig/buttonchoice.c
+    src/realmz_orig/cansee.c
+    src/realmz_orig/cast.c
+    src/realmz_orig/castspell.c
+    src/realmz_orig/centerfield.c
+    src/realmz_orig/centerpict.c
+    src/realmz_orig/centerstage.c
+    src/realmz_orig/change.c
+    src/realmz_orig/checkforenemy.c
+    src/realmz_orig/checkforsecret.c
+    src/realmz_orig/checkfortype.c
+    src/realmz_orig/checkkeypad.c
+    src/realmz_orig/checkmoneypool.c
+    src/realmz_orig/checkrange-checkforitem.c
+    src/realmz_orig/choice.c
+    src/realmz_orig/class.c
+    src/realmz_orig/collide.c
+    src/realmz_orig/combat.c
+    src/realmz_orig/combaterrors.c
+    src/realmz_orig/combatinfo-combatchoice.c
+    src/realmz_orig/combatmap.c
+    src/realmz_orig/combatsetup.c
+    src/realmz_orig/combatupdate-2.c
+    src/realmz_orig/compactitems.c
+    src/realmz_orig/contactinfo.c
+    src/realmz_orig/delay.c
+    src/realmz_orig/destroymonster.c
+    src/realmz_orig/drawbody.c
+    src/realmz_orig/dropitem.c
+    src/realmz_orig/editspellnames.c
+    src/realmz_orig/editstring.c
+    src/realmz_orig/emptyque.c
+    src/realmz_orig/encounters.c
+    src/realmz_orig/fastplot.c
+    src/realmz_orig/fileprep.c
+    src/realmz_orig/files.c
+    src/realmz_orig/flashmessage.c
+    src/realmz_orig/flashrange-loaddoor.c
+    src/realmz_orig/getbattleorder.c
+    src/realmz_orig/getchoice.c
+    src/realmz_orig/getnumspells.c
+    src/realmz_orig/getrange.c
+    src/realmz_orig/getscroll.c
+    src/realmz_orig/getselection.c
+    src/realmz_orig/getup.c
+    src/realmz_orig/getword-gender.c
+    src/realmz_orig/handlemenuchoice.c
+    src/realmz_orig/heal.c
+    src/realmz_orig/inwindow.c
+    src/realmz_orig/items.c
+    src/realmz_orig/killbody.c
+    src/realmz_orig/levelup.c
+    src/realmz_orig/loaditem.c
+    src/realmz_orig/loadland-loadpixmap.c
+    src/realmz_orig/loadsavedgame.c
+    src/realmz_orig/loadspell.c
+    src/realmz_orig/lookupicon.c
+    src/realmz_orig/main.c
+    src/realmz_orig/makescroll.c
+    src/realmz_orig/mapstuff.c
+    src/realmz_orig/menuinit.c
+    src/realmz_orig/misc.c
+    src/realmz_orig/modify-cancast.c
+    src/realmz_orig/moveicon.c
+    src/realmz_orig/movemonster.c
+    src/realmz_orig/moveparty.c
+    src/realmz_orig/movie.c
+    src/realmz_orig/music.c
+    src/realmz_orig/name.c
+    src/realmz_orig/newcharacter.c
+    src/realmz_orig/newland.c
+    src/realmz_orig/number.c
+    src/realmz_orig/orderform.c
+    src/realmz_orig/partyloss.c
+    src/realmz_orig/partyselect.c
+    src/realmz_orig/placemonster.c
+    src/realmz_orig/ploticon.c
+    src/realmz_orig/plus-minus.c
+    src/realmz_orig/pool.c
+    src/realmz_orig/portrait-picklock.c
+    src/realmz_orig/pref.c
+    src/realmz_orig/question.c
+    src/realmz_orig/race.c
+    src/realmz_orig/reduce.c
+    src/realmz_orig/removeitem.c
+    src/realmz_orig/resist.c
+    src/realmz_orig/resolvespell.c
+    src/realmz_orig/save-direction-order.c
+    src/realmz_orig/saveshop.c
+    src/realmz_orig/setfree.c
+    src/realmz_orig/setupnewgame.c
+    src/realmz_orig/share-movecost-dialog.c
+    src/realmz_orig/shift.c
+    src/realmz_orig/showabout.c
+    src/realmz_orig/showcharge.c
+    src/realmz_orig/showcondition.c
+    src/realmz_orig/showcondition2.c
+    src/realmz_orig/showdamage-loaddark-cansee.c
+    src/realmz_orig/showitems-showspecial.c
+    src/realmz_orig/showlogo.c
+    src/realmz_orig/showque.c
+    src/realmz_orig/showrange.c
+    src/realmz_orig/showresults.c
+    src/realmz_orig/showspellinfo.c
+    src/realmz_orig/showspelllist.c
+    src/realmz_orig/showstats.c
+    src/realmz_orig/showtag.c
+    src/realmz_orig/showtargets.c
+    src/realmz_orig/spelleffect.c
+    src/realmz_orig/spelllist.c
+    src/realmz_orig/spellselect.c
+    src/realmz_orig/spelltargets.c
+    src/realmz_orig/stack.c
+    src/realmz_orig/swap.c
+    src/realmz_orig/takegold.c
+    src/realmz_orig/temple.c
+    src/realmz_orig/textbox-time.c
+    src/realmz_orig/threed.c
+    src/realmz_orig/tickcheck.c-updatetorch.c
+    src/realmz_orig/tomissle-weap.c
+    src/realmz_orig/updatearrow.c
+    src/realmz_orig/updatebooty.c
+    src/realmz_orig/updatecanlist.c
+    src/realmz_orig/updatechar.c
+    src/realmz_orig/updatecharinfo.c
+    src/realmz_orig/updatecharshort.c
+    src/realmz_orig/updatecontrols.c
+    src/realmz_orig/updatefat.c
+    src/realmz_orig/updateitems.c
+    src/realmz_orig/updatelight.c
+    src/realmz_orig/updatemoney.c
+    src/realmz_orig/updatepictbox.c
+    src/realmz_orig/updatespec.c
+    src/realmz_orig/updatespell.c
+    src/realmz_orig/viewcharacter.c
+    src/realmz_orig/warn.c
+    src/realmz_orig/wear.c
+    src/RealmzCocoa.c
+    src/ResourceManager.cpp
+    src/SoundManager.cpp
+    src/WindowManager.cpp
+)
+
+add_executable(realmz ${SOURCES})
+target_compile_definitions(realmz PUBLIC REALMZ_COCOA=1)
+target_compile_options(realmz PUBLIC -fpascal-strings)
+target_include_directories(realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig)
+target_link_libraries(realmz PUBLIC ${SDL3_LIBRARIES} resource_file)
+
+target_compile_options(realmz PRIVATE -fsanitize=address)
+target_link_options(realmz PRIVATE -fsanitize=address)
