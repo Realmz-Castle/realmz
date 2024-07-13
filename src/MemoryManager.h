@@ -1,7 +1,8 @@
 #pragma once
 
-#include <MacTypes.h>
 #include <stdint.h>
+
+#include "Types.h"
 
 #ifdef __cplusplus
 extern "C" {

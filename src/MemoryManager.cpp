@@ -131,7 +131,6 @@ private:
 
 static MemoryManager memory_manager;
 
-
 Handle NewHandle(Size size) {
   return reinterpret_cast<Handle>(memory_manager.alloc_handle(size));
 }

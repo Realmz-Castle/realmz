@@ -7,7 +7,7 @@
  * Revision history:
  *  2013-12-04: Initial revision.
  */
- 
+
 #if defined(REALMZ_CLASSIC)
 
 #include <MacHeaders.h>
@@ -65,7 +65,7 @@ inline void GetSoundVol(short *x) {
 
 static inline void PtoCstr(unsigned char *x) {
 	unsigned char len = x[0];
-	
+
 	while(len--) {
 		x[0] = x[1];
 		x++;
@@ -96,7 +96,7 @@ static inline OSErr GetVInfo(int16_t drvNum,
 	OSErr err = PBHGetVInfoSync((HParamBlockRec *)&vp);
 	*freeBytes = (uint16_t)vp.ioVAlBlkSiz * (uint16_t)vp.ioVFrBlk;
 	return err;
-}	
+}
 
 // Renamed in Carbon.
 #define EnableItem EnableMenuItem
@@ -135,4 +135,3 @@ static inline void rintel2moto(Rect *r) {
 }
 
 #include "convert.h"
-

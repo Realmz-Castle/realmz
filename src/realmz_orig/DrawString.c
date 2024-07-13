@@ -1,1 +1,4 @@
-#include "variables.h"#include "prototypes.h"/*EOF*/
+#include "prototypes.h"
+#include "variables.h"
+
+/*EOF*/

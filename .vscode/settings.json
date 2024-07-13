@@ -1,0 +1,14 @@
+{
+    "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
+    "[c]": {
+        "editor.formatOnSave":  true
+    },
+    "[cpp]": {
+        "editor.formatOnSave": true
+    },
+    "editor.formatOnSave": true,
+    "files.associations": {
+        "variables.h": "c",
+        "osbyteorder.h": "c"
+    },
+}

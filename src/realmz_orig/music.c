@@ -1,1 +1,6 @@
-#include "variables.h"#include "prototypes.h"/******************************* music ************************/void music(int16_t playlist){}
+#include "prototypes.h"
+#include "variables.h"
+
+/******************************* music ************************/
+void music(int16_t playlist) {
+}
