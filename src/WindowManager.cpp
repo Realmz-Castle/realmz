@@ -163,7 +163,7 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
         ResourceManager_Rect r = pict.p.picFrame;
         uint32_t w = r.right - r.left;
         uint32_t h = r.bottom - r.top;
-        SDL_Surface* s = SDL_CreateSurfaceFrom((void*)pict.p.data, w, h, 3 * w, SDL_PIXELFORMAT_RGB24);
+        SDL_Surface* s = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGB24, (void*)pict.p.data, 3 * w);
 
         if (s == NULL) {
           SDL_Log("Could not create surface: %s\n", SDL_GetError());
