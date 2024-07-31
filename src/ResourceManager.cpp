@@ -219,7 +219,7 @@ uint16_t ResourceManager_get_ditl_resources(int16_t ditlID, ResourceManager_Dial
   auto ditl = rm.find_resource(ResourceDASM::RESOURCE_TYPE_DITL, ditlID);
   StringReader ditlData = StringReader(ditl->data.data(), ditl->data.size());
   uint16_t numItems = ditlData.get_u16b() + 1;
-  *items = (ResourceManager_DialogItem*)malloc(sizeof(ResourceManager_DialogItem) * numItems);
+  *items = (ResourceManager_DialogItem*)calloc(numItems, sizeof(ResourceManager_DialogItem));
   for (int i = 0; i < numItems; i++) {
     ditlData.read(4);
     ResourceManager_Rect dispWindow = rect_from_data(ditlData);

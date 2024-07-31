@@ -208,5 +208,9 @@ void WindowManager_DisposeWindow(WindowPtr theWindow) {
 
   CWindowRecord* const window = reinterpret_cast<CWindowRecord*>(theWindow);
 
+  SDL_DestroyRenderer(window->sdlRenderer);
   SDL_DestroyWindow(window->sdlWindow);
+
+  free(window->dItems);
+  delete window;
 }
