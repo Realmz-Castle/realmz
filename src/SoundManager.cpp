@@ -5,6 +5,8 @@
 #include <phosg/Encoding.hh>
 #include <unordered_map>
 
+#include "Types-CC.hpp"
+
 // Min frequency allowed by SDL_SetAudioStreamFormat
 #define SDL_MIN_FREQ 4000
 // Size in bytes of RIFF WAV header
