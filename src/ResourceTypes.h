@@ -23,6 +23,9 @@
 #define app2Evt 259
 #define app3Evt 260
 
+// Macintosh Toolbox Essentials (Introduction to Windows 4-11)
+#define plainDBox 2
+
 /*
  A pixel map, which is defined by a data structure of type PixMap, contains information about the
  dimensions and contents of a pixel image, as well as information on the image’s storage format,

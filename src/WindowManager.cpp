@@ -75,11 +75,17 @@ void WindowManager_Init(void) {
 WindowPtr WindowManager_CreateNewWindow(Rect bounds, char* title, bool visible, int procID, WindowPtr behind,
     bool goAwayFlag, int32_t refCon, uint16_t numItems, ResourceManager_DialogItem* dItems) {
 
+  SDL_WindowFlags flags{};
+
+  if (procID == plainDBox) {
+    flags |= SDL_WINDOW_BORDERLESS | SDL_WINDOW_UTILITY;
+  }
+
   SDL_Window* window = SDL_CreateWindow(
       title,
       bounds.right - bounds.left,
       bounds.bottom - bounds.top,
-      0);
+      flags);
 
   if (window == NULL) {
     SDL_Log("Could not create window: %s\n", SDL_GetError());
