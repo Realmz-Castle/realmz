@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "ResourceManager.h"
+#include "Types-CC.hpp"
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
 #include <resource_file/IndexFormats/Formats.hh>
@@ -12,7 +13,7 @@
 #include <resource_file/ResourceTypes.hh>
 #include <resource_file/TextCodecs.hh>
 
-ResourceManager_Rect rect_from_data(StringReader& data) {
+ResourceManager_Rect rect_from_data(phosg::StringReader& data) {
   ResourceManager_Rect r;
   r.top = data.get_u16b();
   r.left = data.get_u16b();
@@ -22,7 +23,7 @@ ResourceManager_Rect rect_from_data(StringReader& data) {
 }
 
 static int16_t resError = noErr;
-static PrefixedLogger rm_log("[ResourceManager] ");
+static phosg::PrefixedLogger rm_log("[ResourceManager] ");
 
 class ResourceManager {
 public:
@@ -134,9 +135,9 @@ struct PixelPatternResourceHeader {
 ResourceManager_PixPat ResourceManager_get_ppat_resource(int16_t patID) {
   auto resource = rm.find_resource(ResourceDASM::RESOURCE_TYPE_ppat, patID);
   if (!resource) {
-    throw std::runtime_error(string_printf("Resource ppat:%hd was not found", patID));
+    throw std::runtime_error(phosg::string_printf("Resource ppat:%hd was not found", patID));
   }
-  StringReader r(resource->data.data(), resource->data.size());
+  phosg::StringReader r(resource->data.data(), resource->data.size());
   const auto& header = r.get<PixelPatternResourceHeader>();
   const auto& pixmap_header = r.pget<ResourceDASM::PixelMapHeader>(header.pixel_map_offset + 4);
   ResourceManager_PixMap rmPixMap = {
@@ -172,7 +173,7 @@ ResourceManager_Picture ResourceManager_get_pict_resource(int16_t picID) {
 
 ResourceManager_Window ResourceManager_get_wind_resource(int16_t windowID) {
   auto resource = rm.find_resource(ResourceDASM::RESOURCE_TYPE_WIND, windowID);
-  StringReader data(resource->data.data(), resource->data.size());
+  phosg::StringReader data(resource->data.data(), resource->data.size());
 
   ResourceManager_Rect r = rect_from_data(data);
   int16_t procID = data.get_s16b();
@@ -195,7 +196,7 @@ ResourceManager_Window ResourceManager_get_wind_resource(int16_t windowID) {
 
 ResourceManager_Dialog ResourceManager_get_dlog_resource(int16_t dialogID) {
   auto dlog = rm.find_resource(ResourceDASM::RESOURCE_TYPE_DLOG, dialogID);
-  StringReader data(dlog->data.data(), dlog->data.size());
+  phosg::StringReader data(dlog->data.data(), dlog->data.size());
 
   ResourceManager_Rect r = rect_from_data(data);
   int16_t wDefID = data.get_s16b();
@@ -217,7 +218,7 @@ ResourceManager_Dialog ResourceManager_get_dlog_resource(int16_t dialogID) {
 
 uint16_t ResourceManager_get_ditl_resources(int16_t ditlID, ResourceManager_DialogItem** items) {
   auto ditl = rm.find_resource(ResourceDASM::RESOURCE_TYPE_DITL, ditlID);
-  StringReader ditlData = StringReader(ditl->data.data(), ditl->data.size());
+  phosg::StringReader ditlData(ditl->data.data(), ditl->data.size());
   uint16_t numItems = ditlData.get_u16b() + 1;
   *items = (ResourceManager_DialogItem*)calloc(numItems, sizeof(ResourceManager_DialogItem));
   for (int i = 0; i < numItems; i++) {
@@ -276,13 +277,13 @@ int16_t ResourceManager_OpenResFile(const char classic_filename[256], signed cha
 
   for (const auto& candidate_host_filename : candidate_host_filenames) {
     try {
-      std::string data = load_file(candidate_host_filename);
+      std::string data = phosg::load_file(candidate_host_filename);
       auto rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
       int16_t ret = rm.use(classic_filename, candidate_host_filename, rf);
       rm_log.info("Loaded %s from %s with reference number %hd", classic_filename, candidate_host_filename.c_str(), ret);
       rm.print_chain();
       return ret;
-    } catch (const cannot_open_file&) {
+    } catch (const phosg::cannot_open_file&) {
     }
   }
 
