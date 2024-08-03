@@ -136,11 +136,10 @@ static inline void rintel2moto(Rect* r) {
 static inline void PtoCstr(Str255 x) {
   unsigned char len = x[0];
 
-  while (len--) {
-    x[0] = x[1];
-    x++;
+  for (int i = 0; i < len; i++) {
+    x[i] = x[i + 1];
   }
-  x[0] = '\0';
+  x[len] = '\0';
 }
 
 static inline void P2CStr(Str255 x) {
