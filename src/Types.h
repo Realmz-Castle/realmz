@@ -46,15 +46,16 @@ typedef const unsigned char* ConstStr63Param;
 
 // See also the C++ versions of these in resource_file/QuickDrawFormats.hh
 typedef struct Point {
-  short v;
-  short h;
+  int16_t v;
+  int16_t h;
 } Point;
 typedef Point* PointPtr;
+
 typedef struct Rect {
-  short top;
-  short left;
-  short bottom;
-  short right;
+  int16_t top;
+  int16_t left;
+  int16_t bottom;
+  int16_t right;
 } Rect;
 typedef Rect* RectPtr;
 

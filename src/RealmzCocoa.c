@@ -21,18 +21,11 @@ PrefPtr prefsPtr;
 PixMap gdPixMap;
 PixMapPtr gdPixMapPtr;
 
-static inline void cpyRect(const ResourceManager_Rect* src, Rect* dst) {
+static inline void cpyRect(const Rect* src, Rect* dst) {
   dst->top = src->top;
   dst->left = src->left;
   dst->bottom = src->bottom;
   dst->right = src->right;
-}
-
-FILE* mac_fopen(const char* filename, const char* mode) {
-  if (strcmp(filename, ":Realmz Manual") == 0) {
-    return fopen("manual", "w+");
-  }
-  return 0;
 }
 
 Rect* GetPortBounds(CGrafPtr port, Rect* rect) {
@@ -74,13 +67,6 @@ Boolean BitTst(const void* bytePtr, int32_t bitNum) {
 }
 
 void CheckItem(MenuHandle theMenu, uint16_t item, Boolean checked) {
-}
-
-UInt16 CurResFile(void) {
-  return ResourceManager_CurResFile();
-}
-
-void DetachResource(Handle theResource) {
 }
 
 void DisableItem(MenuHandle theMenu, uint16_t item) {
@@ -184,18 +170,18 @@ void GetMenuItemText(MenuHandle theMenu, uint16_t item, Str255 itemString) {
 }
 
 DialogPtr GetNewDialog(uint16_t dialogID, void* dStorage, WindowPtr behind) {
-  ResourceManager_Dialog d = ResourceManager_get_dlog_resource(dialogID);
+  DialogResource d = WindowManager_get_dlog_resource(dialogID);
   Rect bounds;
   cpyRect(&d.bounds, &bounds);
-  ResourceManager_DialogItem* dItems;
-  uint16_t numItems = ResourceManager_get_ditl_resources(d.ditlID, &dItems);
+  DialogItem* dItems;
+  uint16_t numItems = WindowManager_get_ditl_resources(d.ditlID, &dItems);
   WindowPtr w = WindowManager_CreateNewWindow(bounds, "New Dialog", d.visible, d.wDefID,
       behind, d.dismissable, d.refCon, numItems, dItems);
   return w;
 }
 
 CWindowPtr GetNewCWindow(int16_t windowID, void* wStorage, WindowPtr behind) {
-  ResourceManager_Window w = ResourceManager_get_wind_resource(windowID);
+  WindowResource w = WindowManager_get_wind_resource(windowID);
   Rect bounds;
   cpyRect(&(w.portBounds), &bounds);
   CWindowPtr cwindow = WindowManager_CreateNewWindow(bounds, w.windowTitle, w.visible, w.procID,
@@ -209,8 +195,7 @@ Boolean GetNextEvent(uint16_t eventMask, EventRecord* theEvent) {
 }
 
 PicHandle GetPicture(uint16_t picID) {
-  ResourceManager_Picture p;
-  p = ResourceManager_get_pict_resource(picID);
+  Picture p = QuickDraw_get_pict_resource(picID);
   PicHandle h = malloc(sizeof(PicPtr));
   *h = malloc(sizeof(Picture));
 
@@ -221,46 +206,13 @@ PicHandle GetPicture(uint16_t picID) {
   return h;
 }
 
-PixPatHandle GetPixPat(uint16_t patID) {
-  ResourceManager_PixPat rmPixPat = ResourceManager_get_ppat_resource(patID);
-
-  PixPatHandle h = malloc(sizeof(PixPat*));
-  *h = malloc(sizeof(PixPat));
-  (*h)->patType = rmPixPat.patType;
-
-  PixMapHandle pixMapH = malloc(sizeof(PixMap*));
-  *pixMapH = malloc(sizeof(PixMap));
-  (*pixMapH)->pixelSize = rmPixPat.rmPatMap.pixelSize;
-  cpyRect(&(rmPixPat.rmPatMap.bounds), &((*pixMapH)->bounds));
-
-  (*h)->patMap = pixMapH;
-  (*h)->patData = rmPixPat.patData;
-
-  return h;
-}
-
 void GetPort(GrafPtr* port) {
-}
-
-void UseRefFile(int16_t refNum) {
-}
-
-Handle Get1Resource(ResType theType, int16_t theID) {
-  if (theType == 'PRFN') {
-    prefs.volume = 100;
-    prefsPtr = &prefs;
-    return &prefsPtr;
-  }
-  return NULL;
 }
 
 void HLockHi(Handle h) {
 }
 
 void BlockMove(const void* srcPtr, void* destPtr, Size byteCount) {
-}
-
-void ReleaseResource(Handle theResource) {
 }
 
 void HLock(Handle h) {
@@ -316,10 +268,6 @@ int32_t MenuSelect(Point startPt) {
   return 0;
 }
 
-void GetIndString(Str255 theString, int16_t strListID, int16_t index) {
-  ResourceManager_get_Str255_from_strN(&theString[0], strListID, index);
-}
-
 int16_t StringWidth(ConstStr255Param s) {
   return 0;
 }
@@ -368,22 +316,6 @@ void GetDialogItemText(Handle item, Str255 text) {
 }
 
 void ParamText(ConstStr255Param param0, ConstStr255Param param1, ConstStr255Param param2, ConstStr255Param param3) {
-}
-
-OSErr FSMakeFSSpec(int16_t vRefNum, int32_t dirID, ConstStr255Param fileName, FSSpecPtr spec) {
-  memcpy(spec->name, fileName, fileName[0] + 1);
-  spec->vRefNum = vRefNum;
-  spec->parID = dirID;
-
-  return 0;
-}
-
-OSErr FSpGetFInfo(const FSSpec* spec, FInfo* fndrInfo) {
-  return 0;
-}
-
-OSErr FSpSetFInfo(const FSSpec* spec, const FInfo* fndrInfo) {
-  return 0;
 }
 
 int16_t GetControlValue(ControlHandle theControl) {
@@ -438,56 +370,10 @@ Boolean Button(void) {
 }
 
 Boolean PtInRect(Point pt, const Rect* r) {
-  return FALSE;
-}
-
-void GetResInfo(Handle theResource, int16_t* theID, ResType* theType, Str255 name) {
-}
-
-int16_t GetResAttrs(Handle theResource) {
-  return 0;
-}
-
-void SetResAttrs(Handle theResource, int16_t attrs) {
-}
-
-void AddResource(Handle theData, ResType theType, int16_t theID, ConstStr255Param name) {
-}
-
-void ChangedResource(Handle theResource) {
-}
-
-void WriteResource(Handle theResource) {
-}
-
-Handle GetResource(ResType theType, int16_t theID) {
-  if (theType == 'snd ') {
-    if (!SoundManager_is_sound_registered(theID)) {
-      ResourceManager_Sound sound = ResourceManager_get_snd_resource(theID);
-      SoundManager_register_sound(theID, sound.freq, sound.data, sound.len);
-    }
-    return (Handle)theID;
-  } else {
-    return ResourceManager_GetResource(theType, theID);
-  }
-}
-
-void RemoveResource(Handle theResource) {
+  return (pt.v >= r->top) && (pt.h >= r->left) && (pt.v < r->bottom) && (pt.h < r->right);
 }
 
 void ExitToShell(void) {
-}
-
-void UpdateResFile(int16_t refNum) {
-}
-
-OSErr SndDoImmediate(SndChannelPtr chan, const SndCommand* cmd) {
-  return 0;
-}
-
-OSErr SndPlay(SndChannelPtr chan, Handle sndHdl, Boolean async) {
-  SoundManager_play_sound(chan->sdlAudioStream, (int16_t)sndHdl);
-  return 0;
 }
 
 void LocalToGlobal(Point* pt) {
@@ -501,13 +387,6 @@ int16_t FindControl(Point thePoint, WindowPtr theWindow, ControlHandle* theContr
 }
 
 void BlockMoveData(const void* srcPtr, void* dstPtr, Size byteCount) {
-}
-
-int16_t CountResources(ResType theType) {
-  return 0;
-}
-
-void CloseResFile(int16_t refNum) {
 }
 
 int16_t Random(void) {
@@ -611,10 +490,6 @@ OSErr SetDepth(GDHandle aDevice, uint16_t depth, uint16_t whichFlags, uint16_t f
 void SetGWorld(CGrafPtr port, GDHandle gdh) {
 }
 
-int16_t ResError(void) {
-  return 0;
-}
-
 void SetMenuBar(Handle menuList) {
 }
 
@@ -637,15 +512,6 @@ void ShowWindow(WindowPtr theWindow) {
 void SizeWindow(CWindowPtr theWindow, uint16_t w, uint16_t h, Boolean fUpdate) {
   theWindow->portRect.right = theWindow->portRect.left + w;
   theWindow->portRect.bottom = theWindow->portRect.top + h;
-}
-
-OSErr SndNewChannel(SndChannelPtr* chan, uint16_t synth, int32_t init, void* userRoutine) {
-  // Realmz only passes null pointers to SndNewChannel, so no need to check for an existing
-  // SndChannel
-  if ((*chan = malloc(sizeof(SndChannel))) == NULL)
-    return badChannel;
-  (*chan)->sdlAudioStream = SoundManager_new_audio_stream();
-  return noErr;
 }
 
 OSErr StartFading(GammaRef* returnedInitialState) {
@@ -693,10 +559,6 @@ void SystemClick(const EventRecord* theEvent, WindowPtr theWindow) {
 void ObscureCursor(void) {
 }
 
-void UseResFile(int16_t refNum) {
-  ResourceManager_UseResFile(refNum);
-}
-
 Boolean WaitNextEvent(int16_t eventMask, EventRecord* theEvent, uint32_t sleep, RgnHandle mouseRgn) {
   return WindowManager_WaitNextEvent(theEvent);
 }
@@ -719,10 +581,6 @@ Boolean SectRect(const Rect* src1, const Rect* src2, Rect* dstRect) {
 void FrameOval(const Rect* r) {
 }
 
-OSErr GetVInfo(int16_t drvNum, StringPtr volName, int16_t* vRefNum, int32_t* freeBytes) {
-  return 0;
-}
-
 void HideControl(ControlHandle theControl) {
 }
 
@@ -730,31 +588,6 @@ void ShowControl(ControlHandle theControl) {
 }
 
 void SetControlMaximum(ControlHandle theControl, int16_t maxValue) {
-}
-
-Handle NewHandleClear(Size logicalSize) {
-  return NULL;
-}
-
-void FSpCreateResFile(const FSSpec* spec, OSType creator, OSType fileType, ScriptCode scriptTag) {
-}
-
-int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
-  char filename[256];
-  uint8_t length = spec->name[0];
-  memcpy(filename, spec->name + 1, length);
-  filename[length] = '\0';
-
-  return ResourceManager_OpenResFile(filename, permission);
-}
-
-OSErr FindFolder(int16_t vRefNum, OSType folderType, Boolean createFolder, int16_t* foundVRefNum,
-    int32_t* foundDirID) {
-  return 0;
-}
-
-OSErr FSpDelete(const FSSpec* spec) {
-  return 0;
 }
 
 void SizeControl(ControlHandle theControl, int16_t w, int16_t h) {
@@ -813,9 +646,6 @@ void SFGetFile(Point where, const Str255 prompt, Ptr fileFilter, int16_t numType
     Ptr dlgHook, SFReply* reply) {
 }
 
-void GetFInfo(const Str63 fName, int16_t vRefNum, FInfo* fInfo) {
-}
-
 void DrawControls(WindowPtr theWindow) {
 }
 
@@ -830,10 +660,6 @@ void TESetAlignment(int16_t just, TEHandle hTE) {
 }
 
 void TEScroll(int16_t dh, int16_t dv, TEHandle hTE) {
-}
-
-int32_t GetResourceSizeOnDisk(Handle theResource) {
-  return 0;
 }
 
 void DisposeGWorld(GWorldPtr offscreenWorld) {
@@ -873,7 +699,9 @@ void InitWindows(void) {
 void InitRealmzCocoa() {
   // On Classic Mac OS, the system does this automatically when the
   // application is loaded.
-  if (ResourceManager_OpenResFile("realmz", fsRdWrPerm) < 0) {
+  FSSpec spec;
+  FSMakeFSSpec(0, 0, "\p:realmz", &spec);
+  if (FSpOpenResFile(&spec, fsRdPerm) < 0) {
     fprintf(stderr, "WARNING: Cannot open the Realmz application resource file\n");
   }
 }

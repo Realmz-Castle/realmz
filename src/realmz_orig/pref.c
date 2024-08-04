@@ -438,6 +438,19 @@ short createpref(FSSpec pref_FSSpec, short mode) {
   res_attributes = GetResAttrs(app_handle);
   DetachResource(app_handle);
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(fuzziqersoftware): The following is not part of the original
+   * implementation. It appears the template PRFN resource in realmz.rsrc is
+   * too small, leading to an out-of-bounds memory access when we try to use
+   * it later. To deal with this, we manually extend it with zeroes it if
+   * it's too small before writing it to the new preferences file. */
+  size_t orig_app_handle_size = GetHandleSize(app_handle);
+  if (orig_app_handle_size < sizeof(PrefRecord)) {
+    SetHandleSize(app_handle, sizeof(PrefRecord));
+    memset(*app_handle + orig_app_handle_size, 0, sizeof(PrefRecord) - orig_app_handle_size);
+  }
+  /* *** END CHANGES *** */
+
   if (!mode)
     FSpCreateResFile(&pref_FSSpec, 'RLMZ', 'PREF', smSystemScript);
   else

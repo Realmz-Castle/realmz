@@ -3,8 +3,10 @@
 #include <filesystem>
 #include <memory>
 
+#include "FileManager.hpp"
+#include "MemoryManager.hpp"
 #include "ResourceManager.h"
-#include "Types-CC.hpp"
+#include "Types.hpp"
 #include <SDL3/SDL_filesystem.h>
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
@@ -14,102 +16,559 @@
 #include <resource_file/ResourceTypes.hh>
 #include <resource_file/TextCodecs.hh>
 
-ResourceManager_Rect rect_from_data(phosg::StringReader& data) {
-  ResourceManager_Rect r;
-  r.top = data.get_u16b();
-  r.left = data.get_u16b();
-  r.bottom = data.get_u16b();
-  r.right = data.get_u16b();
-  return r;
-}
+////////////////////////////////////////////////////////////////////////////////
+// Internal Resource Manager implementation
 
 static int16_t resError = noErr;
 static phosg::PrefixedLogger rm_log("[ResourceManager] ");
 
 class ResourceManager {
 public:
-  struct File {
-    std::string classic_filename; // Filename on classic Mac OS (e.g. ":Data Files:Scenario")
-    std::string host_filename; // Filename on host system (e.g. "Data Files/Scenario.rsrc")
-    int16_t reference_number;
-    std::shared_ptr<const ResourceDASM::ResourceFile> rf;
+  struct Resource {
+    int16_t file_refnum = 0;
+    std::shared_ptr<const ResourceDASM::ResourceFile::Resource> source_res;
+    Handle data_handle = nullptr;
+    // This field specifies if the data pointed to by data_handle doesn't match
+    // the data contained in source_res. If this is true, the data is copied
+    // into source_res when the file is saved.
+    bool data_modified;
+
+    ~Resource() {
+      if (this->data_handle) {
+        DisposeHandle(this->data_handle);
+      }
+    }
   };
 
-  ResourceManager() {}
+  struct File {
+    enum class State {
+      READ_ONLY = 0,
+      NOT_MODIFIED,
+      MODIFIED,
+    };
+    std::string host_filename; // Filename on host system (e.g. "Data Files/Scenario.rsrc")
+    State state;
+    int16_t refnum = 0;
+    std::shared_ptr<ResourceDASM::ResourceFile> rf;
+
+    std::unordered_map<uint64_t, std::shared_ptr<Resource>> resource_for_type_id;
+    std::unordered_map<Handle, std::shared_ptr<Resource>> resource_for_handle;
+
+    static uint64_t key_for_type_id(uint32_t type, int16_t id) {
+      return static_cast<uint64_t>(type) | (static_cast<uint64_t>(id) << 32);
+    }
+
+    std::shared_ptr<Resource> get_resource(uint32_t type, int16_t id) {
+      uint64_t key = this->key_for_type_id(type, id);
+      try {
+        return this->resource_for_type_id.at(key);
+      } catch (const std::out_of_range&) {
+      }
+      auto res = std::make_shared<Resource>();
+      res->file_refnum = this->refnum;
+      res->source_res = this->rf->get_resource(type, id);
+      res->data_handle = NewHandleWithData(res->source_res->data);
+      res->data_modified = false;
+      this->resource_for_type_id.emplace(key, res);
+      this->resource_for_handle.emplace(res->data_handle, res);
+      return res;
+    }
+
+    std::shared_ptr<Resource> get_resource(Handle data_handle) {
+      return this->resource_for_handle.at(data_handle);
+    }
+
+    void mark_modified(Handle data_handle) {
+      // Marks the file modified, and (optionally) the given resource as well
+      if (this->state == File::State::READ_ONLY) {
+        throw std::logic_error("Cannot mark read-only resource file as modified");
+      }
+      if (data_handle) {
+        auto res = this->get_resource(data_handle);
+        res->data_modified = true;
+      }
+      this->state = ResourceManager::File::State::MODIFIED;
+    }
+
+    std::shared_ptr<Resource> add_resource(uint32_t type, int16_t id, std::string&& name, Handle data_handle) {
+      if (this->rf->resource_exists(type, id)) {
+        throw std::invalid_argument(phosg::string_printf("Resource %08" PRIX32 ":%hd already exists", type, id));
+      }
+
+      this->mark_modified(nullptr); // Throws if the file is read-only
+
+      // Create the backing objects in ResourceFile, so we can save the changes
+      // later
+      auto data_str = string_for_handle(data_handle);
+      const void* data = *data_handle;
+      auto rf_res = make_shared<ResourceDASM::ResourceFile::Resource>(type, id, 0, std::move(name), std::move(data_str));
+      this->rf->add(rf_res);
+
+      // data_handle is now owned by the Resource Manager, so track it as a
+      // loaded resource. We can't just free it since the application can still
+      // use it even though we're responsible for freeing it now
+      auto res = std::make_shared<Resource>();
+      res->file_refnum = this->refnum;
+      res->source_res = rf_res;
+      res->data_handle = data_handle;
+      res->data_modified = false;
+      if (!this->resource_for_type_id.emplace(this->key_for_type_id(type, id), res).second) {
+        throw std::logic_error(phosg::string_printf(
+            "Added resource %08" PRIX32 ":%hd but it already exists in the ResourceFile",
+            type, id));
+      }
+      if (!this->resource_for_handle.emplace(res->data_handle, res).second) {
+        throw std::logic_error(phosg::string_printf(
+            "Added resource %08" PRIX32 ":%hd but its handle is already owned by the Resource Manager",
+            type, id));
+      }
+
+      return res;
+    }
+
+    void remove_resource(std::shared_ptr<Resource> res) {
+      this->mark_modified(nullptr); // Throws if the file is read-only
+
+      // data_handle is not freed; the application must do this manually if it
+      // doesn't want to keep the data in memory.
+      res->data_handle = nullptr; // Prevent destructor from freeing the handle
+      this->resource_for_type_id.erase(this->key_for_type_id(res->source_res->type, res->source_res->id));
+      this->resource_for_handle.erase(res->data_handle);
+
+      // Delete the backing object in ResourceFile
+      this->rf->remove(res->source_res->type, res->source_res->id);
+    }
+
+    void release_resource(std::shared_ptr<Resource> res, bool free_data) {
+      // According to Inside Macintosh, both ReleaseResource and DetachResource
+      // return noErr but do nothing if called on a resource that has been
+      // modified and not yet written to disk.
+      if (res->data_modified) {
+        return;
+      }
+
+      this->resource_for_type_id.erase(this->key_for_type_id(res->source_res->type, res->source_res->id));
+      this->resource_for_handle.erase(res->data_handle);
+      if (!free_data) {
+        res->data_handle = nullptr; // Prevent destructor from freeing the handle
+      }
+    }
+
+    void write() {
+      if (this->state != State::MODIFIED) {
+        return;
+      }
+      // For all resources that were marked modified, copy their data into the
+      // backing ResourceFile::Resource objects before serializing the resource
+      // index and writing to disk
+      for (auto& it : this->resource_for_type_id) {
+        if (it.second->data_modified) {
+          auto src_res = it.second->source_res;
+          auto new_data = string_for_handle(it.second->data_handle);
+          auto new_res = make_shared<ResourceDASM::ResourceFile::Resource>(
+              src_res->type, src_res->id, src_res->flags, src_res->name, new_data);
+          this->rf->remove(src_res->type, src_res->id);
+          this->rf->add(new_res);
+          it.second->source_res = new_res;
+          it.second->data_modified = false;
+        }
+      }
+      phosg::save_file(this->host_filename, ResourceDASM::serialize_resource_fork(*this->rf));
+      this->state = State::NOT_MODIFIED;
+    }
+  };
+
+  ResourceManager() = default;
+  ~ResourceManager() = default;
 
   void print_chain() const {
     rm_log.info("Open files list:");
     for (size_t z = 0; z < this->files.size(); z++) {
       auto f = this->files[z];
-      rm_log.info("  %s from %s (ref %hd)%s",
-          f->classic_filename.c_str(),
+      rm_log.info("  %s (ref %hd)%s",
           f->host_filename.c_str(),
-          f->reference_number,
+          f->refnum,
           (z == this->search_start_index) ? " (GetResource search starts here)" : "");
     }
   }
 
   int16_t use(
-      const std::string& classic_filename,
       const std::string& host_filename,
-      std::shared_ptr<const ResourceDASM::ResourceFile> rf) {
+      std::shared_ptr<ResourceDASM::ResourceFile> rf,
+      bool writable) {
     auto file = std::make_shared<File>();
-    file->classic_filename = classic_filename;
     file->host_filename = host_filename;
-    file->reference_number = this->next_reference_number++;
+    file->refnum = this->next_refnum++;
+    file->state = writable ? File::State::NOT_MODIFIED : File::State::READ_ONLY;
     file->rf = rf;
     this->files.insert(this->files.begin(), file);
-    return file->reference_number;
+    return file->refnum;
   }
 
-  void use(int16_t reference_number) {
+  void use(int16_t refnum) {
     for (size_t z = 0; z < this->files.size(); z++) {
-      if (this->files[z]->reference_number == reference_number) {
+      if (this->files[z]->refnum == refnum) {
         this->search_start_index = z;
         break;
       }
     }
   }
 
-  std::shared_ptr<const File> current_file() const {
+  void close(int16_t refnum) {
+    auto file_it = this->files.end();
+    for (auto it = this->files.begin(); it != this->files.end(); it++) {
+      if ((*it)->refnum == refnum) {
+        file_it = it;
+        break;
+      }
+    }
+    if (file_it != this->files.end()) {
+      (*file_it)->write();
+      this->files.erase(file_it);
+    }
+  }
+
+  const std::vector<std::shared_ptr<File>>& chain() {
+    return this->files;
+  }
+
+  std::shared_ptr<File> current_file() const {
     if (this->search_start_index >= this->files.size()) {
       throw std::runtime_error("Current resource file is out of bounds");
     }
     return this->files[this->search_start_index];
   }
 
-  std::shared_ptr<const ResourceDASM::ResourceFile::Resource> find_resource(int32_t type, int16_t id) {
+  std::shared_ptr<File> get_file(int16_t refnum) const {
+    for (auto f : this->files) {
+      if (f->refnum == refnum) {
+        return f;
+      }
+    }
+    throw std::out_of_range(phosg::string_printf("Resource file with refnum %hd is not open", refnum));
+  }
+
+  std::shared_ptr<Resource> get_resource(int32_t type, int16_t id) {
     std::string type_str = ResourceDASM::string_for_resource_type(type);
     for (size_t z = this->search_start_index; z < this->files.size(); z++) {
       try {
-        return this->files[z]->rf->get_resource(type, id);
+        return this->files[z]->get_resource(type, id);
       } catch (const std::out_of_range&) {
       }
     }
     rm_log.info("%s:%hd not found in any open resource file", type_str.c_str(), id);
     this->print_chain();
-    return nullptr;
+    throw std::out_of_range(phosg::string_printf("resource %s:%hd not found", type_str.c_str(), id));
+  }
+
+  std::shared_ptr<Resource> get_resource(Handle data_handle) {
+    for (size_t z = this->search_start_index; z < this->files.size(); z++) {
+      try {
+        return this->files[z]->get_resource(data_handle);
+      } catch (const std::out_of_range&) {
+      }
+    }
+    rm_log.info("Handle not found in any open resource file");
+    this->print_chain();
+    throw std::out_of_range("resource not found by handle");
+  }
+
+  void mark_modified(int16_t refnum) {
+    this->get_file(refnum)->mark_modified(nullptr);
+  }
+
+  void mark_modified(Handle data_handle) {
+    auto res = this->get_resource(data_handle);
+    this->get_file(res->file_refnum)->mark_modified(data_handle);
+  }
+
+  std::shared_ptr<Resource> add_resource(uint32_t type, int16_t id, std::string&& name, Handle data_handle) {
+    // data_handle must not be null and must not be owned by another resource
+    if (!data_handle) {
+      throw std::invalid_argument("data_handle is null");
+    }
+    try {
+      this->get_resource(data_handle);
+      throw std::invalid_argument("data_handle already belongs to another resource");
+    } catch (const std::out_of_range&) {
+    }
+
+    return this->current_file()->add_resource(type, id, std::move(name), data_handle);
+  }
+
+  std::shared_ptr<Resource> remove_resource(Handle data_handle) {
+    // data_handle must not be null and must be owned by a resource
+    if (!data_handle) {
+      throw std::invalid_argument("data_handle is null");
+    }
+    auto res = this->get_resource(data_handle);
+    this->get_file(res->file_refnum)->remove_resource(res);
+    return res;
+  }
+
+  void release_resource(Handle data_handle, bool free_data) {
+    auto res = this->get_resource(data_handle);
+    this->get_file(res->file_refnum)->release_resource(res, free_data);
+  }
+
+  void write_file(int16_t refnum) {
+    this->get_file(refnum)->write();
   }
 
 private:
-  int16_t next_reference_number = 1;
-  std::vector<std::shared_ptr<const File>> files;
+  int16_t next_refnum = 1;
+  std::vector<std::shared_ptr<File>> files;
   size_t search_start_index = 0;
 };
 
 static ResourceManager rm;
 
-void* ResourceManager_GetResource(int32_t theType, int16_t theID) {
-  auto resource = rm.find_resource(theType, theID);
+////////////////////////////////////////////////////////////////////////////////
+// Classic Mac OS API implementation
 
-  resError = resNotFound;
-  return NULL;
+std::string host_resource_filename_for_host_filename(const std::string& host_path, bool allow_missing = false) {
+  std::string full_path;
+  const char* base_path = SDL_GetBasePath();
+  if (!base_path) {
+    rm_log.error("Failed to get SDL base path: %s", SDL_GetError());
+  } else {
+    full_path = base_path + host_path;
+    if (allow_missing || phosg::isfile(full_path)) {
+      return full_path;
+    }
+  }
+
+  full_path = "base/Realmz/" + host_path + ".rsrc";
+  if (allow_missing || phosg::isfile(full_path)) {
+    return full_path;
+  }
+  full_path = host_path + ".rsrc";
+  if (phosg::isfile(full_path)) {
+    return full_path;
+  }
+
+  throw std::runtime_error("Cannot determine host resource file path for " + host_path);
 }
 
-void ResourceManager_get_Str255_from_strN(char* out, int16_t res_id, uint16_t index) {
+std::string host_resource_filename_for_mac_filename(const std::string& host_path, bool allow_missing = false) {
+  return host_resource_filename_for_host_filename(host_filename_for_mac_filename(host_path, false), allow_missing);
+}
+
+std::string host_resource_filename_for_FSSpec(const FSSpec* fsp, bool allow_missing = false) {
+  return host_resource_filename_for_host_filename(host_filename_for_FSSpec(fsp), allow_missing);
+}
+
+void FSpCreateResFile(const FSSpec* spec, OSType creator, OSType fileType, ScriptCode scriptTag) {
+  // It seems that this function is the equivalent of the touch command on
+  // Unix-like systems: it just creates the file if it doesn't exist, and
+  // doesn't open it. (The caller must call OpenResFile if they actually want
+  // to open it.)
+
+  // We ignore Finder info and just create the file itself.
+  (void)creator;
+  (void)fileType;
+  (void)scriptTag;
+
+  auto filename = host_resource_filename_for_FSSpec(spec, true);
+  int fd = open(filename.c_str(), O_WRONLY | O_CREAT, 0666);
+  if (fd >= 0) {
+    close(fd);
+  }
+
+  resError = noErr;
+}
+
+int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
+  auto host_filename = host_resource_filename_for_FSSpec(spec);
   try {
-    auto res = rm.find_resource(ResourceDASM::RESOURCE_TYPE_STRN, res_id);
-    auto decoded = ResourceDASM::ResourceFile::decode_STRN(res);
+    std::string data = phosg::load_file(host_filename);
+    auto rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
+    bool writable = (permission == fsCurPerm) || (permission > fsRdPerm);
+    int16_t ret = rm.use(host_filename, rf, writable);
+    rm_log.info("Loaded %s with reference number %hd (%s with permission %hhd)",
+        host_filename.c_str(), ret, writable ? "writable" : "read-only", permission);
+    rm.print_chain();
+    resError = noErr;
+    return ret;
+
+  } catch (const phosg::cannot_open_file&) {
+    rm_log.info("Failed to load resource file %s", host_filename.c_str());
+    resError = fnfErr;
+    return -1;
+  }
+}
+
+void CloseResFile(int16_t refnum) {
+  UpdateResFile(refnum);
+  rm.close(refnum);
+  resError = noErr;
+  rm_log.info("Closed file reference number %hd", refnum);
+  rm.print_chain();
+}
+
+int16_t ResError(void) {
+  return resError;
+}
+
+UInt16 CurResFile(void) {
+  return rm.current_file()->refnum;
+}
+
+void UseResFile(int16_t refnum) {
+  rm.use(refnum);
+  resError = noErr;
+}
+
+int16_t CountResources(ResType theType) {
+  int16_t ret = 0;
+  for (const auto& f : rm.chain()) {
+    ret += f->rf->count_resources_of_type(theType);
+  }
+  return ret;
+}
+
+void GetResInfo(Handle data_handle, int16_t* res_id, ResType* res_type, Str255 res_name) {
+  try {
+    auto res = rm.get_resource(data_handle);
+    *res_id = res->source_res->id;
+    *res_type = res->source_res->type;
+    pstr_for_string<256>(res_name, res->source_res->name);
+    resError = noErr;
+  } catch (const std::out_of_range&) {
+    resError = resNotFound;
+  }
+}
+
+int16_t GetResAttrs(Handle data_handle) {
+  try {
+    auto res = rm.get_resource(data_handle);
+    resError = noErr;
+    // Only the low 8 bits are actually part of the Resource Manager; the
+    // others are used internally by resource_dasm so we mask them out here
+    return res->source_res->flags & 0xFF;
+  } catch (const std::out_of_range&) {
+    resError = resNotFound;
+    return resNotFound;
+  }
+}
+
+void SetResAttrs(Handle data_handle, int16_t attrs) {
+  try {
+    auto res = rm.get_resource(data_handle);
+    resError = noErr;
+    rm_log.info("Skipping SetResAttrs on resource %08" PRIX32 ":%hd (value=%04X)",
+        res->source_res->type, res->source_res->id, attrs);
+  } catch (const std::out_of_range&) {
+    resError = resNotFound;
+    rm_log.info("Skipping SetResAttrs on missing resource");
+  }
+}
+
+void AddResource(Handle data_handle, ResType type, int16_t id, ConstStr255Param name) {
+  auto name_str = string_for_pstr<256>(name);
+  try {
+    rm.add_resource(type, id, std::move(name_str), data_handle);
+    rm_log.info("Resource %08" PRIX32 ":%hd added", type, id);
+  } catch (const std::exception& e) {
+    resError = addResFailed;
+    rm_log.info("Failed to add resource %08" PRIX32 ":%hd: %s", type, id, e.what());
+  }
+}
+
+void RemoveResource(Handle data_handle) {
+  try {
+    auto res = rm.remove_resource(data_handle);
+    resError = noErr;
+    rm_log.info("Resource %08" PRIX32 ":%hd deleted", res->source_res->type, res->source_res->id);
+
+  } catch (const std::exception& e) {
+    resError = addResFailed;
+    rm_log.info("Failed to delete resource: %s", e.what());
+  }
+}
+
+void ChangedResource(Handle data_handle) {
+  try {
+    auto res = rm.get_resource(data_handle);
+    rm.mark_modified(data_handle);
+    resError = noErr;
+    rm_log.info("Resource %08" PRIX32 ":%hd marked modified", res->source_res->type, res->source_res->id);
+
+  } catch (const std::out_of_range&) {
+    resError = resNotFound;
+    rm_log.info("Resource cannot be marked modified because the handle is not owned by the Resource Manager");
+  }
+}
+
+void WriteResource(Handle data_handle) {
+  // We don't have a good way to just write a single resource out, so we
+  // instead write everything. This is probably fine because Realmz doesn't
+  // seem to call this function in a loop anywhere, so hopefully not much work
+  // is wasted by being lazy in this implementation.
+  try {
+    auto res = rm.get_resource(data_handle);
+    UpdateResFile(res->file_refnum); // Sets resError
+  } catch (const std::out_of_range& e) {
+    resError = resNotFound;
+  }
+}
+
+void UpdateResFile(int16_t refnum) {
+  try {
+    rm.write_file(refnum);
+    rm_log.info("Wrote resource file %hd", refnum);
+    resError = noErr;
+  } catch (const std::exception& e) {
+    rm_log.info("Failed to write resource file %hd: %s", refnum, e.what());
+    resError = resFNotFound;
+  }
+}
+
+Handle GetResource(ResType type, int16_t id) {
+  try {
+    auto res = rm.get_resource(type, id);
+    resError = noErr;
+    return res->data_handle;
+  } catch (const std::out_of_range&) {
+    resError = resNotFound;
+    return nullptr;
+  }
+}
+
+Handle Get1Resource(ResType type, int16_t id) {
+  try {
+    auto res = rm.current_file()->get_resource(type, id);
+    resError = noErr;
+    return res->data_handle;
+  } catch (const std::out_of_range&) {
+    resError = resNotFound;
+    return nullptr;
+  }
+}
+
+int32_t GetResourceSizeOnDisk(Handle data_handle) {
+  try {
+    auto res = rm.get_resource(data_handle);
+    resError = noErr;
+    return GetHandleSize(data_handle);
+  } catch (const std::out_of_range&) {
+    resError = resNotFound;
+    return -1;
+  }
+}
+
+void ReleaseResource(Handle data_handle) {
+  rm.release_resource(data_handle, true);
+}
+
+void DetachResource(Handle data_handle) {
+  rm.release_resource(data_handle, false);
+}
+
+void GetIndString(Str255 out, int16_t res_id, uint16_t index) {
+  try {
+    auto res = rm.get_resource(ResourceDASM::RESOURCE_TYPE_STRN, res_id);
+    auto decoded = ResourceDASM::ResourceFile::decode_STRN(res->source_res);
     const auto& str = decoded.strs.at(index);
     if (str.size() > 0xFF) {
       out[0] = 0; // This should be impossible; the STR# format has a single-byte size field per string
@@ -123,183 +582,8 @@ void ResourceManager_get_Str255_from_strN(char* out, int16_t res_id, uint16_t in
   }
 }
 
-struct PixelPatternResourceHeader {
-  be_uint16_t type;
-  be_uint32_t pixel_map_offset;
-  be_uint32_t pixel_data_offset;
-  be_uint32_t unused1; // TMPL: "Expanded pixel image" (probably ptr to decompressed data when used by QuickDraw)
-  be_uint16_t unused2; // TMPL: "Pattern valid flag" (unused in stored resource)
-  be_uint32_t reserved; // TMPL: "Expanded pattern"
-  uint8_t monochrome_pattern[8];
-} __attribute__((packed));
-
-ResourceManager_PixPat ResourceManager_get_ppat_resource(int16_t patID) {
-  auto resource = rm.find_resource(ResourceDASM::RESOURCE_TYPE_ppat, patID);
-  if (!resource) {
-    throw std::runtime_error(phosg::string_printf("Resource ppat:%hd was not found", patID));
-  }
-  phosg::StringReader r(resource->data.data(), resource->data.size());
-  const auto& header = r.get<PixelPatternResourceHeader>();
-  const auto& pixmap_header = r.pget<ResourceDASM::PixelMapHeader>(header.pixel_map_offset + 4);
-  ResourceManager_PixMap rmPixMap = {
-      pixmap_header.pixel_size,
-      {pixmap_header.bounds.y1,
-          pixmap_header.bounds.x1,
-          pixmap_header.bounds.y2,
-          pixmap_header.bounds.x2}};
-
-  ResourceDASM::ResourceFile::DecodedPattern pattern = ResourceDASM::ResourceFile::decode_ppat(resource);
-  const char* patData = reinterpret_cast<const char*>(pattern.pattern.get_data());
-
-  return {
-      header.type,
-      rmPixMap,
-      &patData};
-}
-
-ResourceManager_Picture ResourceManager_get_pict_resource(int16_t picID) {
-  auto resource = rm.find_resource(ResourceDASM::RESOURCE_TYPE_PICT, picID);
-  ResourceDASM::ResourceFile::DecodedPictResource p = rm.current_file()->rf->decode_PICT(resource);
-
-  // Have to copy the raw data out of the Image object, so that it doesn't get freed
-  // out from under us
-  void* data = malloc(p.image.get_data_size());
-  memcpy(data, p.image.get_data(), p.image.get_data_size());
-
-  return {
-      0,
-      {0, 0, (int32_t)p.image.get_height(), (int32_t)p.image.get_width()},
-      data};
-}
-
-ResourceManager_Window ResourceManager_get_wind_resource(int16_t windowID) {
-  auto resource = rm.find_resource(ResourceDASM::RESOURCE_TYPE_WIND, windowID);
-  phosg::StringReader data(resource->data.data(), resource->data.size());
-
-  ResourceManager_Rect r = rect_from_data(data);
-  int16_t procID = data.get_s16b();
-  bool visible = (bool)data.get_u16b();
-  bool dismissable = (bool)data.get_u16b();
-  uint32_t refCon = data.get_u32b();
-  uint8_t nameSize = data.get_u8();
-  std::string n = data.read(nameSize);
-
-  ResourceManager_Window w = {
-      r,
-      procID,
-      visible,
-      dismissable,
-      refCon};
-  w.windowTitle[0] = nameSize;
-  strcpy(&w.windowTitle[1], n.c_str());
-  return w;
-}
-
-ResourceManager_Dialog ResourceManager_get_dlog_resource(int16_t dialogID) {
-  auto dlog = rm.find_resource(ResourceDASM::RESOURCE_TYPE_DLOG, dialogID);
-  phosg::StringReader data(dlog->data.data(), dlog->data.size());
-
-  ResourceManager_Rect r = rect_from_data(data);
-  int16_t wDefID = data.get_s16b();
-  bool visible = (bool)data.get_u8();
-  data.read(1);
-  bool dismissable = (bool)data.get_u8();
-  data.read(1);
-  uint32_t refCon = data.get_u32b();
-  int16_t ditlID = data.get_s16b();
-
-  return {
-      r,
-      wDefID,
-      visible,
-      dismissable,
-      refCon,
-      ditlID};
-}
-
-uint16_t ResourceManager_get_ditl_resources(int16_t ditlID, ResourceManager_DialogItem** items) {
-  auto ditl = rm.find_resource(ResourceDASM::RESOURCE_TYPE_DITL, ditlID);
-  phosg::StringReader ditlData(ditl->data.data(), ditl->data.size());
-  uint16_t numItems = ditlData.get_u16b() + 1;
-  *items = (ResourceManager_DialogItem*)calloc(numItems, sizeof(ResourceManager_DialogItem));
-  for (int i = 0; i < numItems; i++) {
-    ditlData.read(4);
-    ResourceManager_Rect dispWindow = rect_from_data(ditlData);
-    uint8_t type = ditlData.get_u8();
-    bool enabled = (bool)(type & 0x80);
-    type = (type & 0x7F);
-    switch (type) {
-      // PICT Resource
-      case 64: {
-        ditlData.read(1);
-        uint16_t pictID = ditlData.get_u16b();
-        auto p = ResourceManager_get_pict_resource(pictID);
-        (*items)[i].type = (*items)[i].DIALOG_ITEM_TYPE_PICT;
-        (*items)[i].dialogItem.pict.dispRect = dispWindow;
-        (*items)[i].dialogItem.pict.enabled = enabled;
-        (*items)[i].dialogItem.pict.p = p;
-        break;
-      }
-      default:
-        break;
-    }
-  }
-  return numItems;
-}
-
-ResourceManager_Sound ResourceManager_get_snd_resource(int16_t soundID) {
-  auto snd = rm.find_resource(ResourceDASM::RESOURCE_TYPE_snd, soundID);
-  ResourceDASM::ResourceFile::DecodedSoundResource soundData = rm.current_file()->rf->decode_snd(snd);
-  size_t len = soundData.data.size();
-  void* data = malloc(len);
-  memcpy(data, soundData.data.data(), len);
-  return ResourceManager_Sound{
-      .freq = soundData.sample_rate,
-      .data = data,
-      .len = len};
-}
-
-int16_t ResourceManager_OpenResFile(const char classic_filename[256], signed char permission) {
-  // TODO(martin): The following behavior is not implemented (but it probably
-  // is not necessary for our use case): if OpenResFile() is called again on a
-  // file that's already open, it should NOT set the current resource file, and
-  // instead just return the reference number of the existing opened file.
-  static auto app_base_path = std::string(SDL_GetBasePath());
-
-  auto base_host_filename = std::string(classic_filename);
-  std::replace(base_host_filename.begin(), base_host_filename.end(), ':', '/');
-  base_host_filename += ".rsrc";
-
-  std::vector<std::string> candidate_host_filenames;
-  // Try looking in . first (this is what the compiled game will do)
-  candidate_host_filenames.emplace_back(base_host_filename);
-  // Try the basePath (e.g. the bundle's Resource directory)
-  candidate_host_filenames.emplace_back(app_base_path + base_host_filename);
-  // Try looking in base/Realmz next (this happens when building in the git repo)
-  candidate_host_filenames.emplace_back("base/Realmz/" + base_host_filename);
-  // Finally, try looking in resources/ (this also happens when building in the git repo)
-  candidate_host_filenames.emplace_back("resources/" + base_host_filename);
-
-  for (const auto& candidate_host_filename : candidate_host_filenames) {
-    try {
-      std::string data = phosg::load_file(candidate_host_filename);
-      auto rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
-      int16_t ret = rm.use(classic_filename, candidate_host_filename, rf);
-      rm_log.info("Loaded %s from %s with reference number %hd", classic_filename, candidate_host_filename.c_str(), ret);
-      rm.print_chain();
-      return ret;
-    } catch (const phosg::cannot_open_file&) {
-    }
-  }
-
-  rm_log.info("Failed to load %s from any known location", classic_filename);
-  return -1;
-}
-
-void ResourceManager_UseResFile(int16_t reference_number) {
-  rm.use(reference_number);
-}
-
-int16_t ResourceManager_CurResFile() {
-  return rm.current_file()->reference_number;
+ResourceDASM::ResourceFile::DecodedPictResource ResourceManager_decode_PICT(int16_t id) {
+  auto res = rm.get_resource(ResourceDASM::RESOURCE_TYPE_PICT, id);
+  auto f = rm.get_file(res->file_refnum);
+  return f->rf->decode_PICT(res->source_res);
 }

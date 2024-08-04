@@ -3,14 +3,36 @@
 
 #include <SDL3/SDL_audio.h>
 
+#include "Types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
-SDL_AudioStream* SoundManager_new_audio_stream(void);
-bool SoundManager_is_sound_registered(int16_t id);
-void SoundManager_register_sound(int16_t id, uint32_t freq, void* data, uint32_t len);
-void SoundManager_play_sound(SDL_AudioStream* sdlAudioStream, int16_t id);
+enum {
+  badChannel = -205,
+};
+
+enum {
+  quietCmd = 3,
+  flushCmd = 4,
+};
+
+typedef struct SndCommand {
+  uint16_t cmd;
+  int16_t param1;
+  int32_t param2;
+} SndCommand;
+
+typedef struct SndChannel {
+  uint16_t qLength;
+  SDL_AudioStream* sdlAudioStream;
+} SndChannel;
+typedef SndChannel* SndChannelPtr;
+
+OSErr SndNewChannel(SndChannelPtr* chan, uint16_t synth, int32_t init, void* userRoutine);
+OSErr SndDoImmediate(SndChannelPtr chan, const SndCommand* cmd);
+OSErr SndPlay(SndChannelPtr chan, Handle sndHdl, Boolean async);
 
 #ifdef __cplusplus
 } // extern "C"

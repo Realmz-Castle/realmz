@@ -1,8 +1,17 @@
 #include "WindowManager.h"
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
+#include <phosg/Strings.hh>
+#include <resource_file/ResourceFile.hh>
+
+#include "MemoryManager.hpp"
+#include "QuickDraw.hpp"
+#include "ResourceManager.hpp"
+
+static phosg::PrefixedLogger wm_log("[WindowManager] ");
 
 static void SDL_snprintfcat(SDL_OUT_Z_CAP(maxlen) char* text, size_t maxlen, SDL_PRINTF_FORMAT_STRING const char* fmt, ...) {
   size_t length = SDL_strlen(text);
@@ -63,9 +72,85 @@ static void PrintDebugInfo(void) {
   }
 }
 
+WindowResource WindowManager_get_wind_resource(int16_t windowID) {
+  auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_WIND, windowID);
+  auto data = read_from_handle(data_handle);
+
+  Rect r = rect_from_reader(data);
+  int16_t procID = data.get_s16b();
+  bool visible = (bool)data.get_u16b();
+  bool dismissable = (bool)data.get_u16b();
+  uint32_t refCon = data.get_u32b();
+  uint8_t nameSize = data.get_u8();
+  std::string n = data.read(nameSize);
+
+  WindowResource w = {
+      r,
+      procID,
+      visible,
+      dismissable,
+      refCon};
+  w.windowTitle[0] = nameSize;
+  strcpy(&w.windowTitle[1], n.c_str());
+  return w;
+}
+
+DialogResource WindowManager_get_dlog_resource(int16_t dialogID) {
+  auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_DLOG, dialogID);
+  auto data = read_from_handle(data_handle);
+
+  Rect r = rect_from_reader(data);
+  int16_t wDefID = data.get_s16b();
+  bool visible = (bool)data.get_u8();
+  data.skip(1);
+  bool dismissable = (bool)data.get_u8();
+  data.skip(1);
+  uint32_t refCon = data.get_u32b();
+  int16_t ditlID = data.get_s16b();
+
+  return {
+      r,
+      wDefID,
+      visible,
+      dismissable,
+      refCon,
+      ditlID};
+}
+
+uint16_t WindowManager_get_ditl_resources(int16_t ditlID, DialogItem** items) {
+  auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_DITL, ditlID);
+  auto ditlData = read_from_handle(data_handle);
+
+  uint16_t numItems = ditlData.get_u16b() + 1;
+  *items = (DialogItem*)calloc(numItems, sizeof(DialogItem));
+  for (int i = 0; i < numItems; i++) {
+    ditlData.read(4);
+    Rect dispWindow = rect_from_reader(ditlData);
+    uint8_t type = ditlData.get_u8();
+    bool enabled = (bool)(type & 0x80);
+    type = (type & 0x7F);
+    switch (type) {
+      // PICT Resource
+      case 64: {
+        ditlData.read(1);
+        uint16_t pictID = ditlData.get_u16b();
+        auto p = QuickDraw_get_pict_resource(pictID);
+        (*items)[i].type = (*items)[i].DIALOG_ITEM_TYPE_PICT;
+        (*items)[i].dialogItem.pict.dispRect = dispWindow;
+        (*items)[i].dialogItem.pict.enabled = enabled;
+        (*items)[i].dialogItem.pict.p = p;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  return numItems;
+}
+
 void WindowManager_Init(void) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-    SDL_Log("Couldn't initialize video driver: %s\n", SDL_GetError());
+    wm_log.error("Couldn't initialize video driver: %s\n", SDL_GetError());
     return;
   }
 
@@ -73,7 +158,7 @@ void WindowManager_Init(void) {
 }
 
 WindowPtr WindowManager_CreateNewWindow(Rect bounds, char* title, bool visible, int procID, WindowPtr behind,
-    bool goAwayFlag, int32_t refCon, uint16_t numItems, ResourceManager_DialogItem* dItems) {
+    bool goAwayFlag, int32_t refCon, uint16_t numItems, DialogItem* dItems) {
 
   SDL_WindowFlags flags{};
 
@@ -88,14 +173,14 @@ WindowPtr WindowManager_CreateNewWindow(Rect bounds, char* title, bool visible, 
       flags);
 
   if (window == NULL) {
-    SDL_Log("Could not create window: %s\n", SDL_GetError());
+    wm_log.error("Could not create window: %s\n", SDL_GetError());
     return NULL;
   }
 
   SDL_Renderer* renderer = SDL_CreateRenderer(window, "opengl");
 
   if (renderer == NULL) {
-    SDL_Log("could not create renderer: %s\n", SDL_GetError());
+    wm_log.error("could not create renderer: %s\n", SDL_GetError());
     return NULL;
   }
 
@@ -123,24 +208,24 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
   SDL_RenderClear(renderer);
 
   for (int i = 0; i < window->numItems; i++) {
-    ResourceManager_DialogItem di = window->dItems[i];
+    DialogItem di = window->dItems[i];
 
     switch (di.type) {
       case di.DIALOG_ITEM_TYPE_PICT:
-        ResourceManager_DialogItemPict pict = di.dialogItem.pict;
-        ResourceManager_Rect r = pict.p.picFrame;
+        DialogItemPict pict = di.dialogItem.pict;
+        Rect r = pict.p.picFrame;
         uint32_t w = r.right - r.left;
         uint32_t h = r.bottom - r.top;
-        SDL_Surface* s = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGB24, (void*)pict.p.data, 3 * w);
+        SDL_Surface* s = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGB24, *pict.p.data, 3 * w);
 
         if (s == NULL) {
-          SDL_Log("Could not create surface: %s\n", SDL_GetError());
+          wm_log.error("Could not create surface: %s\n", SDL_GetError());
           break;
         }
 
         SDL_Texture* t = SDL_CreateTextureFromSurface(renderer, s);
         if (t == NULL) {
-          SDL_Log("Could not create texture: %s\n", SDL_GetError());
+          wm_log.error("Could not create texture: %s\n", SDL_GetError());
           break;
         }
         SDL_DestroySurface(s);
@@ -225,13 +310,13 @@ DisplayProperties WindowManager_GetPrimaryDisplayProperties(void) {
   auto displayID = SDL_GetPrimaryDisplay();
 
   if (displayID == 0) {
-    SDL_Log("Could not get primary display: %s", SDL_GetError());
+    wm_log.error("Could not get primary display: %s", SDL_GetError());
     return {};
   }
 
   SDL_Rect bounds{};
   if (SDL_GetDisplayBounds(displayID, &bounds) < 0) {
-    SDL_Log("Could not get display bounds: %s", SDL_GetError());
+    wm_log.error("Could not get display bounds: %s", SDL_GetError());
     return {};
   }
 

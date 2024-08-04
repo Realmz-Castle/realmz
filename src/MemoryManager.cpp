@@ -135,6 +135,22 @@ Handle NewHandle(Size size) {
   return reinterpret_cast<Handle>(memory_manager.alloc_handle(size));
 }
 
+Handle NewHandleClear(Size size) {
+  auto handle = NewHandle(size);
+  if (handle) {
+    memset(handle, 0, size);
+  }
+  return handle;
+}
+
+Handle NewHandleWithData(const void* data, size_t size) {
+  Handle ret = NewHandle(size);
+  if (ret) {
+    memcpy(*ret, data, size);
+  }
+  return ret;
+}
+
 void DisposeHandle(Handle handle) {
   memory_manager.free_handle(handle);
 }

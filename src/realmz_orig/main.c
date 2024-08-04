@@ -1166,6 +1166,14 @@ keepmoving:
     exit(0);
   }
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(fuzziqersoftware): Realmz checks if the Realmz Manual file exists at
+   * startup time and exits if it's missing, but it appears the file isn't
+   * actually used for anything. It could be that the file was needed in an
+   * earlier version of Realmz and the dependency has since been removed, but
+   * this check wasn't removed. Regardless of the reason, we've commented this
+   * out since it seems the file is no longer required.
+
   if ((fp = MyrFopen(":Realmz Manual", "rb")) == NIL) {
     MyrParamText("Sorry, The file 'Realmz Manual' is a required file for Realmz to run.  Please make sure the file 'Realmz Manual' is in the same folder as Realmz.", (Ptr) "", (Ptr) "", (Ptr) "");
     background = GetNewDialog(151, NIL, (WindowPtr)-1L);
@@ -1178,6 +1186,8 @@ keepmoving:
     exit(0);
   } else
     fclose(fp);
+
+   * *** END CHANGES *** */
 
   leftshift = screensize * 160;
   downshift = screensize * 96;
