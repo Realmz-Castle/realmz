@@ -194,7 +194,7 @@ set(SOURCES
 
 set(RESOURCE_FILES
     resources/realmz.rsrc
-    resources/AppIcon.icns
+    bundle/AppIcon.icns
 )
 
 set(DATA_RESOURCE_FILES
