@@ -5,6 +5,7 @@
 
 #include "ResourceManager.h"
 #include "Types-CC.hpp"
+#include <SDL3/SDL_filesystem.h>
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
 #include <resource_file/IndexFormats/Formats.hh>
@@ -263,17 +264,21 @@ int16_t ResourceManager_OpenResFile(const char classic_filename[256], signed cha
   // is not necessary for our use case): if OpenResFile() is called again on a
   // file that's already open, it should NOT set the current resource file, and
   // instead just return the reference number of the existing opened file.
+  static auto app_base_path = std::string(SDL_GetBasePath());
 
   auto base_host_filename = std::string(classic_filename);
   std::replace(base_host_filename.begin(), base_host_filename.end(), ':', '/');
+  base_host_filename += ".rsrc";
 
   std::vector<std::string> candidate_host_filenames;
   // Try looking in . first (this is what the compiled game will do)
-  candidate_host_filenames.emplace_back(base_host_filename + ".rsrc");
+  candidate_host_filenames.emplace_back(base_host_filename);
+  // Try the basePath (e.g. the bundle's Resource directory)
+  candidate_host_filenames.emplace_back(app_base_path + base_host_filename);
   // Try looking in base/Realmz next (this happens when building in the git repo)
-  candidate_host_filenames.emplace_back("base/Realmz/" + base_host_filename + ".rsrc");
+  candidate_host_filenames.emplace_back("base/Realmz/" + base_host_filename);
   // Finally, try looking in resources/ (this also happens when building in the git repo)
-  candidate_host_filenames.emplace_back("resources/" + base_host_filename + ".rsrc");
+  candidate_host_filenames.emplace_back("resources/" + base_host_filename);
 
   for (const auto& candidate_host_filename : candidate_host_filenames) {
     try {

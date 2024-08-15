@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 
-
-
 # Project setup
-
-project(realmz)
+project(Realmz
+    VERSION 8.0.5
+    DESCRIPTION "Classic turn-based RPG from Fantasoft"
+    LANGUAGES C CXX OBJC
+)
 
 set(CMAKE_C_STANDARD 90)
 set(CMAKE_CXX_STANDARD 23)
@@ -25,17 +26,11 @@ list(APPEND CMAKE_PREFIX_PATH ${LOCAL_LIB_DIR})
 include_directories(${LOCAL_INCLUDE_DIR})
 link_directories(${LOCAL_LIB_DIR})
 
-
-
 # Library search
-
 find_package(resource_file REQUIRED)
 find_package(SDL3 REQUIRED)
 
-
-
 # Executable definition
-
 set(SOURCES
     src/realmz_orig/Display.c
     src/realmz_orig/DrawString.c
@@ -197,11 +192,38 @@ set(SOURCES
     src/WindowManager.cpp
 )
 
-add_executable(realmz ${SOURCES})
-target_compile_definitions(realmz PUBLIC REALMZ_COCOA=1)
-target_compile_options(realmz PUBLIC -fpascal-strings)
-target_include_directories(realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig)
-target_link_libraries(realmz PUBLIC ${SDL3_LIBRARIES} resource_file)
+# Installed in Contents/Resources
+set(RESOURCE_FILES
+    resources/realmz.rsrc
+    bundle/AppIcon.icns
+)
 
-target_compile_options(realmz PRIVATE -fsanitize=address)
-target_link_options(realmz PRIVATE -fsanitize=address)
+# Installed in Contents/Resources/Data\ Files
+set(DATA_RESOURCE_FILES
+    base/Realmz/Data\ Files/The\ Family\ Jewels.rsrc
+)
+
+add_executable(Realmz MACOSX_BUNDLE ${SOURCES} ${RESOURCE_FILES} ${DATA_RESOURCE_FILES})
+target_compile_definitions(Realmz PUBLIC REALMZ_COCOA=1)
+target_compile_options(Realmz PUBLIC -fpascal-strings)
+target_include_directories(Realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig)
+target_link_libraries(Realmz PUBLIC ${SDL3_LIBRARIES} resource_file)
+
+target_compile_options(Realmz PRIVATE -fsanitize=address)
+target_link_options(Realmz PRIVATE -fsanitize=address)
+
+if(APPLE)
+    set_target_properties(Realmz PROPERTIES
+        MACOSX_BUNDLE ON
+        MACOSX_BUNDLE_BUNDLE_NAME Realmz
+        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_COPYRIGHT "Realmz Copyright 1994 by Tim Phillips"
+        MACOSX_BUNDLE_ICON_FILE "AppIcon"
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/bundle/Info.plist.in"
+        RESOURCE "${RESOURCE_FILES}"
+    )
+
+    set_source_files_properties("${DATA_RESOURCE_FILES}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources/Data\ Files
+    )
+endif()
