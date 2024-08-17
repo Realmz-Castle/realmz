@@ -332,7 +332,7 @@ std::string host_resource_filename_for_host_filename(const std::string& host_pat
   if (!base_path) {
     rm_log.error("Failed to get SDL base path: %s", SDL_GetError());
   } else {
-    full_path = base_path + host_path;
+    full_path = base_path + host_path + ".rsrc";
     if (allow_missing || phosg::isfile(full_path)) {
       return full_path;
     }
@@ -347,7 +347,7 @@ std::string host_resource_filename_for_host_filename(const std::string& host_pat
     return full_path;
   }
 
-  throw std::runtime_error("Cannot determine host resource file path for " + host_path);
+  return "";
 }
 
 std::string host_resource_filename_for_mac_filename(const std::string& host_path, bool allow_missing = false) {
@@ -370,6 +370,9 @@ void FSpCreateResFile(const FSSpec* spec, OSType creator, OSType fileType, Scrip
   (void)scriptTag;
 
   auto filename = host_resource_filename_for_FSSpec(spec, true);
+  if (filename.empty()) {
+    throw std::runtime_error("Cannot create resource file in any known location");
+  }
   int fd = open(filename.c_str(), O_WRONLY | O_CREAT, 0666);
   if (fd >= 0) {
     close(fd);
@@ -380,6 +383,13 @@ void FSpCreateResFile(const FSSpec* spec, OSType creator, OSType fileType, Scrip
 
 int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
   auto host_filename = host_resource_filename_for_FSSpec(spec);
+  if (host_filename.empty()) {
+    auto filename = string_for_pstr<64>(spec->name);
+    rm_log.info("Failed to load resource file %s", filename.c_str());
+    resError = fnfErr;
+    return -1;
+  }
+
   try {
     std::string data = phosg::load_file(host_filename);
     auto rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
