@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.27)
 
 # Project setup
 project(Realmz
@@ -17,16 +17,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 #     add_compile_options(-Wall -Wextra -Werror)
 # endif()
 
-# TODO(martin): This manual path modification is necessary because phosg and
-# resource_file are manually installed to these directories. We should use the
-# default install path for those libraries instead and remove this hack.
-set(LOCAL_INCLUDE_DIR "/usr/local/include")
-set(LOCAL_LIB_DIR "/usr/local/lib")
-list(APPEND CMAKE_PREFIX_PATH ${LOCAL_LIB_DIR})
-include_directories(${LOCAL_INCLUDE_DIR})
-link_directories(${LOCAL_LIB_DIR})
-
 # Library search
+find_package(phosg REQUIRED)
 find_package(resource_file REQUIRED)
 find_package(SDL3 REQUIRED)
 
@@ -209,7 +201,7 @@ add_executable(Realmz MACOSX_BUNDLE ${SOURCES} ${RESOURCE_FILES} ${DATA_RESOURCE
 target_compile_definitions(Realmz PUBLIC REALMZ_COCOA=1)
 target_compile_options(Realmz PUBLIC -fpascal-strings)
 target_include_directories(Realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig)
-target_link_libraries(Realmz PUBLIC ${SDL3_LIBRARIES} resource_file)
+target_link_libraries(Realmz PUBLIC ${SDL3_LIBRARIES} resource_file::resource_file)
 
 target_compile_options(Realmz PRIVATE -fsanitize=address)
 target_link_options(Realmz PRIVATE -fsanitize=address)
