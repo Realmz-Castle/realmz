@@ -19,25 +19,25 @@ extern "C" {
  Imaging with Quickdraw (4-46 Color QuickDraw Reference)
  Imaging with Quickdraw (4-118 Summary of Color Quickdraw)
  */
-typedef struct PixMap {
+typedef struct {
   uint16_t pixelSize; // physical bits per pixel
   Rect bounds; // boundary rectangle
 } PixMap;
 typedef PixMap *PixMapPtr, **PixMapHandle;
 
 // Imaging With Quickdraw (3-152 Summary of Quickdraw Drawing)
-typedef struct Pattern {
+typedef struct {
   unsigned char pat[8];
 } Pattern;
 
-typedef struct BitMap {
+typedef struct {
   Ptr baseAddr;
   int16_t rowBytes;
   Rect bounds;
 } BitMap;
 
 // Imaging With Quickdraw (4-120 Summary of Color Quickdraw)
-typedef struct PixPat {
+typedef struct {
   uint16_t patType; /* pattern type */
   PixMapHandle patMap; /* PixMap structure for pattern */
   Handle patData; /* pixel-image defining pattern */
@@ -48,17 +48,17 @@ typedef struct PixPat {
 } PixPat;
 typedef PixPat *PixPatPtr, **PixPatHandle;
 
-typedef struct Picture {
+typedef struct {
   uint16_t picSize;
   Rect picFrame;
   Handle data;
 } Picture;
 
-typedef struct GrafPort {
+typedef struct {
   BitMap portBits;
 } GrafPort;
 
-typedef struct CGrafPort {
+typedef struct {
   Rect portRect;
   int16_t txFont;
   Style txFace;

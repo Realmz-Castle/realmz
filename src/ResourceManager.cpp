@@ -131,9 +131,9 @@ public:
 
       // data_handle is not freed; the application must do this manually if it
       // doesn't want to keep the data in memory.
-      res->data_handle = nullptr; // Prevent destructor from freeing the handle
       this->resource_for_type_id.erase(this->key_for_type_id(res->source_res->type, res->source_res->id));
       this->resource_for_handle.erase(res->data_handle);
+      res->data_handle = nullptr; // Prevent destructor from freeing the handle
 
       // Delete the backing object in ResourceFile
       this->rf->remove(res->source_res->type, res->source_res->id);
@@ -590,10 +590,4 @@ void GetIndString(Str255 out, int16_t res_id, uint16_t index) {
   } catch (const std::out_of_range&) {
     out[0] = 0;
   }
-}
-
-ResourceDASM::ResourceFile::DecodedPictResource ResourceManager_decode_PICT(int16_t id) {
-  auto res = rm.get_resource(ResourceDASM::RESOURCE_TYPE_PICT, id);
-  auto f = rm.get_file(res->file_refnum);
-  return f->rf->decode_PICT(res->source_res);
 }

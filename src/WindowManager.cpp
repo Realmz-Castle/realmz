@@ -9,7 +9,6 @@
 
 #include "MemoryManager.hpp"
 #include "QuickDraw.hpp"
-#include "ResourceManager.hpp"
 
 static phosg::PrefixedLogger wm_log("[WindowManager] ");
 
@@ -72,51 +71,6 @@ static void PrintDebugInfo(void) {
   }
 }
 
-WindowResource WindowManager_get_wind_resource(int16_t windowID) {
-  auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_WIND, windowID);
-  auto data = read_from_handle(data_handle);
-
-  Rect r = rect_from_reader(data);
-  int16_t procID = data.get_s16b();
-  bool visible = (bool)data.get_u16b();
-  bool dismissable = (bool)data.get_u16b();
-  uint32_t refCon = data.get_u32b();
-  uint8_t nameSize = data.get_u8();
-  std::string n = data.read(nameSize);
-
-  WindowResource w = {
-      r,
-      procID,
-      visible,
-      dismissable,
-      refCon};
-  w.windowTitle[0] = nameSize;
-  strcpy(&w.windowTitle[1], n.c_str());
-  return w;
-}
-
-DialogResource WindowManager_get_dlog_resource(int16_t dialogID) {
-  auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_DLOG, dialogID);
-  auto data = read_from_handle(data_handle);
-
-  Rect r = rect_from_reader(data);
-  int16_t wDefID = data.get_s16b();
-  bool visible = (bool)data.get_u8();
-  data.skip(1);
-  bool dismissable = (bool)data.get_u8();
-  data.skip(1);
-  uint32_t refCon = data.get_u32b();
-  int16_t ditlID = data.get_s16b();
-
-  return {
-      r,
-      wDefID,
-      visible,
-      dismissable,
-      refCon,
-      ditlID};
-}
-
 uint16_t WindowManager_get_ditl_resources(int16_t ditlID, DialogItem** items) {
   auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_DITL, ditlID);
   auto ditlData = read_from_handle(data_handle);
@@ -157,17 +111,54 @@ void WindowManager_Init(void) {
   PrintDebugInfo();
 }
 
-WindowPtr WindowManager_CreateNewWindow(Rect bounds, char* title, bool visible, int procID, WindowPtr behind,
-    bool goAwayFlag, int32_t refCon, uint16_t numItems, DialogItem* dItems) {
+WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPtr behind) {
+  Rect bounds;
+  int16_t proc_id;
+  std::string title;
+  bool visible;
+  bool go_away;
+  uint32_t ref_con;
+  size_t num_dialog_items;
+  DialogItem* dialog_items;
+
+  if (is_dialog) {
+    auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_DLOG, res_id);
+    auto dlog = ResourceDASM::ResourceFile::decode_DLOG(*data_handle, GetHandleSize(data_handle));
+    bounds.left = dlog.bounds.x1;
+    bounds.right = dlog.bounds.x2;
+    bounds.top = dlog.bounds.y1;
+    bounds.bottom = dlog.bounds.y2;
+    proc_id = dlog.proc_id;
+    title = dlog.title;
+    visible = dlog.visible;
+    go_away = dlog.go_away;
+    ref_con = dlog.ref_con;
+    num_dialog_items = WindowManager_get_ditl_resources(dlog.items_id, &dialog_items);
+
+  } else {
+    auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_WIND, res_id);
+    auto wind = ResourceDASM::ResourceFile::decode_WIND(*data_handle, GetHandleSize(data_handle));
+    bounds.left = wind.bounds.x1;
+    bounds.right = wind.bounds.x2;
+    bounds.top = wind.bounds.y1;
+    bounds.bottom = wind.bounds.y2;
+    proc_id = wind.proc_id;
+    title = wind.title;
+    visible = wind.visible;
+    go_away = wind.go_away;
+    ref_con = wind.ref_con;
+    num_dialog_items = 0;
+    dialog_items = nullptr;
+  }
 
   SDL_WindowFlags flags{};
 
-  if (procID == plainDBox) {
+  if (proc_id == plainDBox) {
     flags |= SDL_WINDOW_BORDERLESS | SDL_WINDOW_UTILITY;
   }
 
   SDL_Window* window = SDL_CreateWindow(
-      title,
+      title.c_str(),
       bounds.right - bounds.left,
       bounds.bottom - bounds.top,
       flags);
@@ -189,13 +180,13 @@ WindowPtr WindowManager_CreateNewWindow(Rect bounds, char* title, bool visible, 
   CWindowRecord* wr = new CWindowRecord();
   wr->port = port;
   wr->visible = visible;
-  wr->goAwayFlag = goAwayFlag;
-  wr->windowKind = procID;
+  wr->goAwayFlag = go_away;
+  wr->windowKind = proc_id;
   wr->sdlWindow = window;
   wr->sdlRenderer = renderer;
-  wr->refCon = refCon;
-  wr->numItems = numItems;
-  wr->dItems = dItems;
+  wr->refCon = ref_con;
+  wr->numItems = num_dialog_items;
+  wr->dItems = dialog_items;
 
   SDL_SyncWindow(wr->sdlWindow);
   return &wr->port;

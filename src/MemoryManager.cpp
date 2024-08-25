@@ -138,7 +138,7 @@ Handle NewHandle(Size size) {
 Handle NewHandleClear(Size size) {
   auto handle = NewHandle(size);
   if (handle) {
-    memset(handle, 0, size);
+    memset(*handle, 0, size);
   }
   return handle;
 }

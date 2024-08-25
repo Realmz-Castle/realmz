@@ -5,13 +5,14 @@
 
 #include "MemoryManager.hpp"
 #include "QuickDraw.h"
-#include "ResourceManager.hpp"
+#include "ResourceManager.h"
 #include "Types.hpp"
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
 #include <resource_file/IndexFormats/Formats.hh>
 #include <resource_file/QuickDrawFormats.hh>
 #include <resource_file/ResourceFile.hh>
+#include <resource_file/ResourceFormats.hh>
 #include <resource_file/ResourceTypes.hh>
 #include <resource_file/TextCodecs.hh>
 
@@ -24,23 +25,13 @@ Rect rect_from_reader(phosg::StringReader& data) {
   return r;
 }
 
-struct PixelPatternResourceHeader {
-  be_uint16_t type;
-  be_uint32_t pixel_map_offset;
-  be_uint32_t pixel_data_offset;
-  be_uint32_t unused1; // TMPL: "Expanded pixel image" (probably ptr to decompressed data when used by QuickDraw)
-  be_uint16_t unused2; // TMPL: "Pattern valid flag" (unused in stored resource)
-  be_uint32_t reserved; // TMPL: "Expanded pattern"
-  uint8_t monochrome_pattern[8];
-} __attribute__((packed));
-
 PixPatHandle GetPixPat(uint16_t patID) {
   auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_ppat, patID);
   if (!data_handle) {
     throw std::runtime_error(phosg::string_printf("Resource ppat:%hd was not found", patID));
   }
   auto r = read_from_handle(data_handle);
-  const auto& header = r.get<PixelPatternResourceHeader>();
+  const auto& header = r.get<ResourceDASM::PixelPatternResourceHeader>();
 
   const auto& pixmap_header = r.pget<ResourceDASM::PixelMapHeader>(header.pixel_map_offset + 4);
   auto patMap = NewHandleTyped<PixMap>();
@@ -73,11 +64,16 @@ PixPatHandle GetPixPat(uint16_t patID) {
   return ret_handle;
 }
 
-Picture QuickDraw_get_pict_resource(int16_t picID) {
-  auto p = ResourceManager_decode_PICT(picID);
+Picture QuickDraw_get_pict_resource(int16_t id) {
+  auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_PICT, id);
+  auto p = ResourceDASM::ResourceFile::decode_PICT_only(*data_handle, GetHandleSize(data_handle));
 
-  // Have to copy the raw data out of the Image object, so that it doesn't get freed
-  // out from under us
+  if (p.image.get_height() == 0 || p.image.get_width() == 0) {
+    throw std::runtime_error(phosg::string_printf("Failed to decode PICT %hd", id));
+  }
+
+  // Have to copy the raw data out of the Image object, so that it doesn't get
+  // freed out from under us
   Picture ret;
   ret.picSize = 0; // This is common for Picture objects
   ret.picFrame.top = 0;

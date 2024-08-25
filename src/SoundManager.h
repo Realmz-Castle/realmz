@@ -18,13 +18,13 @@ enum {
   flushCmd = 4,
 };
 
-typedef struct SndCommand {
+typedef struct {
   uint16_t cmd;
   int16_t param1;
   int32_t param2;
 } SndCommand;
 
-typedef struct SndChannel {
+typedef struct {
   uint16_t qLength;
   SDL_AudioStream* sdlAudioStream;
 } SndChannel;

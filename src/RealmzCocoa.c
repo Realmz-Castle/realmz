@@ -169,25 +169,12 @@ GDHandle GetMainDevice(void) {
 void GetMenuItemText(MenuHandle theMenu, uint16_t item, Str255 itemString) {
 }
 
-DialogPtr GetNewDialog(uint16_t dialogID, void* dStorage, WindowPtr behind) {
-  DialogResource d = WindowManager_get_dlog_resource(dialogID);
-  Rect bounds;
-  cpyRect(&d.bounds, &bounds);
-  DialogItem* dItems;
-  uint16_t numItems = WindowManager_get_ditl_resources(d.ditlID, &dItems);
-  WindowPtr w = WindowManager_CreateNewWindow(bounds, "New Dialog", d.visible, d.wDefID,
-      behind, d.dismissable, d.refCon, numItems, dItems);
-  return w;
+DialogPtr GetNewDialog(uint16_t res_id, void* dStorage, WindowPtr behind) {
+  return WindowManager_CreateNewWindow(res_id, true, behind);
 }
 
-CWindowPtr GetNewCWindow(int16_t windowID, void* wStorage, WindowPtr behind) {
-  WindowResource w = WindowManager_get_wind_resource(windowID);
-  Rect bounds;
-  cpyRect(&(w.portBounds), &bounds);
-  CWindowPtr cwindow = WindowManager_CreateNewWindow(bounds, w.windowTitle, w.visible, w.procID,
-      behind, w.dismissable, w.refCon, 0, NULL);
-
-  return cwindow;
+CWindowPtr GetNewCWindow(int16_t res_id, void* wStorage, WindowPtr behind) {
+  return WindowManager_CreateNewWindow(res_id, false, behind);
 }
 
 Boolean GetNextEvent(uint16_t eventMask, EventRecord* theEvent) {

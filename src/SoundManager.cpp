@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 #include "MemoryManager.hpp"
-#include "ResourceManager.hpp"
+#include "ResourceManager.h"
 #include "Types.hpp"
 
 static phosg::PrefixedLogger sm_log("[SoundManager] ");

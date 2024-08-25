@@ -44,14 +44,14 @@ typedef StringPtr* StringHandle;
 typedef const unsigned char* ConstStr255Param;
 typedef const unsigned char* ConstStr63Param;
 
-// See also the C++ versions of these in resource_file/QuickDrawFormats.hh
-typedef struct Point {
+// See also the C++ versions of these in resource_file/ResourceFormats.hh
+typedef struct {
   int16_t v;
   int16_t h;
 } Point;
 typedef Point* PointPtr;
 
-typedef struct Rect {
+typedef struct {
   int16_t top;
   int16_t left;
   int16_t bottom;
@@ -73,7 +73,7 @@ enum {
 
 typedef long (*ProcPtr)(void);
 
-typedef struct ProcessSerialNumber {
+typedef struct {
   UInt32 highLongOfPSN;
   UInt32 lowLongOfPSN;
 } ProcessSerialNumber;
