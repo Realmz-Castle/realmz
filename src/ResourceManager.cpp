@@ -7,7 +7,6 @@
 #include "MemoryManager.hpp"
 #include "ResourceManager.h"
 #include "Types.hpp"
-#include <SDL3/SDL_filesystem.h>
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
 #include <resource_file/IndexFormats/Formats.hh>
@@ -327,23 +326,8 @@ static ResourceManager rm;
 // Classic Mac OS API implementation
 
 std::string host_resource_filename_for_host_filename(const std::string& host_path, bool allow_missing = false) {
-  std::string full_path;
-  const char* base_path = SDL_GetBasePath();
-  if (!base_path) {
-    rm_log.error("Failed to get SDL base path: %s", SDL_GetError());
-  } else {
-    full_path = base_path + host_path + ".rsrc";
-    if (allow_missing || phosg::isfile(full_path)) {
-      return full_path;
-    }
-  }
-
-  full_path = "base/Realmz/" + host_path + ".rsrc";
+  std::string full_path = host_path + ".rsrc";
   if (allow_missing || phosg::isfile(full_path)) {
-    return full_path;
-  }
-  full_path = host_path + ".rsrc";
-  if (phosg::isfile(full_path)) {
     return full_path;
   }
 
