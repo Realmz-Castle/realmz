@@ -132,7 +132,8 @@ static inline void rintel2moto(Rect* r) {
 static inline void PtoCstr(Str255 x) {
   unsigned char len = x[0];
 
-  for (int i = 0; i < len; i++) {
+  int i;
+  for (i = 0; i < len; i++) {
     x[i] = x[i + 1];
   }
   x[len] = '\0';
@@ -176,7 +177,6 @@ typedef ControlPtr* ControlHandle;
 typedef ColorTable* CTabPtr;
 typedef CTabPtr* CTabHandle;
 typedef Handle GammaTblHandle;
-typedef Handle RgnHandle;
 typedef Handle TEHandle;
 typedef Handle CCrsrHandle;
 typedef Handle SndListHandle;
@@ -225,14 +225,11 @@ GDHandle GetMainDevice(void);
 DialogPtr GetNewDialog(uint16_t dialogID, void* dStorage, WindowPtr behind);
 
 void SysBeep(uint16_t duration);
-void FlushEvents(uint16_t whichMask, uint16_t stopMask);
-#define everyEvent -1
 #define charCodeMask 0x000000FF
 void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit);
 int16_t TrackControl(ControlHandle theControl, Point thePoint, ProcPtr actionProc);
 void SelectDialogItemText(DialogPtr theDialog, int16_t itemNo, int16_t strtSel, int16_t endSel);
 void SetDialogItemText(Handle item, ConstStr255Param text);
-Boolean Button(void);
 RgnHandle NewRgn(void);
 void RectRgn(RgnHandle rgn, const Rect* r);
 Boolean PtInRect(Point pt, const Rect* r);
@@ -265,9 +262,6 @@ void TextSize(uint16_t size);
 void DrawPicture(PicHandle myPicture, const Rect* dstRect);
 void PenPixPat(PixPatHandle ppat);
 GDHandle GetGDevice(void);
-uint32_t TickCount(void);
-Boolean IsDialogEvent(const EventRecord* theEvent);
-Boolean DialogSelect(const EventRecord* theEvent, DialogPtr* theDialog, short* itemHit);
 void SetRect(Rect* r, uint16_t left, uint16_t top, uint16_t right, uint16_t bottom);
 Boolean LockPixels(PixMapHandle pm);
 void UnlockPixels(PixMapHandle pm);
@@ -275,13 +269,11 @@ PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld);
 Size MaxMem(Size* grow);
 void BitClr(void* bytePtr, uint32_t bitNum);
 void BackPixPat(PixPatHandle ppat);
-Boolean WaitNextEvent(int16_t eventMask, EventRecord* theEvent, uint32_t sleep, RgnHandle mouseRgn);
 void NumToString(int32_t theNum, Str255 theString);
 void StringToNum(ConstStr255Param theString, int32_t* theNum);
 void TextMode(int16_t mode);
 void TextFace(int16_t face);
 void DrawString(ConstStr255Param s);
-void GetMouse(Point* mouseLoc);
 void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex);
 void MoveTo(int16_t h, int16_t v);
 Boolean BitTst(const void* bytePtr, int32_t bitNum);
@@ -350,8 +342,6 @@ int16_t CountMItems(MenuHandle theMenu);
 void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
     const Rect* dstRect);
 void PaintRect(const Rect* r);
-Boolean StillDown(void);
-void SystemClick(const EventRecord* theEvent, WindowPtr theWindow);
 void ObscureCursor(void);
 OSErr DisposeCIcon(CIconHandle theIcon);
 void InsetRect(Rect* r, int16_t dh, int16_t dv);
@@ -360,7 +350,6 @@ void FrameOval(const Rect* r);
 void HideControl(ControlHandle theControl);
 void ShowControl(ControlHandle theControl);
 void SetControlMaximum(ControlHandle theControl, int16_t maxValue);
-#define GetDblTime() (*(uint32_t*)0x02F0)
 void SizeControl(ControlHandle theControl, int16_t w, int16_t h);
 int32_t DeltaPoint(Point ptA, Point ptB);
 void FrameRect(const Rect* r);

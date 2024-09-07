@@ -51,13 +51,18 @@ void GetSoundVol(short* x) {
 }
 
 void BitClr(void* bytePtr, uint32_t bitNum) {
+  uint8_t* data = (uint8_t*)bytePtr;
+  data[bitNum >> 3] &= ~(0x80 >> (bitNum & 7));
 }
 
 void BitSet(void* bytePtr, int32_t bitNum) {
+  uint8_t* data = (uint8_t*)bytePtr;
+  data[bitNum >> 3] |= (0x80 >> (bitNum & 7));
 }
 
 Boolean BitTst(const void* bytePtr, int32_t bitNum) {
-  return FALSE;
+  const uint8_t* data = (const uint8_t*)bytePtr;
+  return !!(data[bitNum >> 3] & (0x80 >> (bitNum & 7)));
 }
 
 void DisposeDialog(DialogPtr theDialog) {
@@ -84,12 +89,6 @@ OSErr FadeToBlack(UInt16 numSteps, FadeType typeOfFade) {
 
 OSErr FadeToGamma(GammaRef to, UInt16 numSteps, FadeType typeOfFade) {
   return 0;
-}
-
-void FlushEvents(uint16_t whichMask, uint16_t stopMask) {
-  SDL_Event e;
-  while (SDL_PollEvent(&e))
-    ;
 }
 
 WindowPtr FrontWindow(void) {
@@ -158,14 +157,6 @@ void HUnlock(Handle h) {
 void BeginUpdate(WindowPtr theWindow) {
 }
 
-Boolean IsDialogEvent(const EventRecord* theEvent) {
-  return FALSE;
-}
-
-Boolean DialogSelect(const EventRecord* theEvent, DialogPtr* theDialog, short* itemHit) {
-  return TRUE;
-}
-
 int16_t HiWord(int32_t x) {
   return (int16_t)(x >> 16);
 }
@@ -196,9 +187,6 @@ void HiliteMenu(int16_t menuID) {
 }
 
 void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex) {
-}
-
-void GetMouse(Point* mouseLoc) {
 }
 
 void LineTo(int16_t h, int16_t v) {
@@ -269,10 +257,6 @@ void RectRgn(RgnHandle rgn, const Rect* r) {
 int32_t DragGrayRgn(RgnHandle theRgn, Point startPt, const Rect* boundsRect, const Rect* slopRect,
     int16_t axis, Ptr actionProc) {
   return 0;
-}
-
-Boolean Button(void) {
-  return FALSE;
 }
 
 Boolean PtInRect(Point pt, const Rect* r) {
@@ -411,28 +395,13 @@ void SysBeep(uint16_t duration) {
 void SystemTask(void) {
 }
 
-uint32_t TickCount(void) {
-  return clock() / CLOCKS_PER_SEC * 60.0;
-}
-
 void UnlockPixels(PixMapHandle pm) {
 }
 
 void PaintRect(const Rect* r) {
 }
 
-Boolean StillDown(void) {
-  return FALSE;
-}
-
-void SystemClick(const EventRecord* theEvent, WindowPtr theWindow) {
-}
-
 void ObscureCursor(void) {
-}
-
-Boolean WaitNextEvent(int16_t eventMask, EventRecord* theEvent, uint32_t sleep, RgnHandle mouseRgn) {
-  return WindowManager_WaitNextEvent(theEvent);
 }
 
 OSErr DisposeCIcon(CIconHandle theIcon) {

@@ -75,6 +75,8 @@
         "queue": "cpp",
         "set": "cpp",
         "unordered_set": "cpp",
-        "sdl_audio.h": "c"
+        "sdl_audio.h": "c",
+        "__tree": "cpp",
+        "forward_list": "cpp"
     },
 }

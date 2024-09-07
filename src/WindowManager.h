@@ -93,7 +93,6 @@ uint16_t WindowManager_get_ditl_resources(int16_t ditlID, DialogItem** items);
 void WindowManager_Init(void);
 WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPtr behind);
 void WindowManager_DrawDialog(WindowPtr theWindow);
-bool WindowManager_WaitNextEvent(EventRecord* theEvent);
 void WindowManager_MoveWindow(WindowPtr theWindow, uint16_t hGlobal, uint16_t vGlobal, bool front);
 void WindowManager_DisposeWindow(WindowPtr theWindow);
 DisplayProperties WindowManager_GetPrimaryDisplayProperties(void);
@@ -101,6 +100,10 @@ OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon);
 void GetDialogItem(DialogPtr theDialog, int16_t itemNo, int16_t* itemType, Handle* item, Rect* box);
 void GetDialogItemText(Handle item, Str255 text);
 int16_t StringWidth(ConstStr255Param s);
+
+Boolean IsDialogEvent(const EventRecord* ev);
+Boolean DialogSelect(const EventRecord* ev, DialogPtr* dlg, short* item_hit);
+void SystemClick(const EventRecord* ev, WindowPtr window);
 
 #ifdef __cplusplus
 } // extern "C"

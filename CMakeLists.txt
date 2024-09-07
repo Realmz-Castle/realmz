@@ -240,12 +240,18 @@ add_executable(Realmz MACOSX_BUNDLE
 # Scenario data installed in Contents/Resources/Scenarios
 set(SCENARIO_NAMES
     "Assault on Giant Mountain"
+    "Castle in the Clouds"
     "City of Bywater"
     "Destroy the Necronomicon"
     "Grilochs Revenge"
+    "Half Truth"
     "Mithril Vault"
     "Prelude to Pestilence"
+    "Trouble in the Sword Lands"
     "Twin Sands of Time"
+    "War in the Sword Lands"
+    "White Dragon"
+    "Wrath of the Mind Lords"
 )
 foreach(SCENARIO_NAME ${SCENARIO_NAMES})
 file(GLOB SCENARIO_RESOURCE_FILES "base/Realmz/Scenarios/${SCENARIO_NAME}/*")

@@ -73,7 +73,9 @@ PixPatHandle GetPixPat(uint16_t patID) {
 
   // Our pattern drawing code expects ppat image data to be RGB24. We want to know if
   // this doesn't turn out to be the case, perhaps in a scenario's resource fork data
-  assert(!pattern.pattern.get_has_alpha());
+  if (pattern.pattern.get_has_alpha()) {
+    throw std::logic_error("Decoded ppat image has alpha channel");
+  }
 
   auto ret_handle = NewHandleTyped<PixPat>();
   auto& ret = **ret_handle;

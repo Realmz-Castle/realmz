@@ -104,14 +104,15 @@ public:
       SDL_RenderTexture(sdlRenderer, t, NULL, &dest);
     }
 
-    bool draw_text(Str255 text, const Rect& dispRect) {
+    bool draw_text(const Str255& text, const Rect& dispRect) {
       // TTF_Font* font = fonts_by_id.at(port->txFont);
       TTF_Font* font = fonts_by_id.at(1601);
       RGBColor fore_color;
       GetForeColor(&fore_color);
-      SDL_Surface* text_surface = TTF_RenderUTF8_Blended_Wrapped(
+      SDL_Surface* text_surface = TTF_RenderText_Blended_Wrapped(
           font,
-          string_for_pstr<256>(text).c_str(),
+          reinterpret_cast<const char*>(&text[1]),
+          static_cast<size_t>(text[0]),
           SDL_Color{
               static_cast<uint8_t>(fore_color.red / 0x0101),
               static_cast<uint8_t>(fore_color.green / 0x0101),
@@ -166,6 +167,10 @@ public:
       SDL_SyncWindow(sdlWindow);
     }
 
+    SDL_WindowID sdl_window_id() const {
+      return SDL_GetWindowID(this->sdlWindow);
+    }
+
   private:
     std::string title;
     Rect bounds;
@@ -202,25 +207,35 @@ public:
     wr->dItems = dialog_items;
 
     std::shared_ptr<Window> window = std::make_shared<Window>(title, bounds, flags);
-    record_to_window.emplace(&wr->port, window);
     window->init();
+    record_to_window.emplace(&wr->port, window);
+    sdl_window_id_to_window.emplace(window->sdl_window_id(), window);
 
     return &wr->port;
   }
 
   void destroy_window(WindowPtr record) {
-    record_to_window.erase(record);
+    auto window_it = record_to_window.find(record);
+    if (window_it == record_to_window.end()) {
+      throw std::logic_error("Attempted to delete nonexistent window");
+    }
+    sdl_window_id_to_window.erase(window_it->second->sdl_window_id());
+    record_to_window.erase(window_it);
     CWindowRecord* const window = reinterpret_cast<CWindowRecord*>(record);
     free(window->dItems);
     delete window;
   }
 
   std::shared_ptr<Window> window_for_record(WindowPtr record) {
-    return record_to_window.at(record);
+    return this->record_to_window.at(record);
+  }
+  std::shared_ptr<Window> window_for_sdl_window_id(SDL_WindowID window_id) {
+    return this->sdl_window_id_to_window.at(window_id);
   }
 
 private:
   std::unordered_map<WindowPtr, std::shared_ptr<Window>> record_to_window;
+  std::unordered_map<SDL_WindowID, std::shared_ptr<Window>> sdl_window_id_to_window;
 };
 
 static WindowManager wm;
@@ -470,31 +485,6 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
   window->sync();
 }
 
-bool WindowManager_WaitNextEvent(EventRecord* theEvent) {
-  SDL_Event e;
-  SDL_bool success = SDL_PollEvent(&e);
-
-  if (success == SDL_FALSE) {
-    theEvent->what = nullEvent;
-    return false;
-  }
-
-  switch (e.type) {
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-      theEvent->what = mouseDown;
-      theEvent->when = 60 * e.common.timestamp / 1000000000;
-      theEvent->where.h = e.button.x;
-      theEvent->where.v = e.button.y;
-      break;
-    default:
-      theEvent->what = nullEvent;
-      return false;
-      break;
-  }
-
-  return true;
-}
-
 void WindowManager_MoveWindow(WindowPtr theWindow, uint16_t hGlobal, uint16_t vGlobal, bool front) {
   if (theWindow == nullptr) {
     return;
@@ -568,4 +558,16 @@ void GetDialogItemText(Handle item, Str255 text) {
 
 int16_t StringWidth(ConstStr255Param s) {
   return s[0];
+}
+
+Boolean IsDialogEvent(const EventRecord* theEvent) {
+  return false; // TODO
+}
+
+Boolean DialogSelect(const EventRecord* theEvent, DialogPtr* theDialog, short* itemHit) {
+  return true; // TODO
+}
+
+void SystemClick(const EventRecord* theEvent, WindowPtr theWindow) {
+  // TODO
 }
