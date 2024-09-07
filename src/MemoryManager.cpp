@@ -123,6 +123,21 @@ public:
     return this->last_error;
   }
 
+  void replace_handle(Handle dest, Handle src) {
+    auto src_meta_it = this->meta_for_handle.find(src);
+    if (src_meta_it == this->meta_for_handle.end()) {
+      throw std::out_of_range("no such handle");
+    }
+    auto& dest_meta = this->meta_for_handle.at(dest);
+    if (dest_meta->data) {
+      free(dest_meta->data);
+    }
+    dest_meta->data = src_meta_it->second->data;
+    dest_meta->size = src_meta_it->second->size;
+    dest_meta->flags = src_meta_it->second->flags;
+    this->meta_for_handle.erase(src_meta_it);
+  }
+
 private:
   mutable OSErr last_error = noErr;
   std::unordered_map<void*, std::shared_ptr<BlockMeta>> meta_for_block;
@@ -153,6 +168,10 @@ Handle NewHandleWithData(const void* data, size_t size) {
 
 void DisposeHandle(Handle handle) {
   memory_manager.free_handle(handle);
+}
+
+void ReplaceHandle(Handle dest, Handle src) {
+  memory_manager.replace_handle(dest, src);
 }
 
 Size GetHandleSize(Handle handle) {
