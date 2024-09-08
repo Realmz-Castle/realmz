@@ -53,6 +53,7 @@ typedef struct {
   Rect picFrame;
   Handle data;
 } Picture;
+typedef Picture *PicPtr, **PicHandle;
 
 typedef struct {
   BitMap portBits;
@@ -71,7 +72,7 @@ typedef CGrafPtr GWorldPtr;
 typedef GrafPort* GrafPtr;
 
 PixPatHandle GetPixPat(uint16_t patID);
-Picture QuickDraw_get_pict_resource(int16_t picID);
+PicHandle GetPicture(int16_t picID);
 
 #ifdef __cplusplus
 } // extern "C"

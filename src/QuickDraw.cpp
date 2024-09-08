@@ -64,7 +64,13 @@ PixPatHandle GetPixPat(uint16_t patID) {
   return ret_handle;
 }
 
-Picture QuickDraw_get_pict_resource(int16_t id) {
+PicHandle GetPicture(int16_t id) {
+  // The GetPicture Mac Classic syscall must return a Handle to a decoded Picture resource,
+  // but it must also be the same Handle we use to index loaded Resources in the ResourceManager.
+  // Otherwise, subsequent calls to DetachResource or ReleaseResource would fail to find it.
+  //
+  // By default, the GetResource call leaves the raw bytes of the resource in data_handle. To
+  // satisfy the above, we replace that with the fully decoded Picture resource.
   auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_PICT, id);
   auto p = ResourceDASM::ResourceFile::decode_PICT_only(*data_handle, GetHandleSize(data_handle));
 
@@ -74,12 +80,18 @@ Picture QuickDraw_get_pict_resource(int16_t id) {
 
   // Have to copy the raw data out of the Image object, so that it doesn't get
   // freed out from under us
-  Picture ret;
-  ret.picSize = 0; // This is common for Picture objects
-  ret.picFrame.top = 0;
-  ret.picFrame.left = 0;
-  ret.picFrame.bottom = p.image.get_height();
-  ret.picFrame.right = p.image.get_width();
-  ret.data = NewHandleWithData(p.image.get_data(), p.image.get_data_size());
-  return ret;
+  PicPtr ret = new Picture();
+  ret->picSize = 0; // This is common for Picture objects
+  ret->picFrame.top = 0;
+  ret->picFrame.left = 0;
+  ret->picFrame.bottom = p.image.get_height();
+  ret->picFrame.right = p.image.get_width();
+  ret->data = NewHandleWithData(p.image.get_data(), p.image.get_data_size());
+
+  // Now, free the original data handle buffer with the raw bytes, and change the data_handle
+  // to contain the new pointer to the decoded image.
+  delete *data_handle;
+  *data_handle = reinterpret_cast<Ptr>(ret);
+
+  return reinterpret_cast<PicHandle>(data_handle);
 }

@@ -89,11 +89,11 @@ uint16_t WindowManager_get_ditl_resources(int16_t ditlID, DialogItem** items) {
       case 64: {
         ditlData.read(1); // reserved
         uint16_t pictID = ditlData.get_u16b();
-        auto p = QuickDraw_get_pict_resource(pictID);
+        auto p = GetPicture(pictID);
         (*items)[i].type = (*items)[i].DIALOG_ITEM_TYPE_PICT;
         (*items)[i].dialogItem.pict.dispRect = dispWindow;
         (*items)[i].dialogItem.pict.enabled = enabled;
-        (*items)[i].dialogItem.pict.p = p;
+        (*items)[i].dialogItem.pict.p = **p;
         break;
       }
       // Static Text
