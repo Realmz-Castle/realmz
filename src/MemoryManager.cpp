@@ -135,6 +135,9 @@ public:
     dest_meta->data = src_meta_it->second->data;
     dest_meta->size = src_meta_it->second->size;
     dest_meta->flags = src_meta_it->second->flags;
+    src_meta_it->second->data = nullptr;
+    src_meta_it->second->size = 0;
+    src_meta_it->second->flags = 0;
     this->meta_for_handle.erase(src_meta_it);
   }
 
