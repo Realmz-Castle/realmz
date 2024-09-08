@@ -19,8 +19,12 @@ void HNoPurge(Handle h);
 OSErr MemError(void);
 void HPurge(Handle h);
 
-// Not part of Classic Mac OS API, but it's convenient for our implementation
+// Not part of Classic Mac OS API, but convenient for our implementation
 Handle NewHandleWithData(const void* data, size_t size);
+// This function replaces a handle with the contents of another handle. After
+// it returns, the original data associated with dest is deallocated and src is
+// not valid (its block was moved into dest).
+void ReplaceHandle(Handle dest, Handle src);
 
 #ifdef __cplusplus
 }
