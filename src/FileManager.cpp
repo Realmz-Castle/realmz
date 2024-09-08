@@ -1,5 +1,6 @@
 #include "FileManager.h"
 
+#include <SDL3/SDL_filesystem.h>
 #include <phosg/Strings.hh>
 
 #include "Types.hpp"
@@ -23,7 +24,14 @@ std::string host_filename_for_mac_filename(const std::string& mac_path, bool imp
         ret[z] = '/';
       }
     }
-    return ret;
+
+    auto base_path = SDL_GetBasePath();
+    if (!base_path) {
+      fm_log.error("Failed to get SDL base path: %s", SDL_GetError());
+      return "";
+    }
+
+    return base_path + ret;
   } else {
     // Don't allow absolute paths
     throw std::runtime_error("absolute path not supported: " + ret);

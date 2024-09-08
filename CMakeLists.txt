@@ -192,13 +192,60 @@ set(RESOURCE_FILES
     resources/realmz.rsrc
     bundle/AppIcon.icns
 )
+set_source_files_properties(${RESOURCE_FILES} PROPERTIES
+    MACOSX_PACKAGE_LOCATION Resources
+)
 
 # Installed in Contents/Resources/Data\ Files
 set(DATA_RESOURCE_FILES
-    base/Realmz/Data\ Files/The\ Family\ Jewels.rsrc
+    "base/Realmz/Data Files/The Family Jewels.rsrc"
+    "base/Realmz/Data Files/Data ID"
+    "base/Realmz/Data Files/Data ID.rsrc"
+    "base/Realmz/Data Files/Custom Names.rsrc"
+    "base/Realmz/Data Files/Scenario Names.rsrc"
+    "base/Realmz/Data Files/Portraits.rsrc"
+    "base/Realmz/Data Files/Tacticals.rsrc"
+    "base/Realmz/Data Files/Combat Data BD"
+    "base/Realmz/Data Files/Data AD"
+    "base/Realmz/Data Files/Data Caste"
+    "base/Realmz/Data Files/Data Castle BD"
+    "base/Realmz/Data Files/Data Desert BD"
+    "base/Realmz/Data Files/Data ID"
+    "base/Realmz/Data Files/Data P BD"
+    "base/Realmz/Data Files/Data Race"
+    "base/Realmz/Data Files/Data S"
+    "base/Realmz/Data Files/Data SUB BD"
+    "base/Realmz/Data Files/Data Snow BD"
+    "base/Realmz/Data Files/Data Swamp BD"
+)
+set_source_files_properties(${DATA_RESOURCE_FILES} PROPERTIES
+    MACOSX_PACKAGE_LOCATION "Resources/Data\ Files"
 )
 
-add_executable(Realmz MACOSX_BUNDLE ${SOURCES} ${RESOURCE_FILES} ${DATA_RESOURCE_FILES})
+add_executable(Realmz MACOSX_BUNDLE
+    ${SOURCES}
+    ${RESOURCE_FILES}
+    ${DATA_RESOURCE_FILES}
+)
+
+# Scenario data installed in Contents/Resources/Scenarios
+set(SCENARIO_NAMES
+    "Assault on Giant Mountain"
+    "City of Bywater"
+    "Destroy the Necronomicon"
+    "Grilochs Revenge"
+    "Mithril Vault"
+    "Prelude to Pestilence"
+    "Twin Sands of Time"
+)
+foreach(SCENARIO_NAME ${SCENARIO_NAMES})
+file(GLOB SCENARIO_RESOURCE_FILES "base/Realmz/Scenarios/${SCENARIO_NAME}/*")
+target_sources(Realmz PRIVATE ${SCENARIO_RESOURCE_FILES})
+set_source_files_properties(${SCENARIO_RESOURCE_FILES} PROPERTIES
+    MACOSX_PACKAGE_LOCATION "Resources/Scenarios/${SCENARIO_NAME}"
+)
+endforeach()
+
 target_compile_definitions(Realmz PUBLIC REALMZ_COCOA=1)
 target_compile_options(Realmz PUBLIC -fpascal-strings)
 target_include_directories(Realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig)
@@ -215,10 +262,5 @@ if(APPLE)
         MACOSX_BUNDLE_COPYRIGHT "Realmz Copyright 1994 by Tim Phillips"
         MACOSX_BUNDLE_ICON_FILE "AppIcon"
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/bundle/Info.plist.in"
-        RESOURCE "${RESOURCE_FILES}"
-    )
-
-    set_source_files_properties("${DATA_RESOURCE_FILES}" PROPERTIES
-        MACOSX_PACKAGE_LOCATION Resources/Data\ Files
     )
 endif()
