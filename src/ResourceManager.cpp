@@ -59,13 +59,19 @@ public:
 
     std::shared_ptr<Resource> get_resource(uint32_t type, int16_t id) {
       uint64_t key = this->key_for_type_id(type, id);
+      auto loaded_res = this->resource_for_type_id.find(key);
+      if (loaded_res != this->resource_for_type_id.end()) {
+        return loaded_res->second;
+      }
+      std::shared_ptr<const ResourceDASM::ResourceFile::Resource> source_res;
       try {
-        return this->resource_for_type_id.at(key);
+        source_res = this->rf->get_resource(type, id);
       } catch (const std::out_of_range&) {
+        return nullptr;
       }
       auto res = std::make_shared<Resource>();
       res->file_refnum = this->refnum;
-      res->source_res = this->rf->get_resource(type, id);
+      res->source_res = source_res;
       res->data_handle = NewHandleWithData(res->source_res->data);
       res->data_modified = false;
       this->resource_for_type_id.emplace(key, res);
@@ -74,7 +80,12 @@ public:
     }
 
     std::shared_ptr<Resource> get_resource(Handle data_handle) {
-      return this->resource_for_handle.at(data_handle);
+      auto res = this->resource_for_handle.find(data_handle);
+      if (res != this->resource_for_handle.end()) {
+        return res->second;
+      } else {
+        return nullptr;
+      }
     }
 
     void mark_modified(Handle data_handle) {
@@ -84,6 +95,9 @@ public:
       }
       if (data_handle) {
         auto res = this->get_resource(data_handle);
+        if (res == nullptr) {
+          throw std::logic_error("Tried to mark unknown data handle as modified");
+        }
         res->data_modified = true;
       }
       this->state = ResourceManager::File::State::MODIFIED;
@@ -250,9 +264,9 @@ public:
   std::shared_ptr<Resource> get_resource(int32_t type, int16_t id) {
     std::string type_str = ResourceDASM::string_for_resource_type(type);
     for (size_t z = this->search_start_index; z < this->files.size(); z++) {
-      try {
-        return this->files[z]->get_resource(type, id);
-      } catch (const std::out_of_range&) {
+      auto res = this->files[z]->get_resource(type, id);
+      if (res != nullptr) {
+        return res;
       }
     }
     rm_log.info("%s:%hd not found in any open resource file", type_str.c_str(), id);
@@ -262,9 +276,9 @@ public:
 
   std::shared_ptr<Resource> get_resource(Handle data_handle) {
     for (size_t z = this->search_start_index; z < this->files.size(); z++) {
-      try {
-        return this->files[z]->get_resource(data_handle);
-      } catch (const std::out_of_range&) {
+      auto res = this->files[z]->get_resource(data_handle);
+      if (res != nullptr) {
+        return res;
       }
     }
     rm_log.info("Handle not found in any open resource file");
@@ -519,36 +533,36 @@ void UpdateResFile(int16_t refnum) {
 }
 
 Handle GetResource(ResType type, int16_t id) {
-  try {
-    auto res = rm.get_resource(type, id);
+  auto res = rm.get_resource(type, id);
+  if (res != nullptr) {
     resError = noErr;
     return res->data_handle;
-  } catch (const std::out_of_range&) {
-    resError = resNotFound;
-    return nullptr;
   }
+
+  resError = resNotFound;
+  return nullptr;
 }
 
 Handle Get1Resource(ResType type, int16_t id) {
-  try {
-    auto res = rm.current_file()->get_resource(type, id);
+  auto res = rm.current_file()->get_resource(type, id);
+  if (res != nullptr) {
     resError = noErr;
     return res->data_handle;
-  } catch (const std::out_of_range&) {
-    resError = resNotFound;
-    return nullptr;
   }
+
+  resError = resNotFound;
+  return nullptr;
 }
 
 int32_t GetResourceSizeOnDisk(Handle data_handle) {
-  try {
-    auto res = rm.get_resource(data_handle);
+  auto res = rm.get_resource(data_handle);
+  if (res != nullptr) {
     resError = noErr;
     return GetHandleSize(data_handle);
-  } catch (const std::out_of_range&) {
-    resError = resNotFound;
-    return -1;
   }
+
+  resError = resNotFound;
+  return -1;
 }
 
 void ReleaseResource(Handle data_handle) {
@@ -562,16 +576,24 @@ void DetachResource(Handle data_handle) {
 void GetIndString(Str255 out, int16_t res_id, uint16_t index) {
   try {
     auto res = rm.get_resource(ResourceDASM::RESOURCE_TYPE_STRN, res_id);
+    if (res == nullptr) {
+      out[0] = 0;
+      resError = resNotFound;
+      return;
+    }
     auto decoded = ResourceDASM::ResourceFile::decode_STRN(res->source_res);
     const auto& str = decoded.strs.at(index);
     if (str.size() > 0xFF) {
+      resError = resNotFound;
       out[0] = 0; // This should be impossible; the STR# format has a single-byte size field per string
     } else {
       out[0] = str.size();
       memcpy(&out[1], str.data(), str.size());
       memset(&out[str.size() + 1], 0, 0xFF - str.size());
+      resError = noErr;
     }
   } catch (const std::out_of_range&) {
+    resError = resNotFound;
     out[0] = 0;
   }
 }
