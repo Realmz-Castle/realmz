@@ -578,18 +578,22 @@ void GetIndString(Str255 out, int16_t res_id, uint16_t index) {
     auto res = rm.get_resource(ResourceDASM::RESOURCE_TYPE_STRN, res_id);
     if (res == nullptr) {
       out[0] = 0;
+      resError = resNotFound;
       return;
     }
     auto decoded = ResourceDASM::ResourceFile::decode_STRN(res->source_res);
     const auto& str = decoded.strs.at(index);
     if (str.size() > 0xFF) {
+      resError = resNotFound;
       out[0] = 0; // This should be impossible; the STR# format has a single-byte size field per string
     } else {
       out[0] = str.size();
       memcpy(&out[1], str.data(), str.size());
       memset(&out[str.size() + 1], 0, 0xFF - str.size());
+      resError = noErr;
     }
   } catch (const std::out_of_range&) {
+    resError = resNotFound;
     out[0] = 0;
   }
 }
