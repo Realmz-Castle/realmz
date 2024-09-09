@@ -79,6 +79,11 @@ uint16_t WindowManager_get_ditl_resources(int16_t ditlID, DialogItem** items) {
   uint16_t numItems = ditlData.get_u16b() + 1;
   *items = (DialogItem*)calloc(numItems, sizeof(DialogItem));
   for (int i = 0; i < numItems; i++) {
+    // DITLs are aligned on word boundary, so if we're not, advance to the
+    // next byte
+    if (ditlData.where() & 1) {
+      ditlData.skip(1);
+    }
     ditlData.read(4); // reserved
     Rect dispWindow = rect_from_reader(ditlData);
     uint8_t type = ditlData.get_u8();
