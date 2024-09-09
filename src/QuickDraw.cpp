@@ -80,18 +80,17 @@ PicHandle GetPicture(int16_t id) {
 
   // Have to copy the raw data out of the Image object, so that it doesn't get
   // freed out from under us
-  PicPtr ret = new Picture();
-  ret->picSize = 0; // This is common for Picture objects
-  ret->picFrame.top = 0;
-  ret->picFrame.left = 0;
-  ret->picFrame.bottom = p.image.get_height();
-  ret->picFrame.right = p.image.get_width();
-  ret->data = NewHandleWithData(p.image.get_data(), p.image.get_data_size());
+  auto ret = NewHandleTyped<Picture>();
+  (*ret)->picSize = 0; // This is common for Picture objects
+  (*ret)->picFrame.top = 0;
+  (*ret)->picFrame.left = 0;
+  (*ret)->picFrame.bottom = p.image.get_height();
+  (*ret)->picFrame.right = p.image.get_width();
+  (*ret)->data = NewHandleWithData(p.image.get_data(), p.image.get_data_size());
 
   // Now, free the original data handle buffer with the raw bytes, and change the data_handle
   // to contain the new pointer to the decoded image.
-  delete *data_handle;
-  *data_handle = reinterpret_cast<Ptr>(ret);
+  ReplaceHandle(data_handle, reinterpret_cast<Handle>(ret));
 
   return reinterpret_cast<PicHandle>(data_handle);
 }
