@@ -28,14 +28,16 @@ static inline void cpyRect(const Rect* src, Rect* dst) {
   dst->right = src->right;
 }
 
+// It appears that the GetPortBounds and ErasePortRect functions, which are not
+// part of the Classic Mac system APIs, are only used to erase the entire screen.
+// Since we'll be replacing this sort of imperative style with more modern, declarative
+// windowing systems, it should be safe to make these no-ops.
 void GetPortBounds(CGrafPtr port, Rect* rect) {
-  *rect = port->portRect;
+  // no-op
 }
 
 void ErasePortRect(void) {
-  Rect portRect;
-  GetPortBounds(GetQDGlobalsThePort(), &portRect);
-  EraseRect(&portRect);
+  // no-op
 }
 
 void GetControlBounds(ControlHandle ctrl, Rect* rect) {
