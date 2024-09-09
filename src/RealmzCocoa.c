@@ -64,12 +64,6 @@ Boolean BitTst(const void* bytePtr, int32_t bitNum) {
   return FALSE;
 }
 
-void CheckItem(MenuHandle theMenu, uint16_t item, Boolean checked) {
-}
-
-void DisableItem(MenuHandle theMenu, uint16_t item) {
-}
-
 void DisposeDialog(DialogPtr theDialog) {
   WindowManager_DisposeWindow(theDialog);
 }
@@ -78,13 +72,7 @@ void DrawDialog(DialogPtr theDialog) {
   WindowManager_DrawDialog(theDialog);
 }
 
-void DrawMenuBar(void) {
-}
-
 void DrawString(ConstStr255Param s) {
-}
-
-void EnableItem(MenuHandle theMenu, uint16_t item) {
 }
 
 void EraseRect(const Rect* r) {
@@ -164,9 +152,6 @@ GDHandle GetMainDevice(void) {
   return &gDevicePtr;
 }
 
-void GetMenuItemText(MenuHandle theMenu, uint16_t item, Str255 itemString) {
-}
-
 DialogPtr GetNewDialog(uint16_t res_id, void* dStorage, WindowPtr behind) {
   return WindowManager_CreateNewWindow(res_id, true, behind);
 }
@@ -237,32 +222,14 @@ int16_t FindWindow(Point thePoint, WindowPtr* theWindow) {
 void HiliteMenu(int16_t menuID) {
 }
 
-int32_t MenuSelect(Point startPt) {
-  return 0;
-}
-
 int16_t StringWidth(ConstStr255Param s) {
   return 0;
-}
-
-MenuHandle GetMenu(int16_t resourceID) {
-  return NULL;
-}
-
-void AppendMenu(MenuHandle menu, ConstStr255Param data) {
 }
 
 void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex) {
 }
 
 void GetMouse(Point* mouseLoc) {
-}
-
-int32_t PopUpMenuSelect(MenuHandle menu, int16_t top, int16_t left, int16_t popUpItem) {
-  return 0;
-}
-
-void DeleteMenu(int16_t menuID) {
 }
 
 void LineTo(int16_t h, int16_t v) {
@@ -382,23 +349,12 @@ void SelectWindow(WindowPtr theWindow) {
 void EndUpdate(WindowPtr theWindow) {
 }
 
-void InsertMenu(MenuHandle theMenu, uint16_t beforeID) {
-}
-
 Boolean LockPixels(PixMapHandle pm) {
   return FALSE;
 }
 
 Size MaxMem(Size* grow) {
   return 0;
-}
-
-Handle GetNewMBar(int16_t menuBarID) {
-  return NULL;
-}
-
-MenuHandle GetMenuHandle(int16_t menuID) {
-  return NULL;
 }
 
 int16_t CountMItems(MenuHandle theMenu) {
@@ -461,12 +417,6 @@ OSErr SetDepth(GDHandle aDevice, uint16_t depth, uint16_t whichFlags, uint16_t f
 }
 
 void SetGWorld(CGrafPtr port, GDHandle gdh) {
-}
-
-void SetMenuBar(Handle menuList) {
-}
-
-void SetMenuItemText(MenuHandle theMenu, uint16_t item, ConstStr255Param itemString) {
 }
 
 void SetPort(GrafPtr port) {

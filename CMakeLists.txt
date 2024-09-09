@@ -178,9 +178,11 @@ set(SOURCES
     src/realmz_orig/viewcharacter.c
     src/realmz_orig/warn.c
     src/realmz_orig/wear.c
+    src/macos/MenuController.mm
     src/RealmzCocoa.c
     src/FileManager.cpp
     src/MemoryManager.cpp
+    src/MenuManager.cpp
     src/QuickDraw.cpp
     src/ResourceManager.cpp
     src/SoundManager.cpp
@@ -251,8 +253,14 @@ endforeach()
 
 target_compile_definitions(Realmz PUBLIC REALMZ_COCOA=1)
 target_compile_options(Realmz PUBLIC -fpascal-strings)
-target_include_directories(Realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig)
-target_link_libraries(Realmz PUBLIC ${SDL3_LIBRARIES} resource_file::resource_file)
+target_include_directories(Realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig src/macos)
+target_link_libraries(Realmz
+    PUBLIC
+    ${SDL3_LIBRARIES}
+    resource_file::resource_file
+    "-framework Foundation"
+    "-framework Cocoa"
+)
 
 target_compile_options(Realmz PRIVATE -fsanitize=address)
 target_link_options(Realmz PRIVATE -fsanitize=address)

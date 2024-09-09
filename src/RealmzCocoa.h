@@ -20,6 +20,7 @@
 
 #include "FileManager.h"
 #include "MemoryManager.h"
+#include "MenuManager-C-Interface.h"
 #include "QuickDraw.h"
 #include "ResourceManager.h"
 #include "SoundManager.h"
@@ -191,7 +192,6 @@ typedef ControlPtr* ControlHandle;
 typedef ColorTable* CTabPtr;
 typedef CTabPtr* CTabHandle;
 typedef CIcon *CIconPtr, **CIconHandle;
-typedef Handle MenuHandle;
 typedef Handle GammaTblHandle;
 typedef Handle RgnHandle;
 typedef Handle TEHandle;
@@ -296,17 +296,7 @@ void BackColor(uint32_t color);
 void DrawPicture(PicHandle myPicture, const Rect* dstRect);
 void PenPixPat(PixPatHandle ppat);
 GDHandle GetGDevice(void);
-void SetMenuItemText(MenuHandle theMenu, uint16_t item, ConstStr255Param itemString);
-int32_t MenuSelect(Point startPt);
-void DisableItem(MenuHandle theMenu, uint16_t item);
-void EnableItem(MenuHandle theMenu, uint16_t item);
-void CheckItem(MenuHandle theMenu, uint16_t item, Boolean checked);
 uint32_t TickCount(void);
-void SetMenuBar(Handle menuList);
-void InsertMenu(MenuHandle theMenu, uint16_t beforeID);
-void GetMenuItemText(MenuHandle theMenu, uint16_t item, Str255 itemString);
-void DrawMenuBar(void);
-void DeleteMenu(int16_t menuID);
 Boolean IsDialogEvent(const EventRecord* theEvent);
 Boolean DialogSelect(const EventRecord* theEvent, DialogPtr* theDialog, short* itemHit);
 CIconHandle GetCIcon(uint16_t iconID);
@@ -328,10 +318,7 @@ void TextMode(int16_t mode);
 void TextFace(int16_t face);
 void DrawString(ConstStr255Param s);
 int16_t StringWidth(ConstStr255Param s);
-MenuHandle GetMenu(int16_t resourceID);
 void GetMouse(Point* mouseLoc);
-int32_t PopUpMenuSelect(MenuHandle menu, int16_t top, int16_t left, int16_t popUpItem);
-void AppendMenu(MenuHandle menu, ConstStr255Param data);
 void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex);
 void MoveTo(int16_t h, int16_t v);
 Boolean BitTst(const void* bytePtr, int32_t bitNum);
@@ -396,8 +383,6 @@ int16_t OpenDeskAcc(ConstStr255Param deskAccName);
 void SetItemMark(MenuHandle theMenu, int16_t item, int16_t markChar);
 void DisposeCCursor(CCrsrHandle cCrsr);
 void SelectWindow(WindowPtr theWindow);
-Handle GetNewMBar(int16_t menuBarID);
-MenuHandle GetMenuHandle(int16_t menuID);
 int16_t CountMItems(MenuHandle theMenu);
 void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
     const Rect* dstRect);
