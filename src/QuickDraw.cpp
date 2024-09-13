@@ -16,6 +16,8 @@
 #include <resource_file/ResourceTypes.hh>
 #include <resource_file/TextCodecs.hh>
 
+static std::unordered_set<int16_t> already_decoded;
+
 Rect rect_from_reader(phosg::StringReader& data) {
   Rect r;
   r.top = data.get_u16b();
@@ -72,6 +74,11 @@ PicHandle GetPicture(int16_t id) {
   // By default, the GetResource call leaves the raw bytes of the resource in data_handle. To
   // satisfy the above, we replace that with the fully decoded Picture resource.
   auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_PICT, id);
+
+  if (already_decoded.contains(id)) {
+    return reinterpret_cast<PicHandle>(data_handle);
+  }
+
   auto p = ResourceDASM::ResourceFile::decode_PICT_only(*data_handle, GetHandleSize(data_handle));
 
   if (p.image.get_height() == 0 || p.image.get_width() == 0) {
@@ -92,6 +99,8 @@ PicHandle GetPicture(int16_t id) {
   // to contain the new pointer to the decoded image.
   delete *data_handle;
   *data_handle = reinterpret_cast<Ptr>(ret);
+
+  already_decoded.emplace(id);
 
   return reinterpret_cast<PicHandle>(data_handle);
 }
