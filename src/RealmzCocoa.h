@@ -161,13 +161,6 @@ static inline void C2PStr(char* x) {
   CtoPstr(x);
 }
 
-struct RGBColor {
-  uint16_t red;
-  uint16_t green;
-  uint16_t blue;
-};
-typedef struct RGBColor RGBColor;
-
 typedef struct {
   Rect gdRect;
   PixMapHandle gdPMap;
@@ -240,16 +233,7 @@ void LocalToGlobal(Point* pt);
 PixPatHandle GetPixPat(uint16_t patID);
 GDHandle GetMainDevice(void);
 DialogPtr GetNewDialog(uint16_t dialogID, void* dStorage, WindowPtr behind);
-void SetPort(GrafPtr port);
 
-#define whiteColor 30
-#define blackColor 33
-#define yellowColor 69
-#define redColor 205
-#define cyanColor 273
-#define greenColor 341
-#define blueColor 409
-void ForeColor(uint32_t color);
 void SysBeep(uint16_t duration);
 void FlushEvents(uint16_t whichMask, uint16_t stopMask);
 #define everyEvent -1
@@ -280,7 +264,6 @@ CCrsrHandle GetCCursor(uint16_t crsrID);
 void SetCCursor(CCrsrHandle cCrsr);
 void HLock(Handle h);
 void HUnlock(Handle h);
-void GetPort(GrafPtr* port);
 WindowPtr GetNewCWindow(int16_t windowID, void* wStorage, WindowPtr behind);
 void SizeWindow(WindowPtr theWindow, uint16_t w, uint16_t h, Boolean fUpdate);
 void MoveWindow(WindowPtr theWindow, uint16_t hGlobal, uint16_t vGlobal, Boolean front);
@@ -292,7 +275,6 @@ void HiliteMenu(int16_t menuID);
 int16_t FindWindow(Point thePoint, WindowPtr* theWindow);
 void DrawDialog(DialogPtr theDialog);
 void TextSize(uint16_t size);
-void BackColor(uint32_t color);
 void DrawPicture(PicHandle myPicture, const Rect* dstRect);
 void PenPixPat(PixPatHandle ppat);
 GDHandle GetGDevice(void);
@@ -306,10 +288,6 @@ void UnlockPixels(PixMapHandle pm);
 PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld);
 Size MaxMem(Size* grow);
 void BitClr(void* bytePtr, uint32_t bitNum);
-void RGBForeColor(const RGBColor* color);
-void RGBBackColor(const RGBColor* color);
-void GetForeColor(RGBColor* color);
-void GetBackColor(RGBColor* color);
 void BackPixPat(PixPatHandle ppat);
 Boolean WaitNextEvent(int16_t eventMask, EventRecord* theEvent, uint32_t sleep, RgnHandle mouseRgn);
 void NumToString(int32_t theNum, Str255 theString);

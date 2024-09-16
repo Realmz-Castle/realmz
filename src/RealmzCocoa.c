@@ -50,9 +50,6 @@ void GetSoundVol(short* x) {
   *x = v >> 16;
 }
 
-void BackColor(uint32_t color) {
-}
-
 void BackPixPat(PixPatHandle ppat) {
 }
 
@@ -98,20 +95,11 @@ void FlushEvents(uint16_t whichMask, uint16_t stopMask) {
     ;
 }
 
-void ForeColor(uint32_t color) {
-}
-
 WindowPtr FrontWindow(void) {
   return NULL;
 }
 
 void DrawPicture(PicHandle myPicture, const Rect* dstRect) {
-}
-
-void GetBackColor(RGBColor* color) {
-}
-
-void GetForeColor(RGBColor* color) {
 }
 
 CCrsrHandle GetCCursor(uint16_t crsrID) {
@@ -166,9 +154,6 @@ Boolean GetNextEvent(uint16_t eventMask, EventRecord* theEvent) {
   return FALSE;
 }
 
-void GetPort(GrafPtr* port) {
-}
-
 void HLockHi(Handle h) {
 }
 
@@ -185,9 +170,6 @@ void BeginUpdate(WindowPtr theWindow) {
 }
 
 void GetDialogItem(DialogPtr theDialog, short itemNo, short* itemType, Handle* item, Rect* box) {
-}
-
-void TextFace(int16_t face) {
 }
 
 Boolean IsDialogEvent(const EventRecord* theEvent) {
@@ -401,12 +383,6 @@ void OffsetRect(Rect* r, uint16_t dh, uint16_t dv) {
 void PenSize(int16_t width, int16_t height) {
 }
 
-void RGBBackColor(const RGBColor* color) {
-}
-
-void RGBForeColor(const RGBColor* color) {
-}
-
 void SetCCursor(CCrsrHandle cCrsr) {
 }
 
@@ -419,9 +395,6 @@ OSErr SetDepth(GDHandle aDevice, uint16_t depth, uint16_t whichFlags, uint16_t f
 }
 
 void SetGWorld(CGrafPtr port, GDHandle gdh) {
-}
-
-void SetPort(GrafPtr port) {
 }
 
 void SetRect(Rect* r, uint16_t left, uint16_t top, uint16_t right, uint16_t bottom) {
@@ -453,15 +426,6 @@ void SysBeep(uint16_t duration) {
 }
 
 void SystemTask(void) {
-}
-
-void TextFont(uint16_t font) {
-}
-
-void TextMode(int16_t mode) {
-}
-
-void TextSize(uint16_t size) {
 }
 
 uint32_t TickCount(void) {
@@ -612,9 +576,6 @@ void ShowCursor(void) {
 }
 
 void TEDelete(TEHandle hTE) {
-}
-
-void InitGraf(void* globalPtr) {
 }
 
 void InitWindows(void) {

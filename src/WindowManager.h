@@ -56,6 +56,7 @@ typedef union {
 } DialogItemParams;
 
 typedef struct {
+  int16_t resource_id;
   enum TYPE {
     DIALOG_ITEM_BUTTON,
     DIALOG_ITEM_CHECKBOX, // text valid

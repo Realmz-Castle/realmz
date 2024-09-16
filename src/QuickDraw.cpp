@@ -16,7 +16,9 @@
 #include <resource_file/ResourceTypes.hh>
 #include <resource_file/TextCodecs.hh>
 
+static phosg::PrefixedLogger qd_log("[QuickDraw] ");
 static std::unordered_set<int16_t> already_decoded;
+static CGrafPtr current_port;
 
 Rect rect_from_reader(phosg::StringReader& data) {
   Rect r;
@@ -25,6 +27,29 @@ Rect rect_from_reader(phosg::StringReader& data) {
   r.bottom = data.get_u16b();
   r.right = data.get_u16b();
   return r;
+}
+
+RGBColor color_const_to_rgb(int32_t color_const) {
+  switch (color_const) {
+    case 30: // whiteColor
+      return RGBColor{255, 255, 255};
+    case 33: // blackColor
+      return RGBColor{0, 0, 0};
+    case 69: // yellowColor
+      return RGBColor{255, 255, 0};
+    case 205: // redColor
+      return RGBColor{255, 0, 0};
+    case 273: // cyanColor
+      return RGBColor{0, 255, 255};
+    case 341: // greenColor
+      return RGBColor{0, 255, 0};
+    case 409: // blueColor
+      return RGBColor{0, 0, 255};
+    default:
+      qd_log.error("Unrecognized color constant %d", color_const);
+      break;
+  }
+  return RGBColor{};
 }
 
 PixPatHandle GetPixPat(uint16_t patID) {
@@ -102,4 +127,55 @@ PicHandle GetPicture(int16_t id) {
   already_decoded.emplace(id);
 
   return reinterpret_cast<PicHandle>(data_handle);
+}
+
+void ForeColor(int32_t color) {
+  current_port->fgColor = color;
+  current_port->rgbFgColor = color_const_to_rgb(color);
+}
+
+void BackColor(int32_t color) {
+  current_port->bgColor = color;
+  current_port->rgbBgColor = color_const_to_rgb(color);
+}
+
+void GetBackColor(RGBColor* color) {
+  *color = current_port->rgbBgColor;
+}
+
+void GetForeColor(RGBColor* color) {
+  *color = current_port->rgbFgColor;
+}
+
+void SetPort(CGrafPtr port) {
+  current_port = port;
+}
+
+void InitGraf(void* globalPtr) {
+  current_port = reinterpret_cast<CGrafPtr>(globalPtr);
+}
+
+void TextFont(uint16_t font) {
+  current_port->txFont = font;
+}
+
+void TextMode(int16_t mode) {
+}
+
+void TextSize(uint16_t size) {
+}
+
+void TextFace(int16_t face) {
+}
+
+void GetPort(GrafPtr* port) {
+  *port = reinterpret_cast<GrafPtr>(current_port);
+}
+
+void RGBBackColor(const RGBColor* color) {
+  current_port->rgbBgColor = *color;
+}
+
+void RGBForeColor(const RGBColor* color) {
+  current_port->rgbFgColor = *color;
 }

@@ -1,9 +1,12 @@
 #include "WindowManager.h"
 
+#include "FileManager.hpp"
+#include "StringConvert.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
+#include <SDL3_ttf/SDL_ttf.h>
 #include <phosg/Strings.hh>
 #include <resource_file/ResourceFile.hh>
 
@@ -13,6 +16,12 @@
 using ResourceDASM::ResourceFile;
 
 static phosg::PrefixedLogger wm_log("[WindowManager] ");
+static std::unordered_map<int16_t, TTF_Font*> fonts_by_id;
+
+static void load_fonts(void) {
+  auto font_filename = host_filename_for_mac_filename(":Black Chancery.ttf", true);
+  fonts_by_id[1601] = TTF_OpenFont(font_filename.c_str(), 16);
+}
 
 static void SDL_snprintfcat(SDL_OUT_Z_CAP(maxlen) char* text, size_t maxlen, SDL_PRINTF_FORMAT_STRING const char* fmt, ...) {
   size_t length = SDL_strlen(text);
@@ -91,6 +100,7 @@ uint16_t WindowManager_get_ditl_resources(int16_t ditlID, DialogItem** items) {
   for (auto& ditl_item : ditl) {
     auto& item = (*items)[i++];
     copy_rect(item.dispRect, ditl_item.bounds);
+    item.resource_id = ditl_item.resource_id;
     item.enabled = ditl_item.enabled;
 
     switch (ditl_item.type) {
@@ -108,7 +118,7 @@ uint16_t WindowManager_get_ditl_resources(int16_t ditlID, DialogItem** items) {
         break;
       case ResourceFile::DecodedDialogItem::Type::TEXT: // text valid
         item.type = DialogItem::TYPE::DIALOG_ITEM_TEXT;
-        item.dialogItem.textual.text[0] = ditl_item.text.size();
+        pstr_for_string<256>(item.dialogItem.textual.text, ditl_item.text);
         break;
       case ResourceFile::DecodedDialogItem::Type::EDIT_TEXT: // text valid
         item.type = DialogItem::TYPE::DIALOG_ITEM_EDIT_TEXT;
@@ -140,12 +150,15 @@ uint16_t WindowManager_get_ditl_resources(int16_t ditlID, DialogItem** items) {
 }
 
 void WindowManager_Init(void) {
-  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
     wm_log.error("Couldn't initialize video driver: %s\n", SDL_GetError());
     return;
   }
 
   PrintDebugInfo();
+
+  TTF_Init();
+  load_fonts();
 }
 
 WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPtr behind) {
@@ -268,7 +281,39 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
         break;
       }
       case DialogItem::TYPE::DIALOG_ITEM_TEXT: {
-        // TODO: Render static text in dialogs
+        if (di.dialogItem.textual.text[0] < 1) {
+          continue;
+        }
+        CGrafPtr port;
+        GetPort(reinterpret_cast<GrafPtr*>(&port));
+        // TTF_Font* font = fonts_by_id.at(port->txFont);
+        TTF_Font* font = fonts_by_id.at(1601);
+        RGBColor fore_color;
+        GetForeColor(&fore_color);
+        SDL_Surface* text_surface = TTF_RenderUTF8_Blended_Wrapped(
+            font,
+            string_for_pstr<256>(di.dialogItem.textual.text).c_str(),
+            SDL_Color{
+                static_cast<uint8_t>(fore_color.red),
+                static_cast<uint8_t>(fore_color.green),
+                static_cast<uint8_t>(fore_color.blue),
+                255},
+            di.dispRect.right - di.dispRect.left);
+        if (!text_surface) {
+          wm_log.error("Error when rendering text item %d: %s", di.resource_id, SDL_GetError());
+          continue;
+        }
+        SDL_FRect text_dest;
+        text_dest.x = di.dispRect.left;
+        text_dest.y = di.dispRect.top;
+        text_dest.w = std::min(di.dispRect.right - di.dispRect.left, text_surface->w);
+        text_dest.h = std::min(di.dispRect.bottom - di.dispRect.top, text_surface->h);
+        SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+        if (!text_texture) {
+          wm_log.error("Error when creating text texture for item %d: %s", di.resource_id, SDL_GetError());
+          continue;
+        }
+        SDL_RenderTexture(renderer, text_texture, NULL, &text_dest);
         break;
       }
       default:
@@ -351,7 +396,7 @@ DisplayProperties WindowManager_GetPrimaryDisplayProperties(void) {
   }
 
   SDL_Rect bounds{};
-  if (SDL_GetDisplayBounds(displayID, &bounds) < 0) {
+  if (!SDL_GetDisplayBounds(displayID, &bounds)) {
     wm_log.error("Could not get display bounds: %s", SDL_GetError());
     return {};
   }

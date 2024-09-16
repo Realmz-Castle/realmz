@@ -7,6 +7,14 @@
 #include "FileManager.h"
 #include "Types.h"
 
+#define whiteColor 30
+#define blackColor 33
+#define yellowColor 69
+#define redColor 205
+#define cyanColor 273
+#define greenColor 341
+#define blueColor 409
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -56,6 +64,12 @@ typedef struct {
 typedef Picture *PicPtr, **PicHandle;
 
 typedef struct {
+  uint16_t red;
+  uint16_t green;
+  uint16_t blue;
+} RGBColor;
+
+typedef struct {
   BitMap portBits;
 } GrafPort;
 
@@ -66,13 +80,31 @@ typedef struct {
   int16_t txMode;
   int16_t txSize;
   PixMapHandle portPixMap;
+
+  int32_t fgColor;
+  int32_t bgColor;
+  RGBColor rgbFgColor;
+  RGBColor rgbBgColor;
 } CGrafPort;
 typedef CGrafPort* CGrafPtr;
 typedef CGrafPtr GWorldPtr;
 typedef GrafPort* GrafPtr;
 
+void InitGraf(void* globalPtr);
+void SetPort(CGrafPtr port);
+void GetPort(GrafPtr* port);
 PixPatHandle GetPixPat(uint16_t patID);
 PicHandle GetPicture(int16_t picID);
+void ForeColor(int32_t color);
+void GetBackColor(RGBColor* color);
+void GetForeColor(RGBColor* color);
+void BackColor(int32_t color);
+void TextFont(uint16_t font);
+void TextMode(int16_t mode);
+void TextSize(uint16_t size);
+void TextFace(int16_t face);
+void RGBBackColor(const RGBColor* color);
+void RGBForeColor(const RGBColor* color);
 
 #ifdef __cplusplus
 } // extern "C"
