@@ -10,6 +10,8 @@
 #include "MemoryManager.hpp"
 #include "QuickDraw.hpp"
 
+using ResourceDASM::ResourceFile;
+
 static phosg::PrefixedLogger wm_log("[WindowManager] ");
 
 static void SDL_snprintfcat(SDL_OUT_Z_CAP(maxlen) char* text, size_t maxlen, SDL_PRINTF_FORMAT_STRING const char* fmt, ...) {
@@ -71,52 +73,70 @@ static void PrintDebugInfo(void) {
   }
 }
 
+void copy_rect(Rect& dst, ResourceDASM::Rect& src) {
+  dst.top = src.y1;
+  dst.left = src.x1;
+  dst.bottom = src.y2;
+  dst.right = src.x2;
+}
+
 // See Macintosh Toolbox Essentials, 6-151
 uint16_t WindowManager_get_ditl_resources(int16_t ditlID, DialogItem** items) {
   auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_DITL, ditlID);
-  auto ditlData = read_from_handle(data_handle);
+  auto ditl = ResourceDASM::ResourceFile::decode_DITL(*data_handle, GetHandleSize(data_handle));
+  auto num_items = ditl.size();
+  *items = reinterpret_cast<DialogItem*>(calloc(num_items, sizeof(DialogItem)));
 
-  uint16_t numItems = ditlData.get_u16b() + 1;
-  *items = (DialogItem*)calloc(numItems, sizeof(DialogItem));
-  for (int i = 0; i < numItems; i++) {
-    // DITLs are aligned on word boundary, so if we're not, advance to the
-    // next byte
-    if (ditlData.where() & 1) {
-      ditlData.skip(1);
-    }
-    ditlData.read(4); // reserved
-    Rect dispWindow = rect_from_reader(ditlData);
-    uint8_t type = ditlData.get_u8();
-    bool enabled = (bool)(type & 0x80);
-    type = (type & 0x7F);
-    switch (type) {
-      // PICT Resource
-      case 64: {
-        ditlData.read(1); // reserved
-        uint16_t pictID = ditlData.get_u16b();
-        auto p = GetPicture(pictID);
-        (*items)[i].type = (*items)[i].DIALOG_ITEM_TYPE_PICT;
-        (*items)[i].dialogItem.pict.dispRect = dispWindow;
-        (*items)[i].dialogItem.pict.enabled = enabled;
-        (*items)[i].dialogItem.pict.p = **p;
+  int i = 0;
+  for (auto& ditl_item : ditl) {
+    auto& item = (*items)[i++];
+    copy_rect(item.dispRect, ditl_item.bounds);
+    item.enabled = ditl_item.enabled;
+
+    switch (ditl_item.type) {
+      case ResourceFile::DecodedDialogItem::Type::BUTTON: // text valid
+        item.type = DialogItem::TYPE::DIALOG_ITEM_BUTTON;
+        item.dialogItem.textual.text[0] = ditl_item.text.size();
         break;
-      }
-      // Static Text
-      case 8: {
-        uint8_t length = ditlData.get_u8();
-        (*items)[i].type = (*items)[i].DIALOG_ITEM_TYPE_STATIC_TEXT;
-        (*items)[i].dialogItem.staticText.dispRect = dispWindow;
-        (*items)[i].dialogItem.staticText.enabled = enabled;
-        (*items)[i].dialogItem.staticText.text[0] = length;
-        memcpy((*items)[i].dialogItem.staticText.text + 1, ditlData.read(length).c_str(), length);
+      case ResourceFile::DecodedDialogItem::Type::CHECKBOX: // text valid
+        item.type = DialogItem::TYPE::DIALOG_ITEM_CHECKBOX;
+        item.dialogItem.textual.text[0] = ditl_item.text.size();
         break;
-      }
+      case ResourceFile::DecodedDialogItem::Type::RADIO_BUTTON: // text valid
+        item.type = DialogItem::TYPE::DIALOG_ITEM_RADIO_BUTTON;
+        item.dialogItem.textual.text[0] = ditl_item.text.size();
+        break;
+      case ResourceFile::DecodedDialogItem::Type::TEXT: // text valid
+        item.type = DialogItem::TYPE::DIALOG_ITEM_TEXT;
+        item.dialogItem.textual.text[0] = ditl_item.text.size();
+        break;
+      case ResourceFile::DecodedDialogItem::Type::EDIT_TEXT: // text valid
+        item.type = DialogItem::TYPE::DIALOG_ITEM_EDIT_TEXT;
+        item.dialogItem.textual.text[0] = ditl_item.text.size();
+        break;
+      case ResourceFile::DecodedDialogItem::Type::UNKNOWN: // text contains raw info string (may be binary data!)
+        item.type = DialogItem::TYPE::DIALOG_ITEM_UNKNOWN;
+        item.dialogItem.textual.text[0] = ditl_item.text.size();
+        break;
+      case ResourceFile::DecodedDialogItem::Type::RESOURCE_CONTROL: // resource_id valid
+        item.type = DialogItem::TYPE::DIALOG_ITEM_RESOURCE_CONTROL;
+        item.dialogItem.resource.res_id = ditl_item.resource_id;
+        break;
+      case ResourceFile::DecodedDialogItem::Type::ICON: // resource_id valid
+        item.type = DialogItem::TYPE::DIALOG_ITEM_ICON;
+        item.dialogItem.resource.res_id = ditl_item.resource_id;
+        break;
+      case ResourceFile::DecodedDialogItem::Type::PICTURE: // resource_id valid
+        item.type = DialogItem::TYPE::DIALOG_ITEM_PICTURE;
+        item.dialogItem.resource.res_id = ditl_item.resource_id;
+        break;
+      case ResourceFile::DecodedDialogItem::Type::CUSTOM: // neither resource_id nor text valid
       default:
-        wm_log.error("Unknown DITL type %d", type);
         break;
     }
   }
-  return numItems;
+
+  return num_items;
 }
 
 void WindowManager_Init(void) {
@@ -219,12 +239,12 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
     DialogItem di = window->dItems[i];
 
     switch (di.type) {
-      case di.DIALOG_ITEM_TYPE_PICT: {
-        DialogItemPict pict = di.dialogItem.pict;
-        Rect r = pict.p.picFrame;
+      case DialogItem::TYPE::DIALOG_ITEM_PICTURE: {
+        auto pict = **GetPicture(di.dialogItem.resource.res_id);
+        Rect r = pict.picFrame;
         uint32_t w = r.right - r.left;
         uint32_t h = r.bottom - r.top;
-        SDL_Surface* s = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGB24, *pict.p.data, 3 * w);
+        SDL_Surface* s = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGB24, *pict.data, 3 * w);
 
         if (s == NULL) {
           wm_log.error("Could not create surface: %s\n", SDL_GetError());
@@ -239,18 +259,21 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
         SDL_DestroySurface(s);
 
         SDL_FRect dest;
-        dest.x = pict.dispRect.left;
-        dest.y = pict.dispRect.top;
-        dest.w = pict.dispRect.right - pict.dispRect.left;
-        dest.h = pict.dispRect.bottom - pict.dispRect.top;
+        dest.x = di.dispRect.left;
+        dest.y = di.dispRect.top;
+        dest.w = di.dispRect.right - di.dispRect.left;
+        dest.h = di.dispRect.bottom - di.dispRect.top;
 
         SDL_RenderTexture(renderer, t, NULL, &dest);
         break;
       }
-      case di.DIALOG_ITEM_TYPE_STATIC_TEXT: {
+      case DialogItem::TYPE::DIALOG_ITEM_TEXT: {
         // TODO: Render static text in dialogs
         break;
       }
+      default:
+        // TODO: Render other DITL types
+        break;
     }
   }
 

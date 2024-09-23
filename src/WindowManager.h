@@ -2,6 +2,7 @@
 #define WindowManager_h
 
 #include <SDL3/SDL.h>
+#include <stdbool.h>
 
 #include "EventManager.h"
 #include "QuickDraw.h"
@@ -40,29 +41,36 @@ typedef struct {
   int16_t ditlID;
 } DialogResource;
 
+// Represents any item whose representation is solely text
 typedef struct {
-  Rect dispRect;
-  bool enabled;
-  Picture p;
-} DialogItemPict;
+  Str255 text;
+} DialogItemText;
 
 typedef struct {
-  Rect dispRect;
-  bool enabled;
-  Str255 text;
-} DialogItemStaticText;
+  int16_t res_id;
+} DialogItemResourceId;
 
 typedef union {
-  DialogItemPict pict;
-  DialogItemStaticText staticText;
-} DialogItemType;
+  DialogItemText textual;
+  DialogItemResourceId resource;
+} DialogItemParams;
 
 typedef struct {
-  enum DIALOG_ITEM_TYPE {
-    DIALOG_ITEM_TYPE_STATIC_TEXT,
-    DIALOG_ITEM_TYPE_PICT,
+  enum TYPE {
+    DIALOG_ITEM_BUTTON,
+    DIALOG_ITEM_CHECKBOX, // text valid
+    DIALOG_ITEM_RADIO_BUTTON, // text valid
+    DIALOG_ITEM_RESOURCE_CONTROL, // resource_id valid
+    DIALOG_ITEM_TEXT, // text valid
+    DIALOG_ITEM_EDIT_TEXT, // text valid
+    DIALOG_ITEM_ICON, // resource_id valid
+    DIALOG_ITEM_PICTURE, // resource_id valid
+    DIALOG_ITEM_CUSTOM, // neither resource_id nor text valid
+    DIALOG_ITEM_UNKNOWN, // text contains raw info string (may be binary data!)
   } type;
-  DialogItemType dialogItem;
+  DialogItemParams dialogItem;
+  Rect dispRect;
+  bool enabled;
 } DialogItem;
 
 typedef struct {
