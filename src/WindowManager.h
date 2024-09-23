@@ -53,7 +53,7 @@ typedef struct {
 typedef union {
   DialogItemText textual;
   DialogItemResourceId resource;
-} DialogItemType;
+} DialogItemParams;
 
 typedef struct {
   enum TYPE {
@@ -68,7 +68,7 @@ typedef struct {
     DIALOG_ITEM_CUSTOM, // neither resource_id nor text valid
     DIALOG_ITEM_UNKNOWN, // text contains raw info string (may be binary data!)
   } type;
-  DialogItemType dialogItem;
+  DialogItemParams dialogItem;
   Rect dispRect;
   bool enabled;
 } DialogItem;
