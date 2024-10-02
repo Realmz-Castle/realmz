@@ -59,8 +59,8 @@ public:
       // We'll use this texture as our own backbuffer, see
       // https://stackoverflow.com/questions/63759688/sdl-renderpresent-implementation
       // The SDL wiki also shows this technique of drawing to an in-memory texture buffer
-      // before rendering to backbuffer: https://wiki.libsdl.org/SDL3/SDL_CreateTexture
-      sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_XRGB8888,
+      // before rendering to the backbuffer: https://wiki.libsdl.org/SDL3/SDL_CreateTexture
+      sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_RGBA32,
           SDL_TEXTUREACCESS_TARGET, w, h);
 
       if (sdlTexture == NULL) {
@@ -81,7 +81,7 @@ public:
     }
 
     void draw_rgba_picture(void* pixels, int w, int h, const Rect& dispRect) {
-      SDL_Surface* s = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGBA8888, pixels, 4 * w);
+      SDL_Surface* s = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGBA32, pixels, 4 * w);
 
       if (s == NULL) {
         wm_log.error("Could not create surface: %s\n", SDL_GetError());
@@ -517,7 +517,7 @@ OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon) {
   int w = bounds.right - bounds.left;
   int h = bounds.bottom - bounds.top;
   window->draw_rgba_picture(
-      (*theIcon)->iconData,
+      *((*theIcon)->iconData),
       w, h, *theRect);
   window->sync();
 }
