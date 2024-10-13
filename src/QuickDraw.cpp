@@ -71,6 +71,10 @@ PixPatHandle GetPixPat(uint16_t patID) {
   ResourceDASM::ResourceFile::DecodedPattern pattern = ResourceDASM::ResourceFile::decode_ppat(
       *data_handle, GetHandleSize(data_handle));
 
+  // Our pattern drawing code expects ppat image data to be RGB24. We want to know if
+  // this doesn't turn out to be the case, perhaps in a scenario's resource fork data
+  assert(!pattern.pattern.get_has_alpha());
+
   auto ret_handle = NewHandleTyped<PixPat>();
   auto& ret = **ret_handle;
   ret.patType = header.type;
