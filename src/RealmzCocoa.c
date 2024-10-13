@@ -50,9 +50,6 @@ void GetSoundVol(short* x) {
   *x = v >> 16;
 }
 
-void BackPixPat(PixPatHandle ppat) {
-}
-
 void BitClr(void* bytePtr, uint32_t bitNum) {
 }
 

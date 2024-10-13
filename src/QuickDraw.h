@@ -80,6 +80,7 @@ typedef struct {
   int16_t txMode;
   int16_t txSize;
   PixMapHandle portPixMap;
+  PixPatHandle bkPixPat;
 
   int32_t fgColor;
   int32_t bgColor;
@@ -115,6 +116,7 @@ void TextFace(int16_t face);
 void RGBBackColor(const RGBColor* color);
 void RGBForeColor(const RGBColor* color);
 CIconHandle GetCIcon(uint16_t iconID);
+void BackPixPat(PixPatHandle ppat);
 
 #ifdef __cplusplus
 } // extern "C"

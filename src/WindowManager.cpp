@@ -127,11 +127,38 @@ public:
       text_dest.w = std::min(dispRect.right - dispRect.left, text_surface->w);
       text_dest.h = std::min(dispRect.bottom - dispRect.top, text_surface->h);
       SDL_Texture* text_texture = SDL_CreateTextureFromSurface(sdlRenderer, text_surface);
-      if (!text_texture) {
+      if (!text_texture || !SDL_RenderTexture(sdlRenderer, text_texture, NULL, &text_dest)) {
         return false;
       }
-      SDL_RenderTexture(sdlRenderer, text_texture, NULL, &text_dest);
       return true;
+    }
+
+    void draw_background(PixPatHandle bkPixPat) {
+      PixMapHandle pmap = (*bkPixPat)->patMap;
+      Rect bounds = (*pmap)->bounds;
+      int w = bounds.right - bounds.left;
+      int h = bounds.bottom - bounds.top;
+      SDL_Surface* s = SDL_CreateSurfaceFrom(
+          w,
+          h,
+          SDL_PIXELFORMAT_RGB24,
+          (*(*bkPixPat)->patData),
+          3 * w);
+
+      if (s == NULL) {
+        wm_log.error("Could not create surface: %s\n", SDL_GetError());
+        return;
+      }
+
+      SDL_Texture* t = SDL_CreateTextureFromSurface(sdlRenderer, s);
+      if (t == NULL) {
+        wm_log.error("Could not create texture: %s\n", SDL_GetError());
+        return;
+      }
+      SDL_DestroySurface(s);
+      if (!SDL_RenderTextureTiled(sdlRenderer, t, NULL, 1.0, NULL)) {
+        wm_log.error("Could not render background texture: %s", SDL_GetError());
+      }
     }
 
     void move(int hGlobal, int vGlobal) {
@@ -163,7 +190,7 @@ public:
       uint16_t num_dialog_items,
       DialogItem* dialog_items,
       SDL_WindowFlags flags) {
-    CGrafPort port;
+    CGrafPort port{};
     port.portRect = bounds;
     CWindowRecord* wr = new CWindowRecord();
     wr->port = port;
@@ -403,6 +430,12 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
 void WindowManager_DrawDialog(WindowPtr theWindow) {
   CWindowRecord* const windowRecord = reinterpret_cast<CWindowRecord*>(theWindow);
   auto window = wm.window_for_record(theWindow);
+
+  CGrafPtr port;
+  GetPort(reinterpret_cast<GrafPtr*>(&port));
+  if (port->bkPixPat) {
+    window->draw_background(port->bkPixPat);
+  }
 
   for (int i = 0; i < windowRecord->numItems; i++) {
     DialogItem di = windowRecord->dItems[i];

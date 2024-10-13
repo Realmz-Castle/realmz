@@ -70,13 +70,16 @@ PixPatHandle GetPixPat(uint16_t patID) {
 
   ResourceDASM::ResourceFile::DecodedPattern pattern = ResourceDASM::ResourceFile::decode_ppat(
       *data_handle, GetHandleSize(data_handle));
-  const char* patData = reinterpret_cast<const char*>(pattern.pattern.get_data());
+
+  // Our pattern drawing code expects ppat image data to be RGB24. We want to know if
+  // this doesn't turn out to be the case, perhaps in a scenario's resource fork data
+  assert(!pattern.pattern.get_has_alpha());
 
   auto ret_handle = NewHandleTyped<PixPat>();
   auto& ret = **ret_handle;
   ret.patType = header.type;
   ret.patMap = patMap;
-  ret.patData = nullptr; // TODO
+  ret.patData = NewHandleWithData(pattern.pattern.get_data(), pattern.pattern.get_data_size());
   ret.patXData = nullptr;
   ret.patXValid = 0;
   ret.patXMap = 0;
@@ -195,4 +198,8 @@ CIconHandle GetCIcon(uint16_t iconID) {
       static_cast<int16_t>(decoded_cicn.image.get_width())};
   (*h)->iconData = NewHandleWithData(decoded_cicn.image.get_data(), decoded_cicn.image.get_data_size());
   return h;
+}
+
+void BackPixPat(PixPatHandle ppat) {
+  current_port->bkPixPat = ppat;
 }
