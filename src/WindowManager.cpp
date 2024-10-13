@@ -435,17 +435,6 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
   }
 
   window->sync();
-
-  SDL_Event e;
-  bool quit = false;
-
-  while (!quit) {
-    SDL_bool success = SDL_WaitEventTimeout(&e, 100);
-
-    if (success && e.type == SDL_EVENT_QUIT) {
-      quit = true;
-    }
-  }
 }
 
 bool WindowManager_WaitNextEvent(EventRecord* theEvent) {
@@ -534,6 +523,16 @@ void GetDialogItem(DialogPtr theDialog, short itemNo, short* itemType, Handle* i
   auto foundItem = windowRecord->dItems[itemNo - 1];
 
   // TODO: Figure out best way to return a handle to the foundItem in item
+  *item = reinterpret_cast<Handle>(&foundItem);
   *itemType = foundItem.type;
   *box = foundItem.dispRect;
+}
+
+void GetDialogItemText(Handle item, Str255 text) {
+  auto i = reinterpret_cast<DialogItem*>(item);
+  memcpy(text, i->dialogItem.textual.text, i->dialogItem.textual.text[0]);
+}
+
+int16_t StringWidth(ConstStr255Param s) {
+  return s[0];
 }

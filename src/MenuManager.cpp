@@ -155,6 +155,10 @@ void DeleteMenu(int16_t menuID) {
 
 void SetMenuItemText(MenuHandle theMenu, uint16_t item, ConstStr255Param itemString) {
   auto menu = mm.get_menu(theMenu);
+  if (item > menu->items.size()) {
+    mm_log.info("Tried to set text of menu item %d on menu %s but it only has %lu items", item, menu->title.c_str(), menu->items.size());
+    return;
+  }
   menu->items.at(item - 1).name = string_for_pstr<256>(itemString);
 }
 

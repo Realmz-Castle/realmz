@@ -1378,7 +1378,12 @@ noreg:
   MenuInit();
 
   if (nomusic) {
-    SetMenuItemText(musicmenu, 5, (StringPtr) "Music Disabled In Preferences");
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(danapplegate): SetMenuItemText expects a Pascal string. When compiled for the
+     * classic Mac environment, string literals in C were assumed to be Pascal strings, but
+     * here, we have to explicitly tell the compiler so with a '\p' character.
+     */
+    SetMenuItemText(musicmenu, 5, (StringPtr) "\pMusic Disabled In Preferences");
     nodispose = TRUE;
     for (t = 1; t < 28; t++)
       DisableItem(musicmenu, t);

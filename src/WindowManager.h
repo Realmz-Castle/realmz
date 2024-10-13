@@ -99,6 +99,8 @@ void WindowManager_DisposeWindow(WindowPtr theWindow);
 DisplayProperties WindowManager_GetPrimaryDisplayProperties(void);
 OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon);
 void GetDialogItem(DialogPtr theDialog, int16_t itemNo, int16_t* itemType, Handle* item, Rect* box);
+void GetDialogItemText(Handle item, Str255 text);
+int16_t StringWidth(ConstStr255Param s);
 
 #ifdef __cplusplus
 } // extern "C"

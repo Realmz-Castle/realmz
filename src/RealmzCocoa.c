@@ -199,10 +199,6 @@ int16_t FindWindow(Point thePoint, WindowPtr* theWindow) {
 void HiliteMenu(int16_t menuID) {
 }
 
-int16_t StringWidth(ConstStr255Param s) {
-  return 0;
-}
-
 void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex) {
 }
 
@@ -227,9 +223,6 @@ void BringToFront(WindowPtr theWindow) {
 }
 
 void PenMode(int16_t mode) {
-}
-
-void GetDialogItemText(Handle item, Str255 text) {
 }
 
 void ParamText(ConstStr255Param param0, ConstStr255Param param1, ConstStr255Param param2, ConstStr255Param param3) {
