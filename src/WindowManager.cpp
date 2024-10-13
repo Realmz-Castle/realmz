@@ -294,9 +294,9 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
             font,
             string_for_pstr<256>(di.dialogItem.textual.text).c_str(),
             SDL_Color{
-                static_cast<uint8_t>(fore_color.red),
-                static_cast<uint8_t>(fore_color.green),
-                static_cast<uint8_t>(fore_color.blue),
+                static_cast<uint8_t>(fore_color.red / 0x0101),
+                static_cast<uint8_t>(fore_color.green / 0x0101),
+                static_cast<uint8_t>(fore_color.blue / 0x0101),
                 255},
             di.dispRect.right - di.dispRect.left);
         if (!text_surface) {

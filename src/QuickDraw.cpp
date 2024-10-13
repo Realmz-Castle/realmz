@@ -31,20 +31,20 @@ Rect rect_from_reader(phosg::StringReader& data) {
 
 RGBColor color_const_to_rgb(int32_t color_const) {
   switch (color_const) {
-    case 30: // whiteColor
-      return RGBColor{255, 255, 255};
-    case 33: // blackColor
+    case whiteColor:
+      return RGBColor{65535, 65535, 65535};
+    case blackColor:
       return RGBColor{0, 0, 0};
-    case 69: // yellowColor
-      return RGBColor{255, 255, 0};
-    case 205: // redColor
-      return RGBColor{255, 0, 0};
-    case 273: // cyanColor
-      return RGBColor{0, 255, 255};
-    case 341: // greenColor
-      return RGBColor{0, 255, 0};
-    case 409: // blueColor
-      return RGBColor{0, 0, 255};
+    case yellowColor:
+      return RGBColor{65535, 65535, 0};
+    case redColor:
+      return RGBColor{65535, 0, 0};
+    case cyanColor:
+      return RGBColor{0, 65535, 65535};
+    case greenColor:
+      return RGBColor{0, 65535, 0};
+    case blueColor:
+      return RGBColor{0, 0, 65535};
     default:
       qd_log.error("Unrecognized color constant %d", color_const);
       break;
