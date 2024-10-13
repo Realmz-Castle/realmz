@@ -4,6 +4,7 @@
 #include "StringConvert.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
+#include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3_ttf/SDL_ttf.h>
@@ -18,7 +19,187 @@ using ResourceDASM::ResourceFile;
 static phosg::PrefixedLogger wm_log("[WindowManager] ");
 static std::unordered_map<int16_t, TTF_Font*> fonts_by_id;
 
-static void load_fonts(void) {
+class WindowManager {
+public:
+  class Window {
+  public:
+    Window() = default;
+    Window(std::string title, const Rect& bounds, SDL_WindowFlags flags)
+        : title{title},
+          bounds{bounds},
+          flags{flags} {}
+
+    ~Window() {
+      SDL_DestroyTexture(this->sdlTexture);
+      SDL_DestroyRenderer(this->sdlRenderer);
+      SDL_DestroyWindow(this->sdlWindow);
+    }
+
+    void init() {
+      w = bounds.right - bounds.left;
+      h = bounds.bottom - bounds.top;
+      sdlWindow = SDL_CreateWindow(
+          title.c_str(),
+          w,
+          h,
+          flags);
+
+      if (sdlWindow == NULL) {
+        wm_log.error("Could not create window: %s\n", SDL_GetError());
+        return;
+      }
+
+      sdlRenderer = SDL_CreateRenderer(sdlWindow, "opengl");
+
+      if (sdlRenderer == NULL) {
+        wm_log.error("could not create renderer: %s\n", SDL_GetError());
+        return;
+      }
+
+      // We'll use this texture as our own backbuffer, see
+      // https://stackoverflow.com/questions/63759688/sdl-renderpresent-implementation
+      // The SDL wiki also shows this technique of drawing to an in-memory texture buffer
+      // before rendering to the backbuffer: https://wiki.libsdl.org/SDL3/SDL_CreateTexture
+      sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_RGBA32,
+          SDL_TEXTUREACCESS_TARGET, w, h);
+
+      if (sdlTexture == NULL) {
+        wm_log.error("could not create window texture: %s\n", SDL_GetError());
+      }
+
+      // Default to rendering all draw calls to the intermediate texture buffer
+      SDL_SetRenderTarget(sdlRenderer, sdlTexture);
+      SDL_RenderClear(sdlRenderer);
+    }
+
+    void sync(void) {
+      SDL_SetRenderTarget(sdlRenderer, NULL);
+      SDL_RenderTexture(sdlRenderer, sdlTexture, NULL, NULL);
+      SDL_RenderPresent(sdlRenderer);
+      SDL_SetRenderTarget(sdlRenderer, sdlTexture);
+      SDL_SyncWindow(sdlWindow);
+    }
+
+    void draw_rgba_picture(void* pixels, int w, int h, const Rect& dispRect) {
+      SDL_Surface* s = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGBA32, pixels, 4 * w);
+
+      if (s == NULL) {
+        wm_log.error("Could not create surface: %s\n", SDL_GetError());
+        return;
+      }
+
+      SDL_Texture* t = SDL_CreateTextureFromSurface(sdlRenderer, s);
+      if (t == NULL) {
+        wm_log.error("Could not create texture: %s\n", SDL_GetError());
+        return;
+      }
+      SDL_DestroySurface(s);
+
+      SDL_FRect dest;
+      dest.x = dispRect.left;
+      dest.y = dispRect.top;
+      dest.w = dispRect.right - dispRect.left;
+      dest.h = dispRect.bottom - dispRect.top;
+
+      SDL_RenderTexture(sdlRenderer, t, NULL, &dest);
+    }
+
+    bool draw_text(Str255 text, const Rect& dispRect) {
+      // TTF_Font* font = fonts_by_id.at(port->txFont);
+      TTF_Font* font = fonts_by_id.at(1601);
+      RGBColor fore_color;
+      GetForeColor(&fore_color);
+      SDL_Surface* text_surface = TTF_RenderUTF8_Blended_Wrapped(
+          font,
+          string_for_pstr<256>(text).c_str(),
+          SDL_Color{
+              static_cast<uint8_t>(fore_color.red / 0x0101),
+              static_cast<uint8_t>(fore_color.green / 0x0101),
+              static_cast<uint8_t>(fore_color.blue / 0x0101),
+              255},
+          dispRect.right - dispRect.left);
+      if (!text_surface) {
+        return false;
+      }
+      SDL_FRect text_dest;
+      text_dest.x = dispRect.left;
+      text_dest.y = dispRect.top;
+      text_dest.w = std::min(dispRect.right - dispRect.left, text_surface->w);
+      text_dest.h = std::min(dispRect.bottom - dispRect.top, text_surface->h);
+      SDL_Texture* text_texture = SDL_CreateTextureFromSurface(sdlRenderer, text_surface);
+      if (!text_texture) {
+        return false;
+      }
+      SDL_RenderTexture(sdlRenderer, text_texture, NULL, &text_dest);
+      return true;
+    }
+
+    void move(int hGlobal, int vGlobal) {
+      SDL_SetWindowPosition(sdlWindow, hGlobal, vGlobal);
+      SDL_SyncWindow(sdlWindow);
+    }
+
+  private:
+    std::string title;
+    Rect bounds;
+    int w;
+    int h;
+    SDL_WindowFlags flags;
+    SDL_Window* sdlWindow;
+    SDL_Renderer* sdlRenderer;
+    SDL_Texture* sdlTexture; // Use a texture to hold the window's rendered state
+  };
+
+  WindowManager() = default;
+  ~WindowManager() = default;
+
+  WindowPtr create_window(
+      const std::string& title,
+      const Rect& bounds,
+      bool visible,
+      bool go_away,
+      int16_t proc_id,
+      uint32_t ref_con,
+      uint16_t num_dialog_items,
+      DialogItem* dialog_items,
+      SDL_WindowFlags flags) {
+    CGrafPort port;
+    port.portRect = bounds;
+    CWindowRecord* wr = new CWindowRecord();
+    wr->port = port;
+    wr->visible = visible;
+    wr->goAwayFlag = go_away;
+    wr->windowKind = proc_id;
+    wr->refCon = ref_con;
+    wr->numItems = num_dialog_items;
+    wr->dItems = dialog_items;
+
+    std::shared_ptr<Window> window = std::make_shared<Window>(title, bounds, flags);
+    record_to_window.emplace(&wr->port, window);
+    window->init();
+
+    return &wr->port;
+  }
+
+  void destroy_window(WindowPtr record) {
+    record_to_window.erase(record);
+    CWindowRecord* const window = reinterpret_cast<CWindowRecord*>(record);
+    free(window->dItems);
+    delete window;
+  }
+
+  std::shared_ptr<Window> window_for_record(WindowPtr record) {
+    return record_to_window.at(record);
+  }
+
+private:
+  std::unordered_map<WindowPtr, std::shared_ptr<Window>> record_to_window;
+};
+
+static WindowManager wm;
+
+static void
+load_fonts(void) {
   auto font_filename = host_filename_for_mac_filename(":Black Chancery.ttf", true);
   fonts_by_id[1601] = TTF_OpenFont(font_filename.c_str(), 16);
 }
@@ -207,49 +388,24 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
     flags |= SDL_WINDOW_BORDERLESS | SDL_WINDOW_UTILITY;
   }
 
-  SDL_Window* window = SDL_CreateWindow(
-      title.c_str(),
-      bounds.right - bounds.left,
-      bounds.bottom - bounds.top,
+  return wm.create_window(
+      title,
+      bounds,
+      visible,
+      go_away,
+      proc_id,
+      ref_con,
+      num_dialog_items,
+      dialog_items,
       flags);
-
-  if (window == NULL) {
-    wm_log.error("Could not create window: %s\n", SDL_GetError());
-    return NULL;
-  }
-
-  SDL_Renderer* renderer = SDL_CreateRenderer(window, "opengl");
-
-  if (renderer == NULL) {
-    wm_log.error("could not create renderer: %s\n", SDL_GetError());
-    return NULL;
-  }
-
-  CGrafPort port;
-  port.portRect = bounds;
-  CWindowRecord* wr = new CWindowRecord();
-  wr->port = port;
-  wr->visible = visible;
-  wr->goAwayFlag = go_away;
-  wr->windowKind = proc_id;
-  wr->sdlWindow = window;
-  wr->sdlRenderer = renderer;
-  wr->refCon = ref_con;
-  wr->numItems = num_dialog_items;
-  wr->dItems = dialog_items;
-
-  SDL_SyncWindow(wr->sdlWindow);
-  return &wr->port;
 }
 
 void WindowManager_DrawDialog(WindowPtr theWindow) {
-  CWindowRecord* const window = reinterpret_cast<CWindowRecord*>(theWindow);
-  SDL_Renderer* renderer = window->sdlRenderer;
+  CWindowRecord* const windowRecord = reinterpret_cast<CWindowRecord*>(theWindow);
+  auto window = wm.window_for_record(theWindow);
 
-  SDL_RenderClear(renderer);
-
-  for (int i = 0; i < window->numItems; i++) {
-    DialogItem di = window->dItems[i];
+  for (int i = 0; i < windowRecord->numItems; i++) {
+    DialogItem di = windowRecord->dItems[i];
 
     switch (di.type) {
       case DialogItem::TYPE::DIALOG_ITEM_PICTURE: {
@@ -257,27 +413,7 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
         Rect r = pict.picFrame;
         uint32_t w = r.right - r.left;
         uint32_t h = r.bottom - r.top;
-        SDL_Surface* s = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGB24, *pict.data, 3 * w);
-
-        if (s == NULL) {
-          wm_log.error("Could not create surface: %s\n", SDL_GetError());
-          break;
-        }
-
-        SDL_Texture* t = SDL_CreateTextureFromSurface(renderer, s);
-        if (t == NULL) {
-          wm_log.error("Could not create texture: %s\n", SDL_GetError());
-          break;
-        }
-        SDL_DestroySurface(s);
-
-        SDL_FRect dest;
-        dest.x = di.dispRect.left;
-        dest.y = di.dispRect.top;
-        dest.w = di.dispRect.right - di.dispRect.left;
-        dest.h = di.dispRect.bottom - di.dispRect.top;
-
-        SDL_RenderTexture(renderer, t, NULL, &dest);
+        window->draw_rgba_picture(*pict.data, w, h, di.dispRect);
         break;
       }
       case DialogItem::TYPE::DIALOG_ITEM_TEXT: {
@@ -286,34 +422,10 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
         }
         CGrafPtr port;
         GetPort(reinterpret_cast<GrafPtr*>(&port));
-        // TTF_Font* font = fonts_by_id.at(port->txFont);
-        TTF_Font* font = fonts_by_id.at(1601);
-        RGBColor fore_color;
-        GetForeColor(&fore_color);
-        SDL_Surface* text_surface = TTF_RenderUTF8_Blended_Wrapped(
-            font,
-            string_for_pstr<256>(di.dialogItem.textual.text).c_str(),
-            SDL_Color{
-                static_cast<uint8_t>(fore_color.red / 0x0101),
-                static_cast<uint8_t>(fore_color.green / 0x0101),
-                static_cast<uint8_t>(fore_color.blue / 0x0101),
-                255},
-            di.dispRect.right - di.dispRect.left);
-        if (!text_surface) {
+        if (!window->draw_text(di.dialogItem.textual.text, di.dispRect)) {
           wm_log.error("Error when rendering text item %d: %s", di.resource_id, SDL_GetError());
           continue;
         }
-        SDL_FRect text_dest;
-        text_dest.x = di.dispRect.left;
-        text_dest.y = di.dispRect.top;
-        text_dest.w = std::min(di.dispRect.right - di.dispRect.left, text_surface->w);
-        text_dest.h = std::min(di.dispRect.bottom - di.dispRect.top, text_surface->h);
-        SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
-        if (!text_texture) {
-          wm_log.error("Error when creating text texture for item %d: %s", di.resource_id, SDL_GetError());
-          continue;
-        }
-        SDL_RenderTexture(renderer, text_texture, NULL, &text_dest);
         break;
       }
       default:
@@ -322,8 +434,7 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
     }
   }
 
-  SDL_RenderPresent(renderer);
-  SDL_SyncWindow(window->sdlWindow);
+  window->sync();
 
   SDL_Event e;
   bool quit = false;
@@ -367,10 +478,8 @@ void WindowManager_MoveWindow(WindowPtr theWindow, uint16_t hGlobal, uint16_t vG
     return;
   }
 
-  CWindowRecord* const window = reinterpret_cast<CWindowRecord*>(theWindow);
-
-  SDL_SetWindowPosition(window->sdlWindow, hGlobal, vGlobal);
-  SDL_SyncWindow(window->sdlWindow);
+  auto window = wm.window_for_record(theWindow);
+  window->move(hGlobal, vGlobal);
 }
 
 void WindowManager_DisposeWindow(WindowPtr theWindow) {
@@ -378,13 +487,7 @@ void WindowManager_DisposeWindow(WindowPtr theWindow) {
     return;
   }
 
-  CWindowRecord* const window = reinterpret_cast<CWindowRecord*>(theWindow);
-
-  SDL_DestroyRenderer(window->sdlRenderer);
-  SDL_DestroyWindow(window->sdlWindow);
-
-  free(window->dItems);
-  delete window;
+  wm.destroy_window(theWindow);
 }
 
 DisplayProperties WindowManager_GetPrimaryDisplayProperties(void) {
@@ -404,4 +507,33 @@ DisplayProperties WindowManager_GetPrimaryDisplayProperties(void) {
   return DisplayProperties{
       bounds.w,
       bounds.h};
+}
+
+OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon) {
+  GrafPtr port;
+  GetPort(&port);
+  auto window = wm.window_for_record(reinterpret_cast<CGrafPort*>(port));
+  auto bounds = (*theIcon)->iconBMap.bounds;
+  int w = bounds.right - bounds.left;
+  int h = bounds.bottom - bounds.top;
+  window->draw_rgba_picture(
+      *((*theIcon)->iconData),
+      w, h, *theRect);
+  window->sync();
+
+  return noErr;
+}
+
+void GetDialogItem(DialogPtr theDialog, short itemNo, short* itemType, Handle* item, Rect* box) {
+  auto windowRecord = reinterpret_cast<CWindowRecord*>(theDialog);
+  if (itemNo > windowRecord->numItems) {
+    wm_log.error("Called GetDialogItem for itemNo %d on dialog %p that only has %d items", itemNo, theDialog, windowRecord->numItems);
+    return;
+  }
+
+  auto foundItem = windowRecord->dItems[itemNo - 1];
+
+  // TODO: Figure out best way to return a handle to the foundItem in item
+  *itemType = foundItem.type;
+  *box = foundItem.dispRect;
 }

@@ -82,8 +82,6 @@ typedef struct {
   StringHandle titleHandle;
   uint32_t refCon;
 
-  SDL_Window* sdlWindow;
-  SDL_Renderer* sdlRenderer;
   uint16_t numItems;
   DialogItem* dItems;
 } CWindowRecord;
@@ -99,6 +97,8 @@ bool WindowManager_WaitNextEvent(EventRecord* theEvent);
 void WindowManager_MoveWindow(WindowPtr theWindow, uint16_t hGlobal, uint16_t vGlobal, bool front);
 void WindowManager_DisposeWindow(WindowPtr theWindow);
 DisplayProperties WindowManager_GetPrimaryDisplayProperties(void);
+OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon);
+void GetDialogItem(DialogPtr theDialog, int16_t itemNo, int16_t* itemType, Handle* item, Rect* box);
 
 #ifdef __cplusplus
 } // extern "C"

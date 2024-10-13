@@ -110,6 +110,9 @@ PicHandle GetPicture(int16_t id) {
     throw std::runtime_error(phosg::string_printf("Failed to decode PICT %hd", id));
   }
 
+  // Normalize all image data to have an alpha channel, for convenience
+  p.image.set_has_alpha(true);
+
   // Have to copy the raw data out of the Image object, so that it doesn't get
   // freed out from under us
   auto ret = NewHandleTyped<Picture>();
@@ -178,4 +181,18 @@ void RGBBackColor(const RGBColor* color) {
 
 void RGBForeColor(const RGBColor* color) {
   current_port->rgbFgColor = *color;
+}
+
+CIconHandle GetCIcon(uint16_t iconID) {
+  auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_cicn, iconID);
+  auto decoded_cicn = ResourceDASM::ResourceFile::decode_cicn(*data_handle, GetHandleSize(data_handle));
+
+  CIconHandle h = NewHandleTyped<CIcon>();
+  (*h)->iconBMap.bounds = Rect{
+      0,
+      0,
+      static_cast<int16_t>(decoded_cicn.image.get_height()),
+      static_cast<int16_t>(decoded_cicn.image.get_width())};
+  (*h)->iconData = NewHandleWithData(decoded_cicn.image.get_data(), decoded_cicn.image.get_data_size());
+  return h;
 }

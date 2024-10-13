@@ -90,6 +90,15 @@ typedef CGrafPort* CGrafPtr;
 typedef CGrafPtr GWorldPtr;
 typedef GrafPort* GrafPtr;
 
+typedef struct {
+  PixMap iconPMap;
+  BitMap iconMask;
+  BitMap iconBMap;
+  Handle iconData;
+  int16_t iconMaskData;
+} CIcon;
+typedef CIcon *CIconPtr, **CIconHandle;
+
 void InitGraf(void* globalPtr);
 void SetPort(CGrafPtr port);
 void GetPort(GrafPtr* port);
@@ -105,6 +114,7 @@ void TextSize(uint16_t size);
 void TextFace(int16_t face);
 void RGBBackColor(const RGBColor* color);
 void RGBForeColor(const RGBColor* color);
+CIconHandle GetCIcon(uint16_t iconID);
 
 #ifdef __cplusplus
 } // extern "C"

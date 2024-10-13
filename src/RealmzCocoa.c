@@ -106,10 +106,6 @@ CCrsrHandle GetCCursor(uint16_t crsrID) {
   return NULL;
 }
 
-CIconHandle GetCIcon(uint16_t iconID) {
-  return NULL;
-}
-
 OSErr GetDefaultOutputVolume(uint32_t* level) {
   return 0;
 }
@@ -167,9 +163,6 @@ void HUnlock(Handle h) {
 }
 
 void BeginUpdate(WindowPtr theWindow) {
-}
-
-void GetDialogItem(DialogPtr theDialog, short itemNo, short* itemType, Handle* item, Rect* box) {
 }
 
 Boolean IsDialogEvent(const EventRecord* theEvent) {
@@ -450,10 +443,6 @@ void ObscureCursor(void) {
 
 Boolean WaitNextEvent(int16_t eventMask, EventRecord* theEvent, uint32_t sleep, RgnHandle mouseRgn) {
   return WindowManager_WaitNextEvent(theEvent);
-}
-
-OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon) {
-  return 0;
 }
 
 OSErr DisposeCIcon(CIconHandle theIcon) {

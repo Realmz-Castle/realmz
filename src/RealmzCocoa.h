@@ -173,18 +173,11 @@ typedef struct {
 typedef struct {
 } ColorTable;
 
-typedef struct {
-  PixMap iconPMap;
-  BitMap iconMask;
-  BitMap iconBMap;
-} CIcon;
-
 typedef GDevice *GDPtr, **GDHandle;
 typedef ControlRecord* ControlPtr;
 typedef ControlPtr* ControlHandle;
 typedef ColorTable* CTabPtr;
 typedef CTabPtr* CTabHandle;
-typedef CIcon *CIconPtr, **CIconHandle;
 typedef Handle GammaTblHandle;
 typedef Handle RgnHandle;
 typedef Handle TEHandle;
@@ -240,7 +233,6 @@ void FlushEvents(uint16_t whichMask, uint16_t stopMask);
 #define charCodeMask 0x000000FF
 void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit);
 int16_t TrackControl(ControlHandle theControl, Point thePoint, ProcPtr actionProc);
-void GetDialogItem(DialogPtr theDialog, int16_t itemNo, int16_t* itemType, Handle* item, Rect* box);
 void SelectDialogItemText(DialogPtr theDialog, int16_t itemNo, int16_t strtSel, int16_t endSel);
 void SetDialogItemText(Handle item, ConstStr255Param text);
 void GetDialogItemText(Handle item, Str255 text);
@@ -281,7 +273,6 @@ GDHandle GetGDevice(void);
 uint32_t TickCount(void);
 Boolean IsDialogEvent(const EventRecord* theEvent);
 Boolean DialogSelect(const EventRecord* theEvent, DialogPtr* theDialog, short* itemHit);
-CIconHandle GetCIcon(uint16_t iconID);
 void SetRect(Rect* r, uint16_t left, uint16_t top, uint16_t right, uint16_t bottom);
 Boolean LockPixels(PixMapHandle pm);
 void UnlockPixels(PixMapHandle pm);
@@ -368,7 +359,6 @@ void PaintRect(const Rect* r);
 Boolean StillDown(void);
 void SystemClick(const EventRecord* theEvent, WindowPtr theWindow);
 void ObscureCursor(void);
-OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon);
 OSErr DisposeCIcon(CIconHandle theIcon);
 void InsetRect(Rect* r, int16_t dh, int16_t dv);
 Boolean SectRect(const Rect* src1, const Rect* src2, Rect* dstRect);
