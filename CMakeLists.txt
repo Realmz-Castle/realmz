@@ -22,6 +22,7 @@ set(CMAKE_XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf")
 find_package(phosg REQUIRED)
 find_package(resource_file REQUIRED)
 find_package(SDL3 REQUIRED)
+find_package(SDL3_ttf REQUIRED)
 
 # Executable definition
 set(SOURCES
@@ -193,6 +194,8 @@ set(SOURCES
 set(RESOURCE_FILES
     resources/realmz.rsrc
     bundle/AppIcon.icns
+    "resources/Black Chancery.ttf"
+    "resources/Black Chancery Bold.ttf"
 )
 set_source_files_properties(${RESOURCE_FILES} PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources
@@ -257,6 +260,7 @@ target_include_directories(Realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_ori
 target_link_libraries(Realmz
     PUBLIC
     ${SDL3_LIBRARIES}
+    SDL3_ttf::SDL3_ttf
     resource_file::resource_file
     "-framework Foundation"
     "-framework Cocoa"
