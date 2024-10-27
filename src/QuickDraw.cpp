@@ -3,10 +3,6 @@
 #include <filesystem>
 #include <memory>
 
-#include "MemoryManager.hpp"
-#include "QuickDraw.h"
-#include "ResourceManager.h"
-#include "Types.hpp"
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
 #include <resource_file/IndexFormats/Formats.hh>
@@ -16,9 +12,14 @@
 #include <resource_file/ResourceTypes.hh>
 #include <resource_file/TextCodecs.hh>
 
+#include "MemoryManager.hpp"
+#include "QuickDraw.h"
+#include "ResourceManager.h"
+#include "Types.hpp"
+
 static phosg::PrefixedLogger qd_log("[QuickDraw] ");
 static std::unordered_set<int16_t> already_decoded;
-static CGrafPtr current_port;
+static QuickDrawGlobals* globals = nullptr;
 
 Rect rect_from_reader(phosg::StringReader& data) {
   Rect r;
@@ -136,33 +137,37 @@ PicHandle GetPicture(int16_t id) {
 }
 
 void ForeColor(int32_t color) {
-  current_port->fgColor = color;
-  current_port->rgbFgColor = color_const_to_rgb(color);
+  globals->thePort->fgColor = color;
+  globals->thePort->rgbFgColor = color_const_to_rgb(color);
 }
 
 void BackColor(int32_t color) {
-  current_port->bgColor = color;
-  current_port->rgbBgColor = color_const_to_rgb(color);
+  globals->thePort->bgColor = color;
+  globals->thePort->rgbBgColor = color_const_to_rgb(color);
 }
 
 void GetBackColor(RGBColor* color) {
-  *color = current_port->rgbBgColor;
+  *color = globals->thePort->rgbBgColor;
 }
 
 void GetForeColor(RGBColor* color) {
-  *color = current_port->rgbFgColor;
+  *color = globals->thePort->rgbFgColor;
 }
 
 void SetPort(CGrafPtr port) {
-  current_port = port;
+  globals->thePort = port;
 }
 
-void InitGraf(void* globalPtr) {
-  current_port = reinterpret_cast<CGrafPtr>(globalPtr);
+void InitGraf(QuickDrawGlobals* new_globals) {
+  globals = new_globals;
+
+  globals->default_graf_handle = NewHandleTyped<CGrafPort>();
+  globals->thePort = *globals->default_graf_handle;
+  memset(globals->thePort, 0, sizeof(*globals->thePort));
 }
 
 void TextFont(uint16_t font) {
-  current_port->txFont = font;
+  globals->thePort->txFont = font;
 }
 
 void TextMode(int16_t mode) {
@@ -175,15 +180,15 @@ void TextFace(int16_t face) {
 }
 
 void GetPort(GrafPtr* port) {
-  *port = reinterpret_cast<GrafPtr>(current_port);
+  *port = reinterpret_cast<GrafPtr>(globals->thePort);
 }
 
 void RGBBackColor(const RGBColor* color) {
-  current_port->rgbBgColor = *color;
+  globals->thePort->rgbBgColor = *color;
 }
 
 void RGBForeColor(const RGBColor* color) {
-  current_port->rgbFgColor = *color;
+  globals->thePort->rgbFgColor = *color;
 }
 
 CIconHandle GetCIcon(uint16_t iconID) {
@@ -201,5 +206,5 @@ CIconHandle GetCIcon(uint16_t iconID) {
 }
 
 void BackPixPat(PixPatHandle ppat) {
-  current_port->bkPixPat = ppat;
+  globals->thePort->bkPixPat = ppat;
 }

@@ -88,8 +88,10 @@ typedef struct {
   RGBColor rgbBgColor;
 } CGrafPort;
 typedef CGrafPort* CGrafPtr;
+typedef CGrafPort** CGrafHandle; // Not part of Classic Mac OS API
 typedef CGrafPtr GWorldPtr;
 typedef GrafPort* GrafPtr;
+typedef GrafPort** GrafHandle; // Not part of Classic Mac OS API
 
 typedef struct {
   PixMap iconPMap;
@@ -100,7 +102,20 @@ typedef struct {
 } CIcon;
 typedef CIcon *CIconPtr, **CIconHandle;
 
-void InitGraf(void* globalPtr);
+typedef struct {
+  CGrafPtr thePort;
+  BitMap screenBits;
+
+  // We internally allocate a handle for thePort, even though thePort itself is
+  // not a handle, so we store the handle here. This is not part of the Classic
+  // Mac OS API - they didn't intend for GrafPorts to be relocatable, but we
+  // never relocate handles anyway.
+  CGrafHandle default_graf_handle;
+} QuickDrawGlobals;
+
+// Note: Technically the argument to InitGraf is a void*, but we type it here
+// for better safety.
+void InitGraf(QuickDrawGlobals* globalPtr);
 void SetPort(CGrafPtr port);
 void GetPort(GrafPtr* port);
 PixPatHandle GetPixPat(uint16_t patID);

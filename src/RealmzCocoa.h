@@ -196,11 +196,6 @@ typedef struct {
 typedef DialogRecord* DialogPeek;
 
 typedef struct {
-  GrafPtr thePort;
-  BitMap screenBits;
-} QuickDrawGlobals;
-
-typedef struct {
   Boolean good;
   Str63 fName;
   int16_t vRefNum;
@@ -395,7 +390,6 @@ void SFPutFile(Point where, const Str255 prompt, const Str255 origName, Ptr dlgH
 OSErr GetProcessInformation(const ProcessSerialNumber* PSN, ProcessInfoRecPtr info);
 ControlHandle NewControl(WindowPtr theWindow, const Rect* boundsRect, ConstStr255Param title, Boolean visible,
     int16_t value, int16_t min, int16_t max, int16_t procID, int32_t refCon);
-void InitGraf(void* globalPtr);
 void InitWindows(void);
 
 #define cmdKey 256
