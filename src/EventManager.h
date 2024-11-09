@@ -53,7 +53,7 @@ typedef struct {
   Point where;
 
   // Bits in the modifiers field: rosROLSCM------A
-  // o = right option key down
+  // r = right control key down
   // o = right option key down
   // s = right shift key down
   // R = control key down

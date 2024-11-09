@@ -347,9 +347,9 @@ protected:
         break;
       case SDL_EVENT_KEY_DOWN:
       case SDL_EVENT_KEY_UP: {
-        // em_log.info("%s mod=%04hX key=%08" PRIX32,
-        //     (e.type == SDL_EVENT_KEY_UP) ? "SDL_EVENT_KEY_UP" : "SDL_EVENT_KEY_DOWN",
-        //     e.key.mod, e.key.key);
+        em_log.info("%s mod=%04hX key=%08" PRIX32,
+            (e.type == SDL_EVENT_KEY_UP) ? "SDL_EVENT_KEY_UP" : "SDL_EVENT_KEY_DOWN",
+            e.key.mod, e.key.key);
         this->set_modifier_value(EVMOD_RIGHT_CONTROL_KEY_DOWN, e.key.mod & SDL_KMOD_RCTRL);
         this->set_modifier_value(EVMOD_RIGHT_OPTION_KEY_DOWN, e.key.mod & SDL_KMOD_RALT);
         this->set_modifier_value(EVMOD_RIGHT_SHIFT_KEY_DOWN, e.key.mod & SDL_KMOD_RSHIFT);
@@ -376,15 +376,15 @@ protected:
         break;
       case SDL_EVENT_MOUSE_BUTTON_DOWN:
       case SDL_EVENT_MOUSE_BUTTON_UP:
-        // em_log.info("%s %hhu %hhu %g %g",
-        //     (e.type == SDL_EVENT_MOUSE_BUTTON_UP) ? "SDL_EVENT_MOUSE_BUTTON_UP" : "SDL_EVENT_MOUSE_BUTTON_DOWN",
-        //     e.button.button, e.button.clicks, e.button.x, e.button.y);
+        em_log.info("%s %hhu %hhu %g %g",
+            (e.type == SDL_EVENT_MOUSE_BUTTON_UP) ? "SDL_EVENT_MOUSE_BUTTON_UP" : "SDL_EVENT_MOUSE_BUTTON_DOWN",
+            e.button.button, e.button.clicks, e.button.x, e.button.y);
         // Ignore events for all mouse buttons except the primary (left) button
         if (e.button.button == 1) {
           this->mouse_loc.h = e.button.x;
           this->mouse_loc.v = e.button.y;
           this->set_modifier_value(EVMOD_MOUSE_BUTTON_UP, (e.type == SDL_EVENT_MOUSE_BUTTON_UP));
-          this->enqueue_event((e.type == SDL_EVENT_MOUSE_BUTTON_UP) ? mouseDown : mouseUp, 0, e.button.windowID);
+          this->enqueue_event((e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) ? mouseDown : mouseUp, 0, e.button.windowID);
         }
         break;
       // TODO: These might be helpful for implementing text input later
