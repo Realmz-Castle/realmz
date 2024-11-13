@@ -3,10 +3,12 @@
 
 #include <SDL3/SDL.h>
 #include <stdbool.h>
+#include <vector>
 
 #include "EventManager.h"
 #include "QuickDraw.h"
 #include "ResourceManager.h"
+#include <resource_file/ResourceFile.hh>
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,38 +43,7 @@ typedef struct {
   int16_t ditlID;
 } DialogResource;
 
-// Represents any item whose representation is solely text
-typedef struct {
-  Str255 text;
-} DialogItemText;
-
-typedef struct {
-  int16_t res_id;
-} DialogItemResourceId;
-
-typedef union {
-  DialogItemText textual;
-  DialogItemResourceId resource;
-} DialogItemParams;
-
-typedef struct {
-  int16_t resource_id;
-  enum TYPE {
-    DIALOG_ITEM_BUTTON,
-    DIALOG_ITEM_CHECKBOX, // text valid
-    DIALOG_ITEM_RADIO_BUTTON, // text valid
-    DIALOG_ITEM_RESOURCE_CONTROL, // resource_id valid
-    DIALOG_ITEM_TEXT, // text valid
-    DIALOG_ITEM_EDIT_TEXT, // text valid
-    DIALOG_ITEM_ICON, // resource_id valid
-    DIALOG_ITEM_PICTURE, // resource_id valid
-    DIALOG_ITEM_CUSTOM, // neither resource_id nor text valid
-    DIALOG_ITEM_UNKNOWN, // text contains raw info string (may be binary data!)
-  } type;
-  DialogItemParams dialogItem;
-  Rect dispRect;
-  bool enabled;
-} DialogItem;
+typedef ResourceDASM::ResourceFile::DecodedDialogItem** DialogItemHandle;
 
 typedef struct {
   CGrafPort port;
@@ -81,14 +52,11 @@ typedef struct {
   Boolean goAwayFlag;
   StringHandle titleHandle;
   uint32_t refCon;
-
-  uint16_t numItems;
-  DialogItem* dItems;
 } CWindowRecord;
 typedef CGrafPtr CWindowPtr;
 typedef CWindowPtr WindowPtr, DialogPtr, WindowRef;
 
-uint16_t WindowManager_get_ditl_resources(int16_t ditlID, DialogItem** items);
+std::vector<ResourceDASM::ResourceFile::DecodedDialogItem> WindowManager_get_ditl_resources(int16_t ditlID);
 
 void WindowManager_Init(void);
 WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPtr behind);
@@ -100,6 +68,9 @@ OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon);
 void GetDialogItem(DialogPtr theDialog, int16_t itemNo, int16_t* itemType, Handle* item, Rect* box);
 void GetDialogItemText(Handle item, Str255 text);
 int16_t StringWidth(ConstStr255Param s);
+void LineTo(int16_t h, int16_t v);
+void DrawPicture(PicHandle myPicture, const Rect* dstRect);
+void SetDialogItemText(Handle item, ConstStr255Param text);
 
 Boolean IsDialogEvent(const EventRecord* ev);
 Boolean DialogSelect(const EventRecord* ev, DialogPtr* dlg, short* item_hit);

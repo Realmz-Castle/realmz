@@ -210,3 +210,18 @@ CIconHandle GetCIcon(uint16_t iconID) {
 void BackPixPat(PixPatHandle ppat) {
   globals->thePort->bkPixPat = ppat;
 }
+
+void MoveTo(int16_t h, int16_t v) {
+  globals->thePort->pnLoc = Point{v, h};
+}
+
+void InsetRect(Rect* r, int16_t dh, int16_t dv) {
+  r->left += dh;
+  r->right -= dh;
+  r->top += dv;
+  r->bottom -= dv;
+}
+
+void PenPixPat(PixPatHandle ppat) {
+  globals->thePort->pnPixPat = ppat;
+}

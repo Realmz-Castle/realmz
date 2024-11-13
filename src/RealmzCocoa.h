@@ -78,10 +78,26 @@
 #define CvtTreasureToPc(x)
 #define CvtRestrictionInfoToPc(x)
 #define CvtFieldToPc(x)
-#define CvtShortToPc(x)
-#define CvtLongToPc(x)
 #define CvtFloatToPc(x)
 #define CvtTabLongToPc(x, y)
+
+static inline void SLOWSWAP_BIG16(short* x) {
+  uint8_t* p = (uint8_t*)x;
+  uint8_t a = p[0], b = p[1];
+  p[0] = b;
+  p[1] = a;
+}
+
+static inline void SLOWSWAP_BIG32(long* x) {
+  uint8_t* p = (uint8_t*)x;
+  uint8_t a = p[0], b = p[1], c = p[2], d = p[3];
+  p[0] = d;
+  p[1] = c;
+  p[2] = b;
+  p[3] = a;
+}
+static inline void CvtLongToPc(long* x) { SLOWSWAP_BIG32(x); }
+static inline void CvtShortToPc(short* x) { SLOWSWAP_BIG16(x); }
 
 // Spells are already composed solely of bytes.
 #define CvtTabSpellToPc(x, y)
@@ -254,8 +270,6 @@ void HiliteMenu(int16_t menuID);
 int16_t FindWindow(Point thePoint, WindowPtr* theWindow);
 void DrawDialog(DialogPtr theDialog);
 void TextSize(uint16_t size);
-void DrawPicture(PicHandle myPicture, const Rect* dstRect);
-void PenPixPat(PixPatHandle ppat);
 GDHandle GetGDevice(void);
 void SetRect(Rect* r, uint16_t left, uint16_t top, uint16_t right, uint16_t bottom);
 Boolean LockPixels(PixMapHandle pm);
@@ -270,7 +284,6 @@ void TextMode(int16_t mode);
 void TextFace(int16_t face);
 void DrawString(ConstStr255Param s);
 void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex);
-void MoveTo(int16_t h, int16_t v);
 Boolean BitTst(const void* bytePtr, int32_t bitNum);
 void BitSet(void* bytePtr, int32_t bitNum);
 void EraseRect(const Rect* r);
@@ -305,7 +318,6 @@ void BeginUpdate(WindowPtr theWindow);
 void EndUpdate(WindowPtr theWindow);
 void SetPt(Point* pt, int16_t h, int16_t v);
 int16_t DIBadMount(Point where, int32_t evtMessage);
-void LineTo(int16_t h, int16_t v);
 void DisposeWindow(WindowPtr theWindow);
 ControlHandle GetNewControl(int16_t controlID, WindowPtr owner);
 void MoveControl(ControlHandle theControl, int16_t h, int16_t v);
@@ -339,7 +351,6 @@ void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBi
 void PaintRect(const Rect* r);
 void ObscureCursor(void);
 OSErr DisposeCIcon(CIconHandle theIcon);
-void InsetRect(Rect* r, int16_t dh, int16_t dv);
 Boolean SectRect(const Rect* src1, const Rect* src2, Rect* dstRect);
 void FrameOval(const Rect* r);
 void HideControl(ControlHandle theControl);

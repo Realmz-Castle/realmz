@@ -95,9 +95,6 @@ WindowPtr FrontWindow(void) {
   return NULL;
 }
 
-void DrawPicture(PicHandle myPicture, const Rect* dstRect) {
-}
-
 CCrsrHandle GetCCursor(uint16_t crsrID) {
   return NULL;
 }
@@ -238,13 +235,7 @@ void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect,
     RgnHandle maskRgn) {
 }
 
-void PenPixPat(PixPatHandle ppat) {
-}
-
 void SelectDialogItemText(DialogPtr theDialog, int16_t itemNo, int16_t strtSel, int16_t endSel) {
-}
-
-void SetDialogItemText(Handle item, ConstStr255Param text) {
 }
 
 RgnHandle NewRgn(void) {
@@ -313,9 +304,8 @@ int16_t CountMItems(MenuHandle theMenu) {
 }
 
 void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit) {
-}
-
-void MoveTo(int16_t h, int16_t v) {
+  delay(50);
+  *itemHit = 1;
 }
 
 void MoveWindow(WindowPtr theWindow, uint16_t hGlobal, uint16_t vGlobal, Boolean front) {
@@ -338,6 +328,8 @@ QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boun
 }
 
 void NumToString(int32_t theNum, Str255 theString) {
+  sprintf((char*)theString + 1, "%d", theNum);
+  theString[0] = strlen(theString) - 1;
 }
 
 void OffsetRect(Rect* r, uint16_t dh, uint16_t dv) {
@@ -406,9 +398,6 @@ void ObscureCursor(void) {
 
 OSErr DisposeCIcon(CIconHandle theIcon) {
   return 0;
-}
-
-void InsetRect(Rect* r, int16_t dh, int16_t dv) {
 }
 
 Boolean SectRect(const Rect* src1, const Rect* src2, Rect* dstRect) {

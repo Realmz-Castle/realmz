@@ -73,15 +73,14 @@ typedef struct {
 
 typedef struct {
   BitMap portBits;
-} GrafPort;
-
-typedef struct {
   Rect portRect;
   int16_t txFont;
   Style txFace;
   int16_t txMode;
   int16_t txSize;
+  Point pnLoc;
   PixMapHandle portPixMap;
+  PixPatHandle pnPixPat;
   PixPatHandle bkPixPat;
 
   int32_t fgColor;
@@ -89,6 +88,13 @@ typedef struct {
   RGBColor rgbFgColor;
   RGBColor rgbBgColor;
 } CGrafPort;
+
+// Since we'll only be using color graphics ports, alias GrafPort to CGrafPort,
+// for simpler type manipulations. In the Classic programming environment, the two
+// were nearly identical and could be safely casted to each other. While we could
+// work to achieve the same parity, it's unnecessary.
+typedef CGrafPort GrafPort;
+
 typedef CGrafPort* CGrafPtr;
 typedef CGrafPort** CGrafHandle; // Not part of Classic Mac OS API
 typedef CGrafPtr GWorldPtr;
@@ -134,6 +140,9 @@ void RGBBackColor(const RGBColor* color);
 void RGBForeColor(const RGBColor* color);
 CIconHandle GetCIcon(uint16_t iconID);
 void BackPixPat(PixPatHandle ppat);
+void MoveTo(int16_t h, int16_t v);
+void InsetRect(Rect* r, int16_t dh, int16_t dv);
+void PenPixPat(PixPatHandle ppat);
 
 #ifdef __cplusplus
 } // extern "C"

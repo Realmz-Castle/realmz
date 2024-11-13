@@ -179,6 +179,7 @@ changed:
   BeginUpdate(GetDialogWindow(about));
   EndUpdate(GetDialogWindow(about));
   FlushEvents(everyEvent, 0);
+  goto goon;
 
   for (;;) {
   donothing:

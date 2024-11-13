@@ -261,6 +261,13 @@ set_source_files_properties(${SCENARIO_RESOURCE_FILES} PROPERTIES
 )
 endforeach()
 
+# Character data installed in Contents/Resources/Character Files
+file(GLOB CHARACTER_DATA_FILES "base/Realmz/Character Files/*")
+target_sources(Realmz PRIVATE ${CHARACTER_DATA_FILES})
+set_source_files_properties(${CHARACTER_DATA_FILES} PROPERTIES
+    MACOSX_PACKAGE_LOCATION "Resources/Character Files"
+)
+
 target_compile_definitions(Realmz PUBLIC REALMZ_COCOA=1)
 target_compile_options(Realmz PUBLIC -fpascal-strings)
 target_include_directories(Realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig src/macos)
