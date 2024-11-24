@@ -1,8 +1,11 @@
+#include "QuickDraw.h"
+
+#include <SDL3/SDL_pixels.h>
+
 #include <algorithm>
 #include <deque>
 #include <filesystem>
 #include <memory>
-
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
 #include <resource_file/IndexFormats/Formats.hh>
@@ -13,7 +16,6 @@
 #include <resource_file/TextCodecs.hh>
 
 #include "MemoryManager.hpp"
-#include "QuickDraw.h"
 #include "ResourceManager.h"
 #include "Types.hpp"
 
@@ -152,12 +154,40 @@ void BackColor(int32_t color) {
   globals->thePort->rgbBgColor = color_const_to_rgb(color);
 }
 
+uint32_t rgba8888_for_rgb_color(const RGBColor& color) {
+  return (
+      (((color.red / 0x0101) & 0xFF) << 24) |
+      (((color.green / 0x0101) & 0xFF) << 16) |
+      (((color.blue / 0x0101) & 0xFF) << 8) |
+      0xFF);
+}
+
+SDL_Color sdl_color_for_rgb_color(const RGBColor& color) {
+  return SDL_Color{
+      static_cast<uint8_t>(color.red / 0x0101),
+      static_cast<uint8_t>(color.green / 0x0101),
+      static_cast<uint8_t>(color.blue / 0x0101),
+      0xFF};
+}
+
 void GetBackColor(RGBColor* color) {
   *color = globals->thePort->rgbBgColor;
+}
+uint32_t GetBackColorRGBA8888() {
+  return rgba8888_for_rgb_color(globals->thePort->rgbBgColor);
+}
+SDL_Color GetBackColorSDL() {
+  return sdl_color_for_rgb_color(globals->thePort->rgbBgColor);
 }
 
 void GetForeColor(RGBColor* color) {
   *color = globals->thePort->rgbFgColor;
+}
+uint32_t GetForeColorRGBA8888() {
+  return rgba8888_for_rgb_color(globals->thePort->rgbFgColor);
+}
+SDL_Color GetForeColorSDL() {
+  return sdl_color_for_rgb_color(globals->thePort->rgbFgColor);
 }
 
 void SetPort(CGrafPtr port) {
@@ -170,6 +200,10 @@ void InitGraf(QuickDrawGlobals* new_globals) {
   globals->default_graf_handle = NewHandleTyped<CGrafPort>();
   globals->thePort = *globals->default_graf_handle;
   memset(globals->thePort, 0, sizeof(*globals->thePort));
+}
+
+CGrafPtr get_default_quickdraw_port() {
+  return *globals->default_graf_handle;
 }
 
 void TextFont(uint16_t font) {

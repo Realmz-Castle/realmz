@@ -1,5 +1,6 @@
 #include "MemoryManager.h"
 
+#include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 
 using namespace std;
@@ -199,4 +200,48 @@ void HNoPurge(Handle handle) {
 
 OSErr MemError() {
   return memory_manager.get_last_error();
+}
+
+void BlockMove(const void* srcPtr, void* destPtr, Size byteCount) {
+  memcpy(destPtr, srcPtr, byteCount);
+}
+void BlockMoveData(const void* srcPtr, void* destPtr, Size byteCount) {
+  memcpy(destPtr, srcPtr, byteCount);
+}
+
+void HLockHi(Handle h) {}
+void HLock(Handle h) {}
+void HUnlock(Handle h) {}
+
+int16_t HiWord(int32_t x) {
+  return (int16_t)(x >> 16);
+}
+
+int16_t LoWord(int32_t x) {
+  return (int16_t)(x & 0xFFFF);
+}
+
+void BitClr(void* bytePtr, uint32_t bitNum) {
+  uint8_t* data = (uint8_t*)bytePtr;
+  data[bitNum >> 3] &= ~(0x80 >> (bitNum & 7));
+}
+
+void BitSet(void* bytePtr, int32_t bitNum) {
+  uint8_t* data = (uint8_t*)bytePtr;
+  data[bitNum >> 3] |= (0x80 >> (bitNum & 7));
+}
+
+Boolean BitTst(const void* bytePtr, int32_t bitNum) {
+  const uint8_t* data = (const uint8_t*)bytePtr;
+  return !!(data[bitNum >> 3] & (0x80 >> (bitNum & 7)));
+}
+
+int16_t Random(void) {
+  // According to Inside Macintosh I-194, this function returns any value for
+  // an int16_t except -0x8000
+  int16_t ret;
+  do {
+    ret = phosg::random_object<int16_t>();
+  } while (ret == -0x8000);
+  return ret;
 }

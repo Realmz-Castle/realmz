@@ -228,7 +228,6 @@ RgnHandle NewRgn(void);
 void RectRgn(RgnHandle rgn, const Rect* r);
 int32_t DragGrayRgn(RgnHandle theRgn, Point startPt, const Rect* boundsRect, const Rect* slopRect,
     int16_t axis, Ptr actionProc);
-void ParamText(ConstStr255Param param0, ConstStr255Param param1, ConstStr255Param param2, ConstStr255Param param3);
 void SystemTask(void);
 void DisposeDialog(DialogPtr theDialog);
 void ExitToShell(void);
@@ -239,8 +238,6 @@ OSErr SetDefaultOutputVolume(uint32_t level);
 #define SetSoundVol SetDefaultOutputVolume
 CCrsrHandle GetCCursor(uint16_t crsrID);
 void SetCCursor(CCrsrHandle cCrsr);
-void HLock(Handle h);
-void HUnlock(Handle h);
 WindowPtr GetNewCWindow(int16_t windowID, void* wStorage, WindowPtr behind);
 void SizeWindow(WindowPtr theWindow, uint16_t w, uint16_t h, Boolean fUpdate);
 void MoveWindow(WindowPtr theWindow, uint16_t hGlobal, uint16_t vGlobal, Boolean front);
@@ -260,17 +257,12 @@ Boolean LockPixels(PixMapHandle pm);
 void UnlockPixels(PixMapHandle pm);
 PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld);
 Size MaxMem(Size* grow);
-void BitClr(void* bytePtr, uint32_t bitNum);
 void BackPixPat(PixPatHandle ppat);
-void NumToString(int32_t theNum, Str255 theString);
-void StringToNum(ConstStr255Param theString, int32_t* theNum);
 void TextMode(int16_t mode);
 void TextFace(int16_t face);
 void DrawString(ConstStr255Param s);
 void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex);
 void MoveTo(int16_t h, int16_t v);
-Boolean BitTst(const void* bytePtr, int32_t bitNum);
-void BitSet(void* bytePtr, int32_t bitNum);
 void EraseRect(const Rect* r);
 void OffsetRect(Rect* r, uint16_t dh, uint16_t dv);
 void GetGWorld(CGrafPtr* port, GDHandle* gdh);
@@ -297,8 +289,6 @@ void StopFading(GammaRef initialState, Boolean restore);
 OSErr FadeToBlack(UInt16 numSteps, FadeType typeOfFade);
 OSErr FadeToGamma(GammaRef to, UInt16 numSteps, FadeType typeOfFade);
 Handle Get1Resource(ResType theType, int16_t theID);
-void HLockHi(Handle h);
-void BlockMove(const void* srcPtr, void* destPtr, Size byteCount);
 void BeginUpdate(WindowPtr theWindow);
 void EndUpdate(WindowPtr theWindow);
 void SetPt(Point* pt, int16_t h, int16_t v);
@@ -319,14 +309,10 @@ void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect,
 void GlobalToLocal(Point* pt);
 void LocalToGlobal(Point* pt);
 int16_t FindControl(Point thePoint, WindowPtr theWindow, ControlHandle* theControl);
-void BlockMoveData(const void* srcPtr, void* dstPtr, Size byteCount);
-int16_t Random(void);
 
 #define GetDialogWindow(pDialog) (pDialog)
 #define GetWindowPort(x) (x)
 #define BitAnd(x, y) (x & y)
-int16_t HiWord(int32_t x);
-int16_t LoWord(int32_t x);
 int16_t OpenDeskAcc(ConstStr255Param deskAccName);
 void SetItemMark(MenuHandle theMenu, int16_t item, int16_t markChar);
 void DisposeCCursor(CCrsrHandle cCrsr);

@@ -50,21 +50,6 @@ void GetSoundVol(short* x) {
   *x = v >> 16;
 }
 
-void BitClr(void* bytePtr, uint32_t bitNum) {
-  uint8_t* data = (uint8_t*)bytePtr;
-  data[bitNum >> 3] &= ~(0x80 >> (bitNum & 7));
-}
-
-void BitSet(void* bytePtr, int32_t bitNum) {
-  uint8_t* data = (uint8_t*)bytePtr;
-  data[bitNum >> 3] |= (0x80 >> (bitNum & 7));
-}
-
-Boolean BitTst(const void* bytePtr, int32_t bitNum) {
-  const uint8_t* data = (const uint8_t*)bytePtr;
-  return !!(data[bitNum >> 3] & (0x80 >> (bitNum & 7)));
-}
-
 void DisposeDialog(DialogPtr theDialog) {
   WindowManager_DisposeWindow(theDialog);
 }
@@ -142,27 +127,7 @@ CWindowPtr GetNewCWindow(int16_t res_id, void* wStorage, WindowPtr behind) {
   return WindowManager_CreateNewWindow(res_id, false, behind);
 }
 
-void HLockHi(Handle h) {
-}
-
-void BlockMove(const void* srcPtr, void* destPtr, Size byteCount) {
-}
-
-void HLock(Handle h) {
-}
-
-void HUnlock(Handle h) {
-}
-
 void BeginUpdate(WindowPtr theWindow) {
-}
-
-int16_t HiWord(int32_t x) {
-  return (int16_t)(x >> 16);
-}
-
-int16_t LoWord(int32_t x) {
-  return (int16_t)(x & 0xFFFF);
 }
 
 void SetPt(Point* pt, int16_t h, int16_t v) {
@@ -207,9 +172,6 @@ void BringToFront(WindowPtr theWindow) {
 }
 
 void PenMode(int16_t mode) {
-}
-
-void ParamText(ConstStr255Param param0, ConstStr255Param param1, ConstStr255Param param2, ConstStr255Param param3) {
 }
 
 int16_t GetControlValue(ControlHandle theControl) {
@@ -270,13 +232,6 @@ int16_t FindControl(Point thePoint, WindowPtr theWindow, ControlHandle* theContr
   return 0;
 }
 
-void BlockMoveData(const void* srcPtr, void* dstPtr, Size byteCount) {
-}
-
-int16_t Random(void) {
-  return 0;
-}
-
 int16_t OpenDeskAcc(ConstStr255Param deskAccName) {
   return 0;
 }
@@ -330,9 +285,6 @@ QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boun
   return 0;
 }
 
-void NumToString(int32_t theNum, Str255 theString) {
-}
-
 void OffsetRect(Rect* r, uint16_t dh, uint16_t dv) {
   r->left += dh;
   r->right += dh;
@@ -377,9 +329,6 @@ OSErr StartFading(GammaRef* returnedInitialState) {
 }
 
 void StopFading(GammaRef initialState, Boolean restore) {
-}
-
-void StringToNum(ConstStr255Param theString, int32_t* theNum) {
 }
 
 void SysBeep(uint16_t duration) {
