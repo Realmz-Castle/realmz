@@ -234,10 +234,15 @@ public:
   std::shared_ptr<SDL_Renderer> sdlRenderer;
   DialogItemHandle handle;
   static DialogItemHandle next_di_handle;
-
   static size_t next_item_id;
   static std::unordered_map<size_t, std::shared_ptr<DialogItem>> all_dialog_items;
 
+private:
+  bool dirty;
+  SDL_Texture* sdlTexture;
+  std::string text;
+
+public:
   DialogItem(int16_t ditl_res_id, size_t item_id, const ResourceDASM::ResourceFile::DecodedDialogItem& def)
       : ditl_resource_id(ditl_res_id),
         item_id(item_id),
@@ -305,8 +310,8 @@ public:
 
     switch (type) {
       case ResourceFile::DecodedDialogItem::Type::PICTURE: {
-        auto pict = **GetPicture(resource_id);
-        Rect r = pict.picFrame;
+        const auto& pict = **GetPicture(resource_id);
+        const Rect& r = pict.picFrame;
         int16_t w = r.right - r.left;
         int16_t h = r.bottom - r.top;
         // Since we're drawing to the local texture buffer, we want to fill it, rather than draw
@@ -389,15 +394,10 @@ public:
     text = std::move(new_text);
     dirty = true;
   }
-
-private:
-  bool dirty;
-  SDL_Texture* sdlTexture;
-  std::string text;
 };
 
 // Initialize static handle sequence
-DialogItemHandle DialogItem::next_di_handle = 0;
+DialogItemHandle DialogItem::next_di_handle = 1;
 
 class Window : public std::enable_shared_from_this<Window> {
 public:
@@ -426,9 +426,7 @@ public:
       throw std::runtime_error(phosg::string_printf("Could not create window: %s\n", SDL_GetError()));
     }
 
-    std::shared_ptr<SDL_Renderer> r(SDL_CreateRenderer(sdlWindow, "opengl"), [](auto p) {
-      SDL_DestroyRenderer(p);
-    });
+    std::shared_ptr<SDL_Renderer> r(SDL_CreateRenderer(sdlWindow, "opengl"), SDL_DestroyRenderer);
     sdlRenderer = r;
 
     if (sdlRenderer == NULL) {
@@ -456,14 +454,6 @@ public:
     SDL_SetRenderTarget(sdlRenderer.get(), sdlTexture);
     SDL_RenderClear(sdlRenderer.get());
     SDL_SetRenderTarget(sdlRenderer.get(), NULL);
-  }
-
-  size_t get_num_dialog_items(void) {
-    return dialogItems->size();
-  }
-
-  std::shared_ptr<DialogItem> get_dialog_item(size_t index) {
-    return dialogItems->at(index);
   }
 
   ~Window() {
@@ -595,6 +585,21 @@ public:
   void move(int hGlobal, int vGlobal) {
     SDL_SetWindowPosition(sdlWindow, hGlobal, vGlobal);
     SDL_SyncWindow(sdlWindow);
+  }
+
+  void resize(uint16_t w, uint16_t h) {
+    auto& portRect = cWindowRecord.port.portRect;
+    portRect.right = portRect.left + w;
+    portRect.bottom = portRect.top + h;
+
+    this->w = w;
+    this->h = h;
+
+    if (SDL_SetWindowSize(sdlWindow, w, h)) {
+      sync();
+    } else {
+      wm_log.error("Could not resize window: %s", SDL_GetError());
+    }
   }
 
   void show() {
@@ -999,8 +1004,8 @@ void ShowWindow(WindowPtr theWindow) {
 }
 
 void SizeWindow(CWindowPtr theWindow, uint16_t w, uint16_t h, Boolean fUpdate) {
-  theWindow->portRect.right = theWindow->portRect.left + w;
-  theWindow->portRect.bottom = theWindow->portRect.top + h;
+  auto window = wm.window_for_record(theWindow);
+  window->resize(w, h);
 }
 
 DialogPtr GetNewDialog(uint16_t res_id, void* dStorage, WindowPtr behind) {
