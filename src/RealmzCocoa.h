@@ -27,9 +27,7 @@
 #include "SoundManager.h"
 #include "Types.h"
 #include "WindowManager.h"
-
-#define SWAP_BIG16(x) OSSwapBigToHostInt16(x)
-#define SWAP_BIG32(x) OSSwapBigToHostInt32(x)
+#include "convert.h"
 
 #if !defined(TRUE)
 #define TRUE true
@@ -50,72 +48,7 @@
 #define GetPortTextSize(x) ((x)->txSize)
 #define GetPortTextMode(x) ((x)->txMode)
 
-// Conversion functions from convert.h
-// Should be no-ops with proper loading of resources
-#define CvtTabItemToPc(x, y)
-#define CvtTabItemAttrToPc(x, y)
-#define CvtTabCharacterToPc(x, y)
-#define CvtTabMonsterToPc(x, y)
-#define CvtTabMapStatToPc(x, y)
-#define CvtTabDoorToPc(x, y)
-#define CvtTabShortToPc(x, y)
-#define CvtCharacterToPc(x)
-#define CvtThiefToPc(x)
-#define CvtCasteToPc(x)
-#define CvtDoorToPc(x)
-#define CvtItemToPc(x)
-#define CvtRaceToPc(x)
-#define CvtMapsToPc(x)
-#define CvtRandLevelToPc(x)
-#define CvtMonsterToPc(x)
-#define CvtNoteToPc(x)
-#define CvtEncount2ToPc(x)
-#define CvtEncountToPc(x)
-#define CvtBattleToPc(x)
-#define CvtTimeEncounterToPc(x)
-#define CvtShopToPc(x)
-#define CvtPrefsToPc(x)
-#define CvtTreasureToPc(x)
-#define CvtRestrictionInfoToPc(x)
-#define CvtFieldToPc(x)
-#define CvtFloatToPc(x)
-#define CvtTabLongToPc(x, y)
-
-static inline void SLOWSWAP_BIG16(short* x) {
-  uint8_t* p = (uint8_t*)x;
-  uint8_t a = p[0], b = p[1];
-  p[0] = b;
-  p[1] = a;
-}
-
-static inline void SLOWSWAP_BIG32(long* x) {
-  uint8_t* p = (uint8_t*)x;
-  uint8_t a = p[0], b = p[1], c = p[2], d = p[3];
-  p[0] = d;
-  p[1] = c;
-  p[2] = b;
-  p[3] = a;
-}
-static inline void CvtLongToPc(long* x) { SLOWSWAP_BIG32(x); }
-static inline void CvtShortToPc(short* x) { SLOWSWAP_BIG16(x); }
-
-// Spells are already composed solely of bytes.
-#define CvtTabSpellToPc(x, y)
-
-// contactdata is a bunch of static strings.
-#define CvtContactToPc(x)
-
-// These are just arrays of shorts.
-#define CvtLayoutToPc(x) CvtTabShortToPc(x, 8 * 16)
-
 #define GetNewWindow GetNewCWindow
-
-static inline void rintel2moto(Rect* r) {
-  r->top = SWAP_BIG16(r->top);
-  r->left = SWAP_BIG16(r->left);
-  r->bottom = SWAP_BIG16(r->bottom);
-  r->right = SWAP_BIG16(r->right);
-}
 
 #define suspendResumeMessage 0x01
 

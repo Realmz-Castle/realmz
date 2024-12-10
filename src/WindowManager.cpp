@@ -187,12 +187,6 @@ bool draw_text(std::shared_ptr<SDL_Renderer> sdlRenderer, const std::string& tex
   try {
     tt_font = tt_fonts_by_id.at(font_id);
   } catch (const std::out_of_range&) {
-    // TODO: The default font is loaded from the PREF resource in the getpref()
-    //  function, which currently doesn't work and fills the defaultfont global with
-    //  garbage. If we're ever relying on the defaultfont, or any other unknown font,
-    //  just pick a default. This can be removed and replaced with a runtime error
-    //  once preference loading is working.
-    tt_font = tt_fonts_by_id.at(BLACK_CHANCERY_FONT_ID);
   }
   if (tt_font != nullptr) {
     return draw_text_ttf(sdlRenderer, tt_font, processed_text, dispRect);

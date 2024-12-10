@@ -1,0 +1,150 @@
+#ifndef CONVERT_H
+#define CONVERT_H
+
+#include <libkern/OSByteOrder.h>
+#include <stdint.h>
+
+#include "structs.h"
+
+// We need slow swap routines for misaligned structs.
+#ifdef __BIG_ENDIAN__
+#define SLOWSWAP_BIG16(x)
+#define SLOWSWAP_BIG32(x)
+#else
+
+#define SWAP_BIG16(x) OSSwapBigToHostInt16(x)
+#define SWAP_BIG32(x) OSSwapBigToHostInt32(x)
+
+static inline void SLOWSWAP_BIG16(short* x) {
+  uint8_t* p = (uint8_t*)x;
+  uint8_t a = p[0], b = p[1];
+  p[0] = b;
+  p[1] = a;
+}
+static inline void SLOWSWAP_BIG32(long* x) {
+  uint8_t* p = (uint8_t*)x;
+  uint8_t a = p[0], b = p[1], c = p[2], d = p[3];
+  p[0] = d;
+  p[1] = c;
+  p[2] = b;
+  p[3] = a;
+}
+#endif
+
+static inline void rintel2moto(Rect* r) {
+  r->top = SWAP_BIG16(r->top);
+  r->left = SWAP_BIG16(r->left);
+  r->bottom = SWAP_BIG16(r->bottom);
+  r->right = SWAP_BIG16(r->right);
+}
+
+static inline void CvtShortToPc(short* x) { SLOWSWAP_BIG16(x); }
+static inline void CvtLongToPc(long* x) { SLOWSWAP_BIG32(x); }
+static inline void CvtFloatToPc(float* x) { SLOWSWAP_BIG32((long*)x); }
+
+static inline void CvtBoolToPc(Boolean* x) {
+  if (sizeof(Boolean) == 2)
+    SLOWSWAP_BIG16((short*)x);
+  else if (sizeof(Boolean) == 4)
+    SLOWSWAP_BIG32((long*)x);
+}
+
+static inline void CvtRectToPc(Rect* x) {
+  rintel2moto(x);
+}
+
+static inline void CvtTabLongToPc(long* x, unsigned int count) {
+  while (count--)
+    CvtLongToPc(x++);
+}
+
+static inline void CvtTabShortToPc(short* x, unsigned int count) {
+  while (count--)
+    CvtShortToPc(x++);
+}
+
+static inline void CvtTabBoolToPc(Boolean* x, unsigned int count) {
+  while (count--)
+    CvtBoolToPc(x++);
+}
+
+static inline void CvtTabRectToPc(Rect* x, unsigned int count) {
+  while (count--)
+    rintel2moto(x++);
+}
+
+// These structs are all shorts, and can be treated as an array.
+#define CVT_ALL_SHORTS(x) CvtTabShortToPc((short*)x, (sizeof(*x) / 2))
+
+static inline void CvtMapStatToPc(struct mapstats* x) {
+  CVT_ALL_SHORTS(x);
+}
+static inline void CvtTimeEncounterToPc(struct timeencounter* x) {
+  CVT_ALL_SHORTS(x);
+}
+static inline void CvtTreasureToPc(struct treasure* x) {
+  CVT_ALL_SHORTS(x);
+}
+
+void CvtItemAttrToPc(struct itemattr* x);
+void CvtItemToPc(struct item* x);
+void CvtDoorToPc(struct door* x);
+void CvtMapsToPc(struct maps* x);
+void CvtRaceToPc(struct race* x);
+void CvtCasteToPc(struct caste* x);
+void CvtThiefToPc(struct thief* x);
+void CvtRandLevelToPc(struct randlevel* x);
+void CvtCharacterToPc(struct character* x);
+void CvtMonsterToPc(struct monster* x);
+void CvtNoteToPc(struct note* x);
+void CvtEncountToPc(struct encount* x);
+void CvtEncount2ToPc(struct encount2* x);
+void CvtBattleToPc(struct battle* x);
+void CvtShopToPc(struct shop* x);
+void CvtRestrictionInfoToPc(struct restrictinfo* x);
+void CvtPrefsToPc(PrefRecord* x);
+
+static inline void CvtTabItemAttrToPc(struct itemattr* x, unsigned int count) {
+  while (count--)
+    CvtItemAttrToPc(x++);
+}
+
+static inline void CvtTabItemToPc(struct item* x, unsigned int count) {
+  // Inexplicably, this means a count of 30 items.
+  count *= 30;
+
+  while (count--)
+    CvtItemToPc(x++);
+}
+
+static inline void CvtTabDoorToPc(struct door* x, unsigned int count) {
+  while (count--)
+    CvtDoorToPc(x++);
+}
+
+static inline void CvtTabMonsterToPc(struct monster* x, unsigned int count) {
+  while (count--)
+    CvtMonsterToPc(x++);
+}
+
+static inline void CvtTabCharacterToPc(struct character* x, unsigned int count) {
+  while (count--)
+    CvtCharacterToPc(x++);
+}
+
+static inline void CvtTabMapStatToPc(struct mapstats* x, unsigned int count) {
+  while (count--)
+    CvtMapStatToPc(x++);
+}
+
+// Spells are already composed solely of bytes.
+#define CvtTabSpellToPc
+
+// contactdata is a bunch of static strings.
+#define CvtContactToPc
+
+// These are just arrays of shorts.
+#define CvtFieldToPc(x) CvtTabShortToPc(x, 90 * 90)
+#define CvtLayoutToPc(x) CvtTabShortToPc(x, 8 * 16)
+
+#endif // CONVERT_H

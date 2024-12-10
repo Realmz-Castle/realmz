@@ -66,6 +66,7 @@ set(SOURCES
     src/realmz_orig/combatupdate-2.c
     src/realmz_orig/compactitems.c
     src/realmz_orig/contactinfo.c
+    src/realmz_orig/convert.c
     src/realmz_orig/delay.c
     src/realmz_orig/destroymonster.c
     src/realmz_orig/drawbody.c
