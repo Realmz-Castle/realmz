@@ -156,7 +156,7 @@ static const std::unordered_map<SDL_Keycode, uint16_t> mac_vk_code_for_sdl_keyco
 // fork of the Mac OS System file (KCHR 0)
 
 // clang-format off
-std::array<uint8_t, 0x100> kchr_0_modifiers_table({
+std::array<uint8_t, 0x100> kchr_0_modifiers_table{
     0, 0, 1, 0, 2, 0, 1, 0, 3, 6, 4, 4, 5, 6, 4, 4,
     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
     1, 0, 1, 0, 1, 0, 1, 0, 4, 4, 4, 4, 4, 4, 4, 4,
@@ -173,9 +173,9 @@ std::array<uint8_t, 0x100> kchr_0_modifiers_table({
     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-});
+};
 
-std::array<std::array<uint8_t, 0x80>, 8> kchr_0_tables({
+std::array<std::array<uint8_t, 0x80>, 8> kchr_0_tables{{
   {
     0x61, 0x73, 0x64, 0x66, 0x68, 0x67, 0x7A, 0x78, 0x63, 0x76, 0xA4, 0x62, 0x71, 0x77, 0x65, 0x72,
     0x79, 0x74, 0x31, 0x32, 0x33, 0x34, 0x36, 0x35, 0x3D, 0x39, 0x37, 0x2D, 0x38, 0x30, 0x5D, 0x6F,
@@ -249,7 +249,7 @@ std::array<std::array<uint8_t, 0x80>, 8> kchr_0_tables({
     0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
     0x10, 0x10, 0x05, 0x01, 0x0B, 0x7F, 0x10, 0x04, 0x10, 0x0C, 0x10, 0x1C, 0x1D, 0x1F, 0x1E, 0x00,
   },
-});
+}};
 // clang-format on
 
 static uint32_t mac_message_for_sdl_key_code(SDL_Keycode key, uint16_t modifier_flags) {
