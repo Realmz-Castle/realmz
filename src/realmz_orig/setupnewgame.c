@@ -206,15 +206,17 @@ void setupnewgame(void) {
   if ((fp = MyrFopen(filename, "rb")) == NULL)
     scratch(189);
   // fread(&reclevel,sizeof reclevel,5,fp); Illegal
-  fread(&reclevel, sizeof(long), 1, fp); // Myriad
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * See note in main.c about sizeof(long) vs. sizeof(int32_t). */
+  fread(&reclevel, sizeof(int32_t), 1, fp); // Myriad
   CvtLongToPc(&reclevel);
-  fread(&maxlevel, sizeof(long), 1, fp); // Myriad
+  fread(&maxlevel, sizeof(int32_t), 1, fp); // Myriad
   CvtLongToPc(&maxlevel);
-  fread(&landlevel, sizeof(long), 1, fp); // Myriad
+  fread(&landlevel, sizeof(int32_t), 1, fp); // Myriad
   CvtLongToPc(&landlevel);
-  fread(&lookx, sizeof(long), 1, fp); // Myriad
+  fread(&lookx, sizeof(int32_t), 1, fp); // Myriad
   CvtLongToPc(&lookx);
-  fread(&looky, sizeof(long), 1, fp); // Myriad
+  fread(&looky, sizeof(int32_t), 1, fp); // Myriad
   CvtLongToPc(&looky);
 
   fread(&codeseg1, 20, 1, fp);

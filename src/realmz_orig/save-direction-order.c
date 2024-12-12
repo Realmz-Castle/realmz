@@ -287,72 +287,75 @@ void save(short mode) {
   fwrite(&combatround, sizeof(char), 1, fp);
   fwrite(&lastpix, sizeof(char), 1, fp); // Myriad : Dummy !!!!
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * See note in main.c about sizeof(long) vs. sizeof(int32_t). */
+
   CvtLongToPc(&x);
-  fwrite(&x, sizeof(long), 1, fp);
+  fwrite(&x, sizeof(int32_t), 1, fp);
   CvtLongToPc(&x);
 
   CvtLongToPc(&y);
-  fwrite(&y, sizeof(long), 1, fp);
+  fwrite(&y, sizeof(int32_t), 1, fp);
   CvtLongToPc(&y);
 
   CvtLongToPc(&wallx);
-  fwrite(&wallx, sizeof(long), 1, fp);
+  fwrite(&wallx, sizeof(int32_t), 1, fp);
   CvtLongToPc(&wallx);
 
   CvtLongToPc(&wally);
-  fwrite(&wally, sizeof(long), 1, fp);
+  fwrite(&wally, sizeof(int32_t), 1, fp);
   CvtLongToPc(&wally);
 
   CvtLongToPc(&dunglevel);
-  fwrite(&dunglevel, sizeof(long), 1, fp);
+  fwrite(&dunglevel, sizeof(int32_t), 1, fp);
   CvtLongToPc(&dunglevel);
 
   CvtLongToPc(&partyx);
-  fwrite(&partyx, sizeof(long), 1, fp);
+  fwrite(&partyx, sizeof(int32_t), 1, fp);
   CvtLongToPc(&partyx);
 
   CvtLongToPc(&partyy);
-  fwrite(&partyy, sizeof(long), 1, fp);
+  fwrite(&partyy, sizeof(int32_t), 1, fp);
   CvtLongToPc(&partyy);
 
   CvtLongToPc(&reclevel);
-  fwrite(&reclevel, sizeof(long), 1, fp);
+  fwrite(&reclevel, sizeof(int32_t), 1, fp);
   CvtLongToPc(&reclevel);
 
   CvtLongToPc(&maxlevel);
-  fwrite(&maxlevel, sizeof(long), 1, fp);
+  fwrite(&maxlevel, sizeof(int32_t), 1, fp);
   CvtLongToPc(&maxlevel);
 
   CvtLongToPc(&landlevel);
-  fwrite(&landlevel, sizeof(long), 1, fp);
+  fwrite(&landlevel, sizeof(int32_t), 1, fp);
   CvtLongToPc(&landlevel);
 
   CvtLongToPc(&lookx);
-  fwrite(&lookx, sizeof(long), 1, fp);
+  fwrite(&lookx, sizeof(int32_t), 1, fp);
   CvtLongToPc(&lookx);
 
   CvtLongToPc(&looky);
-  fwrite(&looky, sizeof(long), 1, fp);
+  fwrite(&looky, sizeof(int32_t), 1, fp);
   CvtLongToPc(&looky);
 
   CvtLongToPc(&fieldx);
-  fwrite(&fieldx, sizeof(long), 1, fp);
+  fwrite(&fieldx, sizeof(int32_t), 1, fp);
   CvtLongToPc(&fieldx);
 
   CvtLongToPc(&fieldy);
-  fwrite(&fieldy, sizeof(long), 1, fp);
+  fwrite(&fieldy, sizeof(int32_t), 1, fp);
   CvtLongToPc(&fieldy);
 
   CvtLongToPc(&floorx);
-  fwrite(&floorx, sizeof(long), 1, fp);
+  fwrite(&floorx, sizeof(int32_t), 1, fp);
   CvtLongToPc(&floorx);
 
   CvtLongToPc(&floory);
-  fwrite(&floory, sizeof(long), 1, fp);
+  fwrite(&floory, sizeof(int32_t), 1, fp);
   CvtLongToPc(&floory);
 
   CvtTabLongToPc(&moneypool, 3);
-  fwrite(&moneypool, sizeof(long), 3, fp);
+  fwrite(&moneypool, sizeof(int32_t), 3, fp);
   CvtTabLongToPc(&moneypool, 3);
 
   // Myriad The tm struct is 9xshort on macintosh
@@ -391,7 +394,9 @@ void save(short mode) {
   fwrite(&monsterset, sizeof(char), 1, fp); //*** fantasoft v7.1b  broke it up so work on PC side
   fwrite(&bankavailable, sizeof(char), 1, fp); //*** fantasoft v7.1b  broke it up so work on PC side
 
-  fwrite(&bank, sizeof(long), 3, fp); //*** fantasoft v7.1b  broke it up so work on PC side
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * See note in main.c about sizeof(long) vs. sizeof(int32_t). */
+  fwrite(&bank, sizeof(int32_t), 3, fp); //*** fantasoft v7.1b  broke it up so work on PC side
 
   fwrite(&templecost, sizeof(short), 1, fp); //*** fantasoft v7.1b  broke it up so work on PC side
   fwrite(&inboat, sizeof(char), 1, fp); //*** fantasoft v7.1b  broke it up so work on PC side

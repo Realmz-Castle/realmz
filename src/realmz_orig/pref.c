@@ -104,7 +104,9 @@ void savepref(void) {
     MyrBitSetLong(&showserial, 6 + divine);
 
     magic = MAGIC;
-    fwrite(&magic, sizeof(long), 1, fPref);
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * See note in main.c about sizeof(long) vs. sizeof(int32_t). */
+    fwrite(&magic, sizeof(int32_t), 1, fPref);
     fwrite(*new_data_handle, sizeof(PrefRecord), 1, fPref);
 
     closepref();
@@ -121,7 +123,9 @@ void getpref(void) {
 
   // File existe, I read it
   if (fPref) {
-    fread(&magic, sizeof(long), 1, fPref);
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * See note in main.c about sizeof(long) vs. sizeof(int32_t). */
+    fread(&magic, sizeof(int32_t), 1, fPref);
     if (magic == MAGIC) {
       data_handle = NewHandleClear(sizeof(PrefRecord));
       fread(*data_handle, sizeof(PrefRecord), 1, fPref);

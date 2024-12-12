@@ -194,55 +194,58 @@ short load(void) {
   fread(&combatround, sizeof(char), 1, fp);
   fread(&bigbadbug, sizeof(char), 1, fp); // Myriad : illegal access
 
-  fread(&x, sizeof(long), 1, fp);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * See note in main.c about sizeof(long) vs. sizeof(int32_t). */
+
+  fread(&x, sizeof(int32_t), 1, fp);
   CvtLongToPc(&x);
 
-  fread(&y, sizeof(long), 1, fp);
+  fread(&y, sizeof(int32_t), 1, fp);
   CvtLongToPc(&y);
 
-  fread(&wallx, sizeof(long), 1, fp);
+  fread(&wallx, sizeof(int32_t), 1, fp);
   CvtLongToPc(&wallx);
 
-  fread(&wally, sizeof(long), 1, fp);
+  fread(&wally, sizeof(int32_t), 1, fp);
   CvtLongToPc(&wally);
 
-  fread(&dunglevel, sizeof(long), 1, fp);
+  fread(&dunglevel, sizeof(int32_t), 1, fp);
   CvtLongToPc(&dunglevel);
 
-  fread(&partyx, sizeof(long), 1, fp);
+  fread(&partyx, sizeof(int32_t), 1, fp);
   CvtLongToPc(&partyx);
 
-  fread(&partyy, sizeof(long), 1, fp);
+  fread(&partyy, sizeof(int32_t), 1, fp);
   CvtLongToPc(&partyy);
 
-  fread(&reclevel, sizeof(long), 1, fp);
+  fread(&reclevel, sizeof(int32_t), 1, fp);
   CvtLongToPc(&reclevel);
 
-  fread(&maxlevel, sizeof(long), 1, fp);
+  fread(&maxlevel, sizeof(int32_t), 1, fp);
   CvtLongToPc(&maxlevel);
 
-  fread(&landlevel, sizeof(long), 1, fp);
+  fread(&landlevel, sizeof(int32_t), 1, fp);
   CvtLongToPc(&landlevel);
 
-  fread(&lookx, sizeof(long), 1, fp);
+  fread(&lookx, sizeof(int32_t), 1, fp);
   CvtLongToPc(&lookx);
 
-  fread(&looky, sizeof(long), 1, fp);
+  fread(&looky, sizeof(int32_t), 1, fp);
   CvtLongToPc(&looky);
 
-  fread(&fieldx, sizeof(long), 1, fp);
+  fread(&fieldx, sizeof(int32_t), 1, fp);
   CvtLongToPc(&fieldx);
 
-  fread(&fieldy, sizeof(long), 1, fp);
+  fread(&fieldy, sizeof(int32_t), 1, fp);
   CvtLongToPc(&fieldy);
 
-  fread(&floorx, sizeof(long), 1, fp);
+  fread(&floorx, sizeof(int32_t), 1, fp);
   CvtLongToPc(&floorx);
 
-  fread(&floory, sizeof(long), 1, fp);
+  fread(&floory, sizeof(int32_t), 1, fp);
   CvtLongToPc(&floory);
 
-  fread(&moneypool, sizeof(long), 3, fp);
+  fread(&moneypool, sizeof(int32_t), 3, fp);
   CvtTabLongToPc(&moneypool, 3);
 
   // Myriad The tm struct is 9xshort on macintosh
@@ -281,7 +284,7 @@ short load(void) {
   fread(&monsterset, sizeof(char), 1, fp); //*** fantasoft v7.1b  broke it up so work on PC side
   fread(&bankavailable, sizeof(char), 1, fp); //*** fantasoft v7.1b  broke it up so work on PC side
 
-  fread(&bank, sizeof(long), 3, fp); //*** fantasoft v7.1b  broke it up so work on PC side
+  fread(&bank, sizeof(int32_t), 3, fp); //*** fantasoft v7.1b  broke it up so work on PC side
 
   fread(&templecost, sizeof(short), 1, fp); //*** fantasoft v7.1b  broke it up so work on PC side
   fread(&inboat, sizeof(char), 1, fp); //*** fantasoft v7.1b  broke it up so work on PC side

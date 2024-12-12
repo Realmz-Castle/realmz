@@ -2201,9 +2201,15 @@ short regscen_pc(void) {
 
     if ((fp = MyrFopen(filename, "rb")) == NULL)
       scratch(122);
-    fread(&reclevel, sizeof(long), 1, fp);
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(fuzziqersoftware): On many modern systems, a long is 64 bits, but
+     * on systems at the time Realmz was originally written, a long was
+     * always 32 bits. To correct for this, we've changed sizeof(long) to
+     * sizeof(int32_t) here.
+     */
+    fread(&reclevel, sizeof(int32_t), 1, fp);
     CvtLongToPc(&reclevel);
-    fread(&maxlevel, sizeof(long), 1, fp);
+    fread(&maxlevel, sizeof(int32_t), 1, fp);
     CvtLongToPc(&maxlevel);
     fclose(fp);
 
