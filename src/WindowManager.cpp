@@ -1063,9 +1063,9 @@ void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit) {
   do {
     WaitNextEvent(everyEvent, &e, 1, NULL);
   } while (
+      e.sdl_window_id != wm.window_for_record(port)->sdl_window_id() ||
       !IsDialogEvent(&e) ||
-      !DialogSelect(&e, &dialog, &item) ||
-      e.sdl_window_id != wm.window_for_record(port)->sdl_window_id());
+      !DialogSelect(&e, &dialog, &item));
 
   *itemHit = item;
 }
