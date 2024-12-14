@@ -45,16 +45,11 @@ void partyselect(short mode) {
   getfilename((Ptr)myString);
   if ((fp = MyrFopen(filename, "rb")) == NULL)
     scratch(130);
-
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-   * NOTE(danapplegate): longs were 32 bits, so long data was serialized as 4 BigEndian
-   * bytes. Deserializing means we should pin the bit size and flip the bytes.
-   */
+   * See note in main.c about sizeof(long) vs. sizeof(int32_t). */
   fread(&reclevel, sizeof(int32_t), 1, fp);
-  fread(&maxlevel, sizeof(int32_t), 1, fp);
-  // fread(&reclevel, sizeof(long), 1, fp);
   CvtLongToPc(&reclevel);
-  // fread(&maxlevel, sizeof(long), 1, fp);
+  fread(&maxlevel, sizeof(int32_t), 1, fp);
   CvtLongToPc(&maxlevel);
   /* *** END CHANGES *** */
 
