@@ -9,7 +9,9 @@ typedef struct {
   char fasttrade, autocash, autojoin, autoid, usedefaultfont, colormenus, showcaste, reducesound, showdescript, quickshow, hidedesktop, manualbandage, showbleedmessage, shownextroundmessage;
   char auto256, iteminfo, autoweapswitch, nomusic, usenpc, castonfriends, allowfumble, allowunique;
   short defaultfont;
-  long serial;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * See note in main.c about sizeof(long) vs. sizeof(int32_t). */
+  int32_t serial;
   Str255 name_str;
   char autonote, portraitchoice, currentscenariohold, blank3;
   short journalindex2, blank5, blank6, blank7, blank8, blank9, blank10;
