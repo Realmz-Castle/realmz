@@ -123,7 +123,6 @@ typedef Handle GammaTblHandle;
 typedef Handle TEHandle;
 typedef Handle CCrsrHandle;
 typedef Handle SndListHandle;
-typedef Ptr ModalFilterProcPtr;
 typedef DialogPtr DialogRef;
 typedef int16_t QDErr;
 typedef BitMap* BitMapPtr;
@@ -163,7 +162,6 @@ GDHandle GetMainDevice(void);
 
 void SysBeep(uint16_t duration);
 #define charCodeMask 0x000000FF
-void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit);
 int16_t TrackControl(ControlHandle theControl, Point thePoint, ProcPtr actionProc);
 void SelectDialogItemText(DialogPtr theDialog, int16_t itemNo, int16_t strtSel, int16_t endSel);
 RgnHandle NewRgn(void);
