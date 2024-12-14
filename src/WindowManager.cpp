@@ -637,6 +637,12 @@ public:
       std::shared_ptr<std::vector<std::shared_ptr<DialogItem>>> dialog_items) {
     CGrafPort port{};
     port.portRect = bounds;
+
+    // Note: Graphics ports should be initialized with txFont = 0, which signifies
+    // the system font, but we don't have that available. Default to Black Chancery
+    // for now.
+    port.txFont = BLACK_CHANCERY_FONT_ID;
+
     CWindowRecord* wr = new CWindowRecord();
     wr->port = port;
     wr->port.portRect = bounds;
