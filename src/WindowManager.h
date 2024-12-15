@@ -10,8 +10,6 @@
 extern "C" {
 #endif // __cplusplus
 
-typedef Ptr ModalFilterProcPtr;
-
 // Macintosh Toolbox Essentials (Introduction to Windows 4-11)
 enum {
   plainDBox = 2,
@@ -71,7 +69,6 @@ void BringToFront(WindowPtr theWindow);
 void ParamText(ConstStr255Param param0, ConstStr255Param param1, ConstStr255Param param2, ConstStr255Param param3);
 void NumToString(int32_t num, Str255 str);
 void StringToNum(ConstStr255Param str, int32_t* num);
-void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit);
 
 #ifdef __cplusplus
 } // extern "C"

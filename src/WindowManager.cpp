@@ -13,7 +13,6 @@
 #include <resource_file/BitmapFontRenderer.hh>
 #include <resource_file/ResourceFile.hh>
 
-#include "EventManager.h"
 #include "FileManager.hpp"
 #include "MemoryManager.h"
 #include "QuickDraw.hpp"
@@ -1049,23 +1048,4 @@ void StringToNum(ConstStr255Param str, int32_t* num) {
       *num = -(*num);
     }
   }
-}
-
-void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit) {
-  EventRecord e;
-  DialogPtr dialog;
-  short item;
-
-  // Retrieve the current window to only process events within that window
-  CGrafPtr port;
-  GetPort(&port);
-
-  do {
-    WaitNextEvent(everyEvent, &e, 1, NULL);
-  } while (
-      e.sdl_window_id != wm.window_for_record(port)->sdl_window_id() ||
-      !IsDialogEvent(&e) ||
-      !DialogSelect(&e, &dialog, &item));
-
-  *itemHit = item;
 }
