@@ -13,6 +13,7 @@
 #include <resource_file/BitmapFontRenderer.hh>
 #include <resource_file/ResourceFile.hh>
 
+#include "EventManager.h"
 #include "FileManager.hpp"
 #include "MemoryManager.h"
 #include "QuickDraw.hpp"
@@ -637,6 +638,12 @@ public:
       std::shared_ptr<std::vector<std::shared_ptr<DialogItem>>> dialog_items) {
     CGrafPort port{};
     port.portRect = bounds;
+
+    // Note: Graphics ports should be initialized with txFont = 0, which signifies
+    // the system font, but we don't have that available. Default to Black Chancery
+    // for now.
+    port.txFont = BLACK_CHANCERY_FONT_ID;
+
     CWindowRecord* wr = new CWindowRecord();
     wr->port = port;
     wr->port.portRect = bounds;
@@ -1042,4 +1049,23 @@ void StringToNum(ConstStr255Param str, int32_t* num) {
       *num = -(*num);
     }
   }
+}
+
+void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit) {
+  EventRecord e;
+  DialogPtr dialog;
+  short item;
+
+  // Retrieve the current window to only process events within that window
+  CGrafPtr port;
+  GetPort(&port);
+
+  do {
+    WaitNextEvent(everyEvent, &e, 1, NULL);
+  } while (
+      e.sdl_window_id != wm.window_for_record(port)->sdl_window_id() ||
+      !IsDialogEvent(&e) ||
+      !DialogSelect(&e, &dialog, &item));
+
+  *itemHit = item;
 }

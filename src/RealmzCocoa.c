@@ -243,9 +243,6 @@ int16_t CountMItems(MenuHandle theMenu) {
   return 0;
 }
 
-void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit) {
-}
-
 void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
     const Rect* dstRect) {
 }

@@ -214,6 +214,7 @@ void TextMode(int16_t mode) {
 }
 
 void TextSize(uint16_t size) {
+  globals->thePort->txSize = size;
 }
 
 void TextFace(int16_t face) {
