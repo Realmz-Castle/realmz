@@ -33,7 +33,12 @@ public:
   }
 
   std::shared_ptr<Menu> get_menu(Handle handle) {
-    return this->handle_to_menu.at(handle);
+    try {
+      return this->handle_to_menu.at(handle);
+    } catch (std::out_of_range e) {
+    }
+
+    return nullptr;
   }
 
   void load_menu_list(Handle mbar_handle) {
@@ -74,6 +79,11 @@ public:
 
   void insert_submenu(MenuHandle handle) {
     auto menu = this->get_menu(handle);
+
+    if (menu == nullptr) {
+      return;
+    }
+
     this->cur_menu_list->submenus.emplace_back(menu);
   }
 
@@ -142,6 +152,11 @@ void InsertMenu(MenuHandle theMenu, int16_t beforeID) {
 
 void GetMenuItemText(MenuHandle theMenu, uint16_t item, Str255 itemString) {
   auto menu = mm.get_menu(theMenu);
+
+  if (menu == nullptr) {
+    return;
+  }
+
   auto menu_item = menu->items[item - 1];
   pstr_for_string<256>(itemString, menu_item.name);
 }
@@ -156,6 +171,11 @@ void DeleteMenu(int16_t menuID) {
 
 void SetMenuItemText(MenuHandle theMenu, uint16_t item, ConstStr255Param itemString) {
   auto menu = mm.get_menu(theMenu);
+
+  if (menu == nullptr) {
+    return;
+  }
+
   if (item > menu->items.size()) {
     mm_log.info("Tried to set text of menu item %d on menu %s but it only has %lu items", item, menu->title.c_str(), menu->items.size());
     return;
@@ -172,6 +192,11 @@ int32_t MenuSelect(Point startPt) {
 
 void DisableItem(MenuHandle theMenu, uint16_t item) {
   auto menu = mm.get_menu(theMenu);
+
+  if (menu == nullptr) {
+    return;
+  }
+
   if (item == 0) {
     menu->enabled = false;
   } else {
@@ -185,6 +210,11 @@ void DisableItem(MenuHandle theMenu, uint16_t item) {
 
 void EnableItem(MenuHandle theMenu, uint16_t item) {
   auto menu = mm.get_menu(theMenu);
+
+  if (menu == nullptr) {
+    return;
+  }
+
   if (item == 0) {
     menu->enabled = true;
   } else {
@@ -198,6 +228,11 @@ void EnableItem(MenuHandle theMenu, uint16_t item) {
 
 void CheckItem(MenuHandle theMenu, uint16_t item, Boolean checked) {
   auto menu = mm.get_menu(theMenu);
+
+  if (menu == nullptr) {
+    return;
+  }
+
   if (item > menu->items.size()) {
     mm_log.warning("Attempted to (un)check MENU:%d item %d, but it doesn't exist", menu->menu_id, item);
   } else {
@@ -207,6 +242,11 @@ void CheckItem(MenuHandle theMenu, uint16_t item, Boolean checked) {
 
 void AppendMenu(MenuHandle menu, ConstStr255Param data) {
   auto m = mm.get_menu(menu);
+
+  if (m == nullptr) {
+    return;
+  }
+
   // TODO: Parse menu item format string (Macintosh Toolbox Essentials, 3-65)
   auto s = string_for_pstr<256>(data);
   auto& item = m->items.emplace_back();
