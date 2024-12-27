@@ -1006,7 +1006,12 @@ void ShowWindow(WindowPtr theWindow) {
 
 void SizeWindow(CWindowPtr theWindow, uint16_t w, uint16_t h, Boolean fUpdate) {
   auto window = wm.window_for_record(theWindow);
-  window->resize(w, h);
+  // Hack: Don't resize the window if it's the main window. This is because SDL
+  // automatically centers windows, and we don't want the window to be
+  // full-screen anyway.
+  if (window->get_dialog_items() != nullptr) {
+    window->resize(w, h);
+  }
 }
 
 DialogPtr GetNewDialog(uint16_t res_id, void* dStorage, WindowPtr behind) {
