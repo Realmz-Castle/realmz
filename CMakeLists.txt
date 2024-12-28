@@ -203,7 +203,7 @@ set_source_files_properties(${RESOURCE_FILES} PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources
 )
 
-# Installed in Contents/Resources/Data\ Files
+# Installed in Contents/Resources/Data Files
 set(DATA_RESOURCE_FILES
     "base/Realmz/Data Files/The Family Jewels.rsrc"
     "base/Realmz/Data Files/Data ID"
@@ -230,6 +230,14 @@ set(DATA_RESOURCE_FILES
 )
 set_source_files_properties(${DATA_RESOURCE_FILES} PROPERTIES
     MACOSX_PACKAGE_LOCATION "Resources/Data\ Files"
+)
+
+# Installed in Contents/Resources/Character Files
+set(CHARACTER_RESOURCE_FILES
+    "base/Realmz/Character Files/Data CD"
+)
+set_source_files_properties(${CHARACTER_RESOURCE_FILES} PROPERTIES
+    MACOSX_PACKAGE_LOCATION "Resources/Character\ Files"
 )
 
 add_executable(Realmz MACOSX_BUNDLE
