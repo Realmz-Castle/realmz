@@ -8,6 +8,11 @@ Myriad 1999 for Fantasoft
 #include "variables.h"
 
 #include "files.h"
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(danapplegate): Realmz calls MyrParamText MyrDrawCString, with string
+ * literals of various lengths, then copies 255 bytes from that location, causing invalid program
+ * memory access. To be safe, we limit the number of bytes copied to the length of the string.
+ */
 
 /***********************************************************************
                                         MyrCopyScreen
@@ -148,13 +153,13 @@ void MyrParamText(Ptr p1, Ptr p2, Ptr p3, Ptr p4) {
   strcpy(c3, (StringPtr) "");
   strcpy(c4, (StringPtr) "");
   if (p1)
-    BlockMove(p1, c1, 255);
+    BlockMove(p1, c1, strlen((const char*)p1) + 1);
   if (p2)
-    BlockMove(p2, c2, 255);
+    BlockMove(p2, c2, strlen((const char*)p2) + 1);
   if (p3)
-    BlockMove(p3, c3, 255);
+    BlockMove(p3, c3, strlen((const char*)p3) + 1);
   if (p4)
-    BlockMove(p4, c4, 255);
+    BlockMove(p4, c4, strlen((const char*)p4) + 1);
   CtoPstr(c1);
   CtoPstr(c2);
   CtoPstr(c3);
@@ -250,7 +255,7 @@ Myriad 6-7-99
 void MyrDrawCString(Ptr strc) {
   char strp[256];
 
-  BlockMove(strc, strp, 255);
+  BlockMove(strc, strp, strlen((const char*)strc) + 1);
   CtoPstr(strp);
   DrawString((StringPtr)strp);
   return;

@@ -630,7 +630,12 @@ void scratch(short location) {
   PtoCstr((StringPtr)registrationname);
   strcat(loc, registrationname);
   CtoPstr(registrationname);
-  CtoPstr(loc);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(danapplegate): MyrParamText expects to operate on cstrings, but here loc is
+   * converted to a pascal string before being passed to it. Removing the CtoPstr call
+   * keeps it a cstring.
+   */
+  // CtoPstr(loc);
 
   sound(10141);
 

@@ -3,14 +3,17 @@
 
 #include "../Types.h"
 
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * long has been replaced by int32_t throughout this file. These structs are used
+ * to load binary data from Realmz's original data files, which were written to disk
+ * from a 32-bit long system.
+ * See note in main.c about sizeof(long) vs. sizeof(int32_t). */
 typedef struct {
   short delayspeed, oldspeed, oldvolume, volume;
   char defaultspell, showcast, usehashmarks, numchannel, lastgame, horseicon, dropitemprotection, forgettreasure;
   char fasttrade, autocash, autojoin, autoid, usedefaultfont, colormenus, showcaste, reducesound, showdescript, quickshow, hidedesktop, manualbandage, showbleedmessage, shownextroundmessage;
   char auto256, iteminfo, autoweapswitch, nomusic, usenpc, castonfriends, allowfumble, allowunique;
   short defaultfont;
-  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-   * See note in main.c about sizeof(long) vs. sizeof(int32_t). */
   int32_t serial;
   Str255 name_str;
   char autonote, portraitchoice, currentscenariohold, blank3;
@@ -19,7 +22,7 @@ typedef struct {
 
 typedef struct {
   short currentscenario;
-  long serial;
+  int32_t serial;
   Str255 codename;
 } DivinePrefRecord, *DivinePrefPtr, **DivinePrefHandle;
 
@@ -44,7 +47,7 @@ struct contactdata {
 };
 
 struct door {
-  long doorid;
+  int32_t doorid;
   char landid;
   char landx, landy;
   char percent;
@@ -66,7 +69,7 @@ struct race {
   char agechange[5][15];
   char canregenerate;
   short defaulticonset;
-  long itemtypes[2];
+  int32_t itemtypes[2];
   short descriptors;
   short spacer[31];
 };
@@ -97,11 +100,11 @@ struct caste {
   short canusemissile, getsmissilebonus;
   short stamina[2], strength[2], dodge[2], tohit[2], missile[2], hand2hand[2], spare1[2], spare2[2];
   short casteclass, minimumagegroup, movebonus, magres, twohand, maxstaminabonus, bonusattacks, maxattacks;
-  long victory[30];
+  int32_t victory[30];
   short startmoney;
   short startitems[20];
   char attacks[10];
-  long itemtypes[2];
+  int32_t itemtypes[2];
   short defaulticon, maxspellsattacks, spellssofar;
   short spacer[63];
 };
@@ -109,7 +112,7 @@ struct caste {
 struct todoque {
   short frommonid, traiter, monsterpostion;
   short doorid;
-  long x, y;
+  int32_t x, y;
 };
 
 struct Player {
@@ -149,7 +152,7 @@ struct monster {
 
 struct note {
   Str255 string;
-  long id;
+  int32_t id;
   Boolean isdung;
   Boolean wasdark;
   short x, y, level;
@@ -251,15 +254,15 @@ struct character {
   short condition[40], special[12], armor[20], spec[15], save[8], currentagegroup, verify2;
   struct item items[30];
   struct scroll scrollcase[5];
-  long age, exp;
+  int32_t age, exp;
   unsigned short load, loadmax, money[3];
   Boolean hasturned, canheal, canidentify, candetect, toggle, bleeding, inbattle;
   char st, in, wi, de, co, lu;
   char cspells[7][12];
   char name[30];
   short verify3;
-  long damagetaken, damagegiven, hitsgiven, hitstaken, imissed, umissed;
-  long kills, deaths, knockouts, spellscast, destroyed, turns, prestigepenelty;
+  int32_t damagetaken, damagegiven, hitsgiven, hitstaken, imissed, umissed;
+  int32_t kills, deaths, knockouts, spellscast, destroyed, turns, prestigepenelty;
   short definespells[10][4], maxspellsattacks, spellsofar;
   char spare[96];
 };
@@ -267,7 +270,7 @@ struct character {
 struct itemattr {
   short st, itemid, iconid, type, blunt, nohands, lu, movement, ac, magres, damage, spellpoints, sound;
   short wieght, cost, charge, iscurse, ismagical;
-  long itemcat[2];
+  int32_t itemcat[2];
   short racerestrictions, casterestrictions, specificrace, specificcaste, raceclassonly, casteclassonly, spare2[7];
   short vssmall, vslarge, heat, cold, electric, vsundead, vsdd, vsevil, sp1, sp2, sp3, sp4, sp5, xcharge, drop;
 };

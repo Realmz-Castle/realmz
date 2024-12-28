@@ -420,6 +420,20 @@ void getpref(void) {
   showserial = serial;
   MyrBitSetLong(&showserial, 6 + divine);
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(danapplegate): To check the registration serial number, Realmz simply tests that the
+   * 6th bit (0-indexed, MSB first) is cleared (See doreg()). So, rather than forcing users to
+   * input a valid serial number, we simply force that bit to be cleared when loading the
+   * saved serial number from disk.
+   *
+   * Realmz also ensures that the Name_String is set to a string at least 3 characters long.
+   * Otherwise, it regenerates a new serial number and sets the 6th bit again. (See main.c:1309)
+   */
+  serial &= ~(1 << (25));
+  strcpy((char*)(Name_String + 1), "you");
+  Name_String[0] = 3;
+  /* *** END CHANGES *** */
+
   CloseResFile(pref_ref_num);
   UseResFile(oldresfile);
 }

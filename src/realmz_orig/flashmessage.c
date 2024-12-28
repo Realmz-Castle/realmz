@@ -13,7 +13,16 @@ void flashmessage(Str255 strc, short x, short y, short duration, short toplay) /
   Rect blit, itemRect;
   char string[255];
 
-  BlockMove(strc, string, 255);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(danaapplegate): Realmz often calls this flashmessage function and passes in
+   * string literals as the strc argument. It then copies 255 bytes from that location
+   * in program memory, regardless of the length of the string. This causes invalid access
+   * to program memory beyond the bounds of the string, and could cause undefined behavior.
+   * For safety here, we limit the number of bytes copied to the length of the string.
+   */
+  // BlockMove(strc, string, 255);
+  BlockMove(strc, string, strlen((const char*)strc) + 1);
+  /* *** END CHANGES *** */
   CtoPstr(string);
 
   blit.top = 0;

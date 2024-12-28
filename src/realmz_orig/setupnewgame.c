@@ -247,10 +247,18 @@ void setupnewgame(void) {
   BackColor(whiteColor);
   ForeColor(blackColor);
 
-#if !development
-  if (!usercheck2())
-    DisableItem(gOptions, 0);
-  else
-    EnableItem(gOptions, 0);
-#endif
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(danapplegate): The gOptions menu resource (MENU 139) is not present in any version
+   * of Realmz that we can find. It's possible that it was present in an early version of
+   * the game, but the resource was removed before release and this code was not removed.
+   * Rather than force our implementation of Menu Manager to handle this NULL case, we've
+   * opted to remove any callsites which pass gOptions as a parameter.
+   */
+  // #if !development
+  // if (!usercheck2())
+  //   DisableItem(gOptions, 0);
+  // else
+  //   EnableItem(gOptions, 0);
+  // #endif
+  /* *** END CHANGES *** */
 }
