@@ -636,17 +636,24 @@ public:
       int16_t proc_id,
       uint32_t ref_con,
       std::shared_ptr<std::vector<std::shared_ptr<DialogItem>>> dialog_items) {
+    CGrafPtr current_port;
+    GetPort(reinterpret_cast<GrafPtr*>(&current_port));
+
     CGrafPort port{};
     port.portRect = bounds;
-
-    // Note: Graphics ports should be initialized with txFont = 0, which signifies
-    // the system font, but we don't have that available. Default to Black Chancery
-    // for now.
-    port.txFont = BLACK_CHANCERY_FONT_ID;
 
     CWindowRecord* wr = new CWindowRecord();
     wr->port = port;
     wr->port.portRect = bounds;
+    wr->port.txFont = current_port->txFont;
+    wr->port.txFace = current_port->txFace;
+    wr->port.txMode = current_port->txMode;
+    wr->port.txSize = current_port->txSize;
+
+    wr->port.fgColor = current_port->fgColor;
+    wr->port.bgColor = current_port->bgColor;
+    wr->port.rgbFgColor = current_port->rgbFgColor;
+    wr->port.rgbBgColor = current_port->rgbBgColor;
 
     // Note: Realmz doesn't actually use any of the following fields; we also
     // don't use numItems and dItems internally here (we instead use the vector
