@@ -274,6 +274,37 @@ public:
     dialog_items_by_opaque_handle.erase(handle);
   }
 
+  std::string str() const {
+    static const std::unordered_map<DialogItemType, const char*> type_strs{
+        {DialogItemType::BUTTON, "BUTTON"},
+        {DialogItemType::CHECKBOX, "CHECKBOX"},
+        {DialogItemType::RADIO_BUTTON, "RADIO_BUTTON"},
+        {DialogItemType::RESOURCE_CONTROL, "RESOURCE_CONTROL"},
+        {DialogItemType::HELP_BALLOON, "HELP_BALLOON"},
+        {DialogItemType::TEXT, "TEXT"},
+        {DialogItemType::EDIT_TEXT, "EDIT_TEXT"},
+        {DialogItemType::ICON, "ICON"},
+        {DialogItemType::PICTURE, "PICTURE"},
+        {DialogItemType::CUSTOM, "CUSTOM"},
+        {DialogItemType::UNKNOWN, "UNKNOWN"},
+    };
+    auto text_str = phosg::format_data_string(this->text);
+    return phosg::string_printf(
+        "DialogItem(ditl_resource_id=%hd, item_id=%zu, type=%s, resource_id=%hd, rect=Rect(left=%hd, top=%hd, right=%hd, bottom=%hd), enabled=%s, handle=%zu, dirty=%s, text=%s)",
+        this->ditl_resource_id,
+        this->item_id,
+        type_strs.at(this->type),
+        this->resource_id,
+        this->rect.left,
+        this->rect.top,
+        this->rect.right,
+        this->rect.bottom,
+        this->enabled ? "true" : "false",
+        this->handle,
+        this->dirty ? "true" : "false",
+        text_str.c_str());
+  }
+
   void update() {
     if (!sdlTexture) {
       sdlTexture = SDL_CreateTexture(sdlRenderer.get(), SDL_PIXELFORMAT_RGBA32,
@@ -611,6 +642,19 @@ public:
     return this->dialogItems;
   }
 
+  std::shared_ptr<DialogItem> dialog_item_for_position(const Point& pt, bool enabled_only) {
+    auto items = this->get_dialog_items();
+    if (items) {
+      for (size_t z = 0; z < items->size(); z++) {
+        const auto item = items->at(z);
+        if ((!enabled_only || item->enabled) && PtInRect(pt, &item->rect)) {
+          return item;
+        }
+      }
+    }
+    return nullptr;
+  }
+
 private:
   std::string title;
   Rect bounds;
@@ -934,20 +978,91 @@ Boolean IsDialogEvent(const EventRecord* ev) {
 }
 
 Boolean DialogSelect(const EventRecord* ev, DialogPtr* dialog, short* item_hit) {
-  try {
-    auto window = wm.window_for_sdl_window_id(ev->sdl_window_id);
-    auto items = window->get_dialog_items();
-    if (!items) {
-      throw std::logic_error("DialogSelect called on non-dialog window");
+  // Inside Macintosh: Toolbox Essentials describes the behavior as such:
+  // (from https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-428.html):
+  // 1. In response to an activate or update event for the dialog box,
+  //    DialogSelect activates or updates its window and returns FALSE.
+  // 2. If a key-down event or an auto-key event occurs and there's an editable
+  //    text item in the dialog box, DialogSelect uses TextEdit to handle text
+  //    entry and editing, and DialogSelect returns TRUE for a function result.
+  //    In its itemHit parameter, DialogSelect returns the item number.
+  // 3. If a key-down event or an auto-key event occurs and there's no editable
+  //    text item in the dialog box, DialogSelect returns FALSE.
+  // 4. If the user presses the mouse button while the cursor is in an editable
+  //    text item, DialogSelect responds to the mouse activity as appropriate;
+  //    that is, either by displaying an insertion point or by selecting text.
+  //    If the editable text item is disabled, DialogSelect returns FALSE. If
+  //    the editable text item is enabled, DialogSelect returns TRUE and in its
+  //    itemHit parameter returns the item number. Normally, editable text
+  //    items are disabled, and you use the GetDialogItemText function to read
+  //    the information in the items only after the OK button is clicked.
+  // 5. If the user presses the mouse button while the cursor is in a control,
+  //    DialogSelect calls the Control Manager function TrackControl. If the
+  //    user releases the mouse button while the cursor is in an enabled
+  //    control, DialogSelect returns TRUE for a function result and in its
+  //    itemHit parameter returns the control's item number. Your application
+  //    should respond appropriately--for example, by performing a command
+  //    after the user clicks the OK button.
+  // 6. If the user presses the mouse button while the cursor is in any other
+  //    enabled item in the dialog box, DialogSelect returns TRUE for a
+  //    function result and in its itemHit parameter returns the item's number.
+  //    Generally, only controls should be enabled. If your application creates
+  //    a complex control, such as one that measures how far a dial is moved,
+  //    your application must handle mouse events in that item before passing
+  //    the event to DialogSelect.
+  // 7. If the user presses the mouse button while the cursor is in a disabled
+  //    item, or if it is in no item, or if any other event occurs,
+  //    DialogSelect does nothing.
+  // 8. If the event isn't one that DialogSelect specifically checks for (if
+  //    it's a null event, for example), and if there's an editable text item
+  //    in the dialog box, DialogSelect calls the TextEdit procedure TEIdle to
+  //    make the insertion point blink.
+
+  // The above is a lot of logic! Fortunately, we don't have to implement some
+  // of it. (1) is not necessary because SDL handles activeness and updates,
+  // and we hide all that from Realmz. (2) is not implemented yet but will
+  // likely also be handled by SDL, so for key-down events we can just always
+  // return false, which takes care of (3). We may have to implement (4) to
+  // activate SDL edit controls when the user clicks them (TODO). We may also
+  // have to implement (5) later on. (6) is implemented; Realmz uses it for a
+  // lot of interactions. (7) and (8) don't do anything, so they're technically
+  // implemented as well.
+
+  // Before any of the expected logic, we implement a debugging feature: the
+  // backslash key prints information about the dialog item that the user is
+  // hovering over to stderr.
+  if ((ev->what == keyDown) && ((ev->message & 0xFF) == static_cast<uint8_t>('\\'))) {
+    try {
+      auto window = wm.window_for_sdl_window_id(ev->sdl_window_id);
+      auto items = window->get_dialog_items();
+      if (items) {
+        fprintf(stderr, "Dialog items at (%hu, %hu):\n", ev->where.h, ev->where.v);
+        for (size_t z = 0; z < items->size(); z++) {
+          const auto item = items->at(z);
+          if (PtInRect(ev->where, &item->rect)) {
+            auto s = item->str();
+            std::string processed_text_str = phosg::format_data_string(replace_param_text(item->get_text()));
+            fprintf(stderr, "%s (processed_text=%s)\n", s.c_str(), processed_text_str.c_str());
+          }
+        }
+      } else {
+        fprintf(stderr, "Current window does not have dialog items\n");
+      }
+    } catch (const std::out_of_range&) {
     }
-    for (size_t z = 0; z < items->size(); z++) {
-      const auto item = items->at(z);
-      if (item->enabled && PtInRect(ev->where, &item->rect)) {
+  }
+
+  // Handle case (6) described above
+  if (ev->what == mouseDown) {
+    try {
+      auto window = wm.window_for_sdl_window_id(ev->sdl_window_id);
+      auto item = window->dialog_item_for_position(ev->where, true);
+      if (item) {
         *item_hit = item->item_id;
         return true;
       }
+    } catch (const std::out_of_range&) {
     }
-  } catch (const std::out_of_range&) {
   }
   return false;
 }
