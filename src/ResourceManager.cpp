@@ -2,11 +2,13 @@
 #include <deque>
 #include <filesystem>
 #include <memory>
+#include <stddef.h>
 
 #include "FileManager.hpp"
 #include "MemoryManager.hpp"
 #include "ResourceManager.h"
 #include "StringConvert.hpp"
+#include "structs.h"
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
 #include <resource_file/IndexFormats/Formats.hh>
@@ -547,6 +549,25 @@ Handle Get1Resource(ResType type, int16_t id) {
   auto res = rm.current_file()->get_resource(type, id);
   if (res != nullptr) {
     resError = noErr;
+
+    // The default PRFN resource included with Realmz is 64 bytes long. Its data handle is cast
+    // to PrefHandle in pref.c, so that it can be accessed as a PrefRecord struct. However,
+    // the name_str member of that struct is a Pascal-style string. This means that, in the
+    // resource file, it is serialized as a variable length data type. Specifically, it
+    // appears as just two bytes in the resource file, a 1 and the ASCII character '0'.
+    // In the definition of the PrefRecord struct, though, we use a fixed-length char[255] type
+    // to hold the name_str field. This means that, when Realmz casts the 64 byte long data handle
+    // to a PrefHandle and tries to access any of its members beyond the first byte of name_str, a
+    // heap overflow access error occurs. To avoid this, we resize the data handle.
+    if (type == 'PRFN' && id == 128 /* PREF_RES_ID */) {
+      auto pref_handle = (PrefHandle)NewHandleClear(sizeof(PrefRecord));
+      memcpy(*pref_handle, *res->data_handle, 45);
+      size_t name_str_size = (size_t) * (*res->data_handle + 44);
+      memcpy((*pref_handle) + offsetof(PrefRecord, name_str) + 1, *res->data_handle + 45, name_str_size);
+      memcpy(*pref_handle + offsetof(PrefRecord, autonote), *res->data_handle + 45 + name_str_size, 18);
+      ReplaceHandle(res->data_handle, (Handle)pref_handle);
+    }
+
     return res->data_handle;
   }
 
