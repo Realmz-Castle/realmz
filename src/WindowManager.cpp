@@ -406,23 +406,6 @@ public:
         break;
       }
       case ResourceFile::DecodedDialogItem::Type::EDIT_TEXT: {
-        // Macintosh Toolbox Essentials 6-32
-        SDL_Rect r{rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top};
-        if (!SDL_SetTextInputArea(sdlWindow.get(), &r, 0)) {
-          wm_log.error("Could not create text area: %s", SDL_GetError());
-        }
-
-        SDL_PropertiesID props = SDL_CreateProperties();
-        SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, false);
-        SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, false);
-        SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_NONE);
-
-        if (!SDL_StartTextInputWithProperties(sdlWindow.get(), props)) {
-          wm_log.error("Could not start text input: %s", SDL_GetError());
-        }
-
-        SDL_DestroyProperties(props);
-
         if (!draw_text(
                 sdlRenderer,
                 text,
@@ -559,12 +542,41 @@ public:
         } else {
           renderableItems.emplace_back(di);
         }
+
+        if (di->type == DialogItemType::EDIT_TEXT && !text_editing_active) {
+          SDL_Rect r{
+              di->rect.left,
+              di->rect.top,
+              di->rect.right - di->rect.left,
+              di->rect.bottom - di->rect.top};
+          init_text_editing(r);
+        }
       }
     }
 
     SDL_SetRenderTarget(sdlRenderer.get(), sdlTexture);
     SDL_RenderClear(sdlRenderer.get());
     SDL_SetRenderTarget(sdlRenderer.get(), NULL);
+  }
+
+  void init_text_editing(SDL_Rect r) {
+    // Macintosh Toolbox Essentials 6-32
+    if (!SDL_SetTextInputArea(sdlWindow, &r, 0)) {
+      wm_log.error("Could not create text area: %s", SDL_GetError());
+    }
+
+    SDL_PropertiesID props = SDL_CreateProperties();
+    SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, false);
+    SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, false);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_NONE);
+
+    if (!SDL_StartTextInputWithProperties(sdlWindow, props)) {
+      wm_log.error("Could not start text input: %s", SDL_GetError());
+    }
+
+    SDL_DestroyProperties(props);
+
+    text_editing_active = true;
   }
 
   ~Window() {
@@ -796,6 +808,7 @@ private:
   std::vector<std::shared_ptr<DialogItem>> textItems;
   std::shared_ptr<DialogItem> focusedItem;
   SDL_Texture* sdlTexture; // Use a texture to hold the window's rendered base canvas
+  bool text_editing_active;
 };
 
 class WindowManager {
