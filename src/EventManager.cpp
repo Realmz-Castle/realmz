@@ -71,7 +71,7 @@ static const std::unordered_map<SDL_Keycode, uint16_t> mac_vk_code_for_sdl_keyco
     {SDLK_UNDERSCORE, 0x1B},
     {SDLK_EQUALS, 0x18},
     {SDLK_PLUS, 0x18},
-    {SDLK_BACKSPACE, 0x33},
+    {SDLK_BACKSPACE, MAC_VK_BACKSPACE},
     {SDLK_INSERT, 0x72},
     {SDLK_HELP, 0x72},
     {SDLK_HOME, 0x73},
@@ -264,6 +264,10 @@ static uint32_t mac_message_for_sdl_key_code(SDL_Keycode key, uint16_t modifier_
   size_t table_index = kchr_0_modifiers_table[(modifier_flags >> 8) & 0xFF];
   uint8_t char_code = kchr_0_tables.at(table_index).at(virtual_keycode);
   return (virtual_keycode << 8) | char_code;
+}
+
+uint8_t mac_vk_from_message(uint32_t message) {
+  return (uint8_t)(message >> 8);
 }
 
 class EventManager {

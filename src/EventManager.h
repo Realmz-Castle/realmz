@@ -30,6 +30,8 @@ enum {
 #define inSysWindow 2
 #define inContent 3
 
+#define MAC_VK_BACKSPACE 0x33
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -70,6 +72,8 @@ typedef struct {
   uint32_t sdl_window_id;
   char* text;
 } EventRecord;
+
+uint8_t mac_vk_from_message(uint32_t message);
 
 uint32_t TickCount(void);
 uint32_t GetDblTime(void);

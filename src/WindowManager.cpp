@@ -485,11 +485,6 @@ public:
     dirty = true;
   }
 
-  void append_text(std::string&& new_text) {
-    text += std::move(new_text);
-    dirty = true;
-  }
-
   void delete_char() {
     if (text.size()) {
       text.pop_back();
@@ -1189,7 +1184,7 @@ Boolean DialogSelect(const EventRecord* ev, DialogPtr* dialog, short* item_hit) 
   }
 
   // Backspace
-  if (ev->what == keyDown && (ev->message & 0x33)) {
+  if (ev->what == keyDown && (mac_vk_from_message(ev->message) == MAC_VK_BACKSPACE)) {
     auto window = wm.window_for_sdl_window_id(ev->sdl_window_id);
 
     auto item = window->get_focused_item();
