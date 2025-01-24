@@ -198,6 +198,8 @@ set(RESOURCE_FILES
     bundle/AppIcon.icns
     "resources/Black Chancery.ttf"
     "resources/Black Chancery Bold.ttf"
+    "resources/Geneva.ttf"
+    "resources/Chicago.ttf"
 )
 set_source_files_properties(${RESOURCE_FILES} PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources
