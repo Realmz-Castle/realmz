@@ -28,7 +28,6 @@ find_package(SDL3_image REQUIRED)
 # Executable definition
 set(SOURCES
     src/realmz_orig/Display.c
-    src/realmz_orig/DrawString.c
     src/realmz_orig/GWorldInit.c
     src/realmz_orig/GetVersStr.c
     src/realmz_orig/MacrocosmMain.c
