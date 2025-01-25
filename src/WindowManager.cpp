@@ -1400,6 +1400,14 @@ CWindowPtr GetNewCWindow(int16_t res_id, void* wStorage, WindowPtr behind) {
   return WindowManager_CreateNewWindow(res_id, false, behind);
 }
 
+void DisposeDialog(DialogPtr theDialog) {
+  WindowManager_DisposeWindow(theDialog);
+}
+
+void DrawDialog(DialogPtr theDialog) {
+  WindowManager_DrawDialog(theDialog);
+}
+
 void ParamText(ConstStr255Param param0, ConstStr255Param param1, ConstStr255Param param2, ConstStr255Param param3) {
   param_text_entries[0] = string_for_pstr<256>(param0);
   param_text_entries[1] = string_for_pstr<256>(param1);

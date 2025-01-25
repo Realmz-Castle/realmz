@@ -73,6 +73,8 @@ void NumToString(int32_t num, Str255 str);
 void StringToNum(ConstStr255Param str, int32_t* num);
 void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit);
 void DrawString(ConstStr255Param s);
+void DrawDialog(DialogPtr theDialog);
+void DisposeDialog(DialogPtr theDialog);
 
 #ifdef __cplusplus
 } // extern "C"

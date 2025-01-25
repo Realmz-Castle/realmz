@@ -169,7 +169,6 @@ void RectRgn(RgnHandle rgn, const Rect* r);
 int32_t DragGrayRgn(RgnHandle theRgn, Point startPt, const Rect* boundsRect, const Rect* slopRect,
     int16_t axis, Ptr actionProc);
 void SystemTask(void);
-void DisposeDialog(DialogPtr theDialog);
 void ExitToShell(void);
 OSErr SetDepth(GDHandle aDevice, uint16_t depth, uint16_t whichFlags, uint16_t flags);
 OSErr GetDefaultOutputVolume(uint32_t* level);
@@ -183,7 +182,6 @@ void TextFont(uint16_t font);
 int32_t MenuKey(int16_t ch);
 void HiliteMenu(int16_t menuID);
 int16_t FindWindow(Point thePoint, WindowPtr* theWindow);
-void DrawDialog(DialogPtr theDialog);
 void TextSize(uint16_t size);
 GDHandle GetGDevice(void);
 void SetRect(Rect* r, uint16_t left, uint16_t top, uint16_t right, uint16_t bottom);

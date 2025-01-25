@@ -50,14 +50,6 @@ void GetSoundVol(short* x) {
   *x = v >> 16;
 }
 
-void DisposeDialog(DialogPtr theDialog) {
-  WindowManager_DisposeWindow(theDialog);
-}
-
-void DrawDialog(DialogPtr theDialog) {
-  WindowManager_DrawDialog(theDialog);
-}
-
 void EraseRect(const Rect* r) {
 }
 
