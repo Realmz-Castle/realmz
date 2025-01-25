@@ -276,7 +276,13 @@ int draw_text(std::shared_ptr<SDL_Renderer> sdlRenderer, const std::string& text
 
     // The pen location, passed in as the x and y parameters, is at the baseline of the text, to
     // the left. So, we need to account for this in our display rect.
-    Rect r{static_cast<int16_t>(y - h), x, static_cast<int16_t>(y + h), static_cast<int16_t>(x + w)};
+    // Descent is a negative number, representing the pixels below the baseline the text may extend.
+    auto descent = TTF_GetFontDescent(tt_font);
+    Rect r{
+        static_cast<int16_t>(y - h - descent),
+        x,
+        static_cast<int16_t>(y - descent),
+        static_cast<int16_t>(x + w)};
     TTF_DestroyText(t);
     if (!draw_text_ttf(sdlRenderer, tt_font, processed_text, r)) {
       return -1;
