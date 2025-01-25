@@ -723,12 +723,12 @@ public:
 
   void handle_text_input(const std::string& text, std::shared_ptr<DialogItem> item) {
     item->append_text(text);
-    render();
+    render(true);
   }
 
   void delete_char(std::shared_ptr<DialogItem> item) {
     item->delete_char();
-    render();
+    render(true);
   }
 
   void sync() {
@@ -764,7 +764,7 @@ public:
     }
   }
 
-  void render() {
+  void render(bool renderDialogItems = true) {
     if (!cWindowRecord.visible) {
       return;
     }
@@ -797,7 +797,7 @@ public:
     // update all static and editable text items and to draw their display rectangles. The
     // DrawDialog procedure also calls the application-defined items’ draw procedures if
     // the items’ rectangles are within the update region.
-    if (dialogItems) {
+    if (dialogItems && renderDialogItems) {
       for (auto item : renderableItems) {
         item->render();
         // DEBUG
@@ -839,7 +839,7 @@ public:
 
   void show() {
     cWindowRecord.visible = true;
-    render();
+    render(false);
     SDL_ShowWindow(sdlWindow);
   }
 
@@ -931,7 +931,9 @@ public:
     record_to_window.emplace(&wr->port, window);
     sdl_window_id_to_window.emplace(window->sdl_window_id(), window);
 
-    window->render();
+    if (wr->visible) {
+      window->render(false);
+    }
 
     return &wr->port;
   }
@@ -1104,7 +1106,7 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
   CWindowRecord* const windowRecord = reinterpret_cast<CWindowRecord*>(theWindow);
   auto window = wm.window_for_record(theWindow);
 
-  window->render();
+  window->render(true);
 }
 
 void WindowManager_DisposeWindow(WindowPtr theWindow) {
@@ -1182,7 +1184,7 @@ void SetDialogItemText(Handle item_handle, ConstStr255Param text) {
   auto item = dialog_items_by_opaque_handle.at(handle);
   item->set_text(string_for_pstr<256>(text));
   auto window = item->window.lock();
-  window->render();
+  window->render(true);
 }
 
 int16_t StringWidth(ConstStr255Param s) {
