@@ -3,6 +3,7 @@
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_properties.h>
 #include <memory>
+#include <variant>
 #include <vector>
 
 #include <SDL3/SDL.h>
@@ -25,6 +26,8 @@
 #include "StringConvert.hpp"
 
 #define BLACK_CHANCERY_FONT_ID 1602
+#define GENEVA_FONT_ID 0
+#define CHICAGO_FONT_ID 1
 
 using ResourceDASM::ResourceFile;
 
@@ -41,6 +44,7 @@ std::unique_ptr<SDL_Texture, void (*)(SDL_Texture*)> sdl_make_unique(SDL_Texture
   return std::unique_ptr<SDL_Texture, void (*)(SDL_Texture*)>(t, SDL_DestroyTexture);
 }
 
+typedef std::variant<TTF_Font*, ResourceDASM::BitmapFontRenderer> Font;
 typedef size_t DialogItemHandle;
 static std::unordered_map<DialogItemHandle, std::shared_ptr<DialogItem>> dialog_items_by_opaque_handle;
 
@@ -205,38 +209,84 @@ bool draw_text_bitmap(
   }
 }
 
-bool draw_text(std::shared_ptr<SDL_Renderer> sdlRenderer, const std::string& text, const Rect& dispRect, int16_t font_id) {
-  std::string processed_text = replace_param_text(text);
-
-  // Try to render with a TrueType font first; if it's not available, use a
-  // bitmapped font instead.
-
-  TTF_Font* tt_font = nullptr;
+// Tries to load a TrueType font first; if it's not available, use a
+// bitmapped font instead.
+bool load_font(int16_t font_id, Font& font) {
   try {
-    tt_font = tt_fonts_by_id.at(font_id);
+    font = tt_fonts_by_id.at(font_id);
+    return true;
   } catch (const std::out_of_range&) {
-    wm_log.error("Could not load font id %d", font_id);
-  }
-  if (tt_font != nullptr) {
-    return draw_text_ttf(sdlRenderer, tt_font, processed_text, dispRect);
   }
 
-  const ResourceDASM::BitmapFontRenderer* bm_renderer = nullptr;
   try {
-    bm_renderer = &bm_renderers_by_id.at(font_id);
+    font = bm_renderers_by_id.at(font_id);
+    return true;
   } catch (const std::out_of_range&) {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_FONT, font_id);
     auto decoded = std::make_shared<ResourceDASM::ResourceFile::DecodedFontResource>(
         ResourceDASM::ResourceFile::decode_FONT_only(*data_handle, GetHandleSize(data_handle)));
-    bm_renderer = &bm_renderers_by_id.emplace(font_id, decoded).first->second;
+    font = bm_renderers_by_id.emplace(font_id, decoded).first->second;
   }
 
-  if (bm_renderer) {
-    return draw_text_bitmap(sdlRenderer, *bm_renderer, processed_text, dispRect);
+  return true;
+}
+
+bool draw_text(std::shared_ptr<SDL_Renderer> sdlRenderer, const std::string& text, const Rect& dispRect, int16_t font_id) {
+  std::string processed_text = replace_param_text(text);
+
+  Font font{};
+
+  bool success = load_font(font_id, font);
+
+  if (!success) {
+    return false;
+  }
+
+  if (std::holds_alternative<TTF_Font*>(font)) {
+    return draw_text_ttf(sdlRenderer, std::get<TTF_Font*>(font), processed_text, dispRect);
+  } else {
+    return draw_text_bitmap(sdlRenderer, std::get<ResourceDASM::BitmapFontRenderer>(font), processed_text, dispRect);
   }
 
   wm_log.error("No renderer is available for font %hd; cannot render text \"%s\"", font_id, text.c_str());
   return false;
+}
+
+// Draws the specified text when the display bounds are unknown. Returns the width of
+// the rendered text in pixels.
+int draw_text(std::shared_ptr<SDL_Renderer> sdlRenderer, const std::string& text, int16_t x, int16_t y, int16_t font_id) {
+  std::string processed_text = replace_param_text(text);
+
+  Font font{};
+
+  bool success = load_font(font_id, font);
+
+  if (!success) {
+    return -1;
+  }
+
+  if (std::holds_alternative<TTF_Font*>(font)) {
+    TTF_Font* tt_font = std::get<TTF_Font*>(font);
+    TTF_Text* t = TTF_CreateText(NULL, tt_font, processed_text.c_str(), 0);
+    int w{0}, h{0};
+    TTF_GetTextSize(t, &w, &h);
+
+    // The pen location, passed in as the x and y parameters, is at the baseline of the text, to
+    // the left. So, we need to account for this in our display rect.
+    Rect r{static_cast<int16_t>(y - h), x, static_cast<int16_t>(y + h), static_cast<int16_t>(x + w)};
+    TTF_DestroyText(t);
+    if (!draw_text_ttf(sdlRenderer, tt_font, processed_text, r)) {
+      return -1;
+    }
+    return w;
+  } else {
+    // TODO: Implement text measuring for bitmap fonts
+    wm_log.error("Rendering bitmap text with unknown dimensions is not supported");
+    return -1;
+  }
+
+  wm_log.error("No renderer is available for font %hd; cannot render text \"%s\"", font_id, text.c_str());
+  return -1;
 }
 
 class WindowManager;
@@ -638,6 +688,23 @@ public:
     SDL_SetRenderTarget(sdlRenderer.get(), NULL);
   }
 
+  // Draws the specified text at the current pen location and with the current
+  // font characteristics stored in the window's port
+  void draw_text(const std::string& text) {
+    CGrafPtr port{};
+    GetPort(&port);
+    auto pen_loc = port->pnLoc;
+    auto font_id = port->txFont;
+
+    SDL_SetRenderTarget(sdlRenderer.get(), sdlTexture);
+
+    int width = ::draw_text(sdlRenderer, text, pen_loc.h, pen_loc.v, font_id);
+    port->pnLoc.h += width;
+
+    // Restore window as the render target
+    SDL_SetRenderTarget(sdlRenderer.get(), NULL);
+  }
+
   std::shared_ptr<DialogItem> get_focused_item() {
     return focusedItem;
   }
@@ -973,6 +1040,10 @@ void WindowManager_Init(void) {
   // TODO: Is 1602 the correct font ID for Black Chancery?
   auto font_filename = host_filename_for_mac_filename(":Black Chancery.ttf", true);
   tt_fonts_by_id[BLACK_CHANCERY_FONT_ID] = TTF_OpenFont(font_filename.c_str(), 16);
+  font_filename = host_filename_for_mac_filename(":Geneva.ttf", true);
+  tt_fonts_by_id[GENEVA_FONT_ID] = TTF_OpenFont(font_filename.c_str(), 16);
+  font_filename = host_filename_for_mac_filename(":Chicago.ttf", true);
+  tt_fonts_by_id[CHICAGO_FONT_ID] = TTF_OpenFont(font_filename.c_str(), 16);
 }
 
 WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPtr behind) {
@@ -1380,4 +1451,16 @@ void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit) {
       !DialogSelect(&e, &dialog, &item));
 
   *itemHit = item;
+}
+
+void DrawString(ConstStr255Param s) {
+  CGrafPtr port;
+  GetPort(&port);
+
+  auto window = wm.window_for_record(port);
+
+  auto str = string_for_pstr<255>(s);
+
+  window->draw_text(str);
+  window->render();
 }

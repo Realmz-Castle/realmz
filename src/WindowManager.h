@@ -72,6 +72,7 @@ void ParamText(ConstStr255Param param0, ConstStr255Param param1, ConstStr255Para
 void NumToString(int32_t num, Str255 str);
 void StringToNum(ConstStr255Param str, int32_t* num);
 void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit);
+void DrawString(ConstStr255Param s);
 
 #ifdef __cplusplus
 } // extern "C"

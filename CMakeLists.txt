@@ -28,7 +28,6 @@ find_package(SDL3_image REQUIRED)
 # Executable definition
 set(SOURCES
     src/realmz_orig/Display.c
-    src/realmz_orig/DrawString.c
     src/realmz_orig/GWorldInit.c
     src/realmz_orig/GetVersStr.c
     src/realmz_orig/MacrocosmMain.c
@@ -199,6 +198,8 @@ set(RESOURCE_FILES
     bundle/AppIcon.icns
     "resources/Black Chancery.ttf"
     "resources/Black Chancery Bold.ttf"
+    "resources/Geneva.ttf"
+    "resources/Chicago.ttf"
 )
 set_source_files_properties(${RESOURCE_FILES} PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources

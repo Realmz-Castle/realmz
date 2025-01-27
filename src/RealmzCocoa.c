@@ -58,9 +58,6 @@ void DrawDialog(DialogPtr theDialog) {
   WindowManager_DrawDialog(theDialog);
 }
 
-void DrawString(ConstStr255Param s) {
-}
-
 void EraseRect(const Rect* r) {
 }
 
