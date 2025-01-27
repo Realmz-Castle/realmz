@@ -40,10 +40,6 @@ void ErasePortRect(void) {
   // no-op
 }
 
-void GetControlBounds(ControlHandle ctrl, Rect* rect) {
-  *rect = (**ctrl).contrlRect;
-}
-
 void GetSoundVol(short* x) {
   uint32_t v;
   GetDefaultOutputVolume(&v);
@@ -129,39 +125,13 @@ void DisposeWindow(WindowPtr theWindow) {
   WindowManager_DisposeWindow(theWindow);
 }
 
-ControlHandle GetNewControl(int16_t controlID, WindowPtr owner) {
-  return NULL;
-}
-
-void MoveControl(ControlHandle theControl, int16_t h, int16_t v) {
-}
-
 void BringToFront(WindowPtr theWindow) {
 }
 
 void PenMode(int16_t mode) {
 }
 
-int16_t GetControlValue(ControlHandle theControl) {
-  return 0;
-}
-
-int16_t GetControlMinimum(ControlHandle theControl) {
-  return 0;
-}
-
-int16_t GetControlMaximum(ControlHandle theControl) {
-  return 0;
-}
-
 void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn) {
-}
-
-int16_t TrackControl(ControlHandle theControl, Point thePoint, ProcPtr actionProc) {
-  return 0;
-}
-
-void SetControlValue(ControlHandle theControl, int16_t theValue) {
 }
 
 void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
@@ -191,10 +161,6 @@ void LocalToGlobal(Point* pt) {
 }
 
 void GlobalToLocal(Point* pt) {
-}
-
-int16_t FindControl(Point thePoint, WindowPtr theWindow, ControlHandle* theControl) {
-  return 0;
 }
 
 int16_t OpenDeskAcc(ConstStr255Param deskAccName) {
@@ -290,18 +256,6 @@ Boolean SectRect(const Rect* src1, const Rect* src2, Rect* dstRect) {
 void FrameOval(const Rect* r) {
 }
 
-void HideControl(ControlHandle theControl) {
-}
-
-void ShowControl(ControlHandle theControl) {
-}
-
-void SetControlMaximum(ControlHandle theControl, int16_t maxValue) {
-}
-
-void SizeControl(ControlHandle theControl, int16_t w, int16_t h) {
-}
-
 int32_t DeltaPoint(Point ptA, Point ptB) {
   return 0;
 }
@@ -351,9 +305,6 @@ void SFGetFile(Point where, const Str255 prompt, Ptr fileFilter, int16_t numType
     Ptr dlgHook, SFReply* reply) {
 }
 
-void DrawControls(WindowPtr theWindow) {
-}
-
 TEHandle TEStyleNew(const Rect* destRect, const Rect* viewRect) {
   return NULL;
 }
@@ -375,11 +326,6 @@ void SFPutFile(Point where, const Str255 prompt, const Str255 origName, Ptr dlgH
 
 OSErr GetProcessInformation(const ProcessSerialNumber* PSN, ProcessInfoRecPtr info) {
   return 0;
-}
-
-ControlHandle NewControl(WindowPtr theWindow, const Rect* boundsRect, ConstStr255Param title, Boolean visible,
-    int16_t value, int16_t min, int16_t max, int16_t procID, int32_t refCon) {
-  return NULL;
 }
 
 void HideCursor(void) {
