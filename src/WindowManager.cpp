@@ -3,6 +3,7 @@
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_properties.h>
 #include <memory>
+#include <variant>
 #include <vector>
 
 #include <SDL3/SDL.h>
@@ -43,6 +44,7 @@ std::unique_ptr<SDL_Texture, void (*)(SDL_Texture*)> sdl_make_unique(SDL_Texture
   return std::unique_ptr<SDL_Texture, void (*)(SDL_Texture*)>(t, SDL_DestroyTexture);
 }
 
+typedef std::variant<TTF_Font*, ResourceDASM::BitmapFontRenderer> Font;
 typedef size_t DialogItemHandle;
 static std::unordered_map<DialogItemHandle, std::shared_ptr<DialogItem>> dialog_items_by_opaque_handle;
 
@@ -209,21 +211,21 @@ bool draw_text_bitmap(
 
 // Tries to load a TrueType font first; if it's not available, use a
 // bitmapped font instead.
-bool load_font(int16_t font_id, TTF_Font** ttf_font_handle, ResourceDASM::BitmapFontRenderer** bm_font_handle) {
+bool load_font(int16_t font_id, Font& font) {
   try {
-    *ttf_font_handle = tt_fonts_by_id.at(font_id);
+    font = tt_fonts_by_id.at(font_id);
     return true;
   } catch (const std::out_of_range&) {
   }
 
   try {
-    *bm_font_handle = &bm_renderers_by_id.at(font_id);
+    font = bm_renderers_by_id.at(font_id);
     return true;
   } catch (const std::out_of_range&) {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_FONT, font_id);
     auto decoded = std::make_shared<ResourceDASM::ResourceFile::DecodedFontResource>(
         ResourceDASM::ResourceFile::decode_FONT_only(*data_handle, GetHandleSize(data_handle)));
-    *bm_font_handle = &bm_renderers_by_id.emplace(font_id, decoded).first->second;
+    font = bm_renderers_by_id.emplace(font_id, decoded).first->second;
   }
 
   return true;
@@ -232,19 +234,18 @@ bool load_font(int16_t font_id, TTF_Font** ttf_font_handle, ResourceDASM::Bitmap
 bool draw_text(std::shared_ptr<SDL_Renderer> sdlRenderer, const std::string& text, const Rect& dispRect, int16_t font_id) {
   std::string processed_text = replace_param_text(text);
 
-  TTF_Font* tt_font = nullptr;
-  ResourceDASM::BitmapFontRenderer* bm_renderer = nullptr;
+  Font font{};
 
-  bool success = load_font(font_id, &tt_font, &bm_renderer);
+  bool success = load_font(font_id, font);
 
   if (!success) {
     return false;
   }
 
-  if (tt_font != nullptr) {
-    return draw_text_ttf(sdlRenderer, tt_font, processed_text, dispRect);
-  } else if (bm_renderer) {
-    return draw_text_bitmap(sdlRenderer, *bm_renderer, processed_text, dispRect);
+  if (std::holds_alternative<TTF_Font*>(font)) {
+    return draw_text_ttf(sdlRenderer, std::get<TTF_Font*>(font), processed_text, dispRect);
+  } else {
+    return draw_text_bitmap(sdlRenderer, std::get<ResourceDASM::BitmapFontRenderer>(font), processed_text, dispRect);
   }
 
   wm_log.error("No renderer is available for font %hd; cannot render text \"%s\"", font_id, text.c_str());
@@ -256,16 +257,16 @@ bool draw_text(std::shared_ptr<SDL_Renderer> sdlRenderer, const std::string& tex
 int draw_text(std::shared_ptr<SDL_Renderer> sdlRenderer, const std::string& text, int16_t x, int16_t y, int16_t font_id) {
   std::string processed_text = replace_param_text(text);
 
-  TTF_Font* tt_font = nullptr;
-  ResourceDASM::BitmapFontRenderer* bm_renderer = nullptr;
+  Font font{};
 
-  bool success = load_font(font_id, &tt_font, &bm_renderer);
+  bool success = load_font(font_id, font);
 
   if (!success) {
     return -1;
   }
 
-  if (tt_font != nullptr) {
+  if (std::holds_alternative<TTF_Font*>(font)) {
+    TTF_Font* tt_font = std::get<TTF_Font*>(font);
     TTF_Text* t = TTF_CreateText(NULL, tt_font, processed_text.c_str(), 0);
     int w{0}, h{0};
     TTF_GetTextSize(t, &w, &h);
@@ -278,7 +279,8 @@ int draw_text(std::shared_ptr<SDL_Renderer> sdlRenderer, const std::string& text
       return -1;
     }
     return w;
-  } else if (bm_renderer) {
+  } else {
+    // TODO: Implement text measuring for bitmap fonts
     wm_log.error("Rendering bitmap text with unknown dimensions is not supported");
     return -1;
   }
