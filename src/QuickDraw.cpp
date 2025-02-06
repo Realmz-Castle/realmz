@@ -266,3 +266,26 @@ void InsetRect(Rect* r, int16_t dh, int16_t dv) {
 void PenPixPat(PixPatHandle ppat) {
   globals->thePort->pnPixPat = ppat;
 }
+
+void GetGWorld(CGrafPtr* port, GDHandle* gdh) {
+}
+
+PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld) {
+  return NULL;
+}
+
+void SetGWorld(CGrafPtr port, GDHandle gdh) {
+}
+
+QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,
+    GDHandle aGDevice, GWorldFlags flags) {
+  *offscreenGWorld = (GWorldPtr)malloc(sizeof(CGrafPort));
+  (*offscreenGWorld)->portRect.top = boundsRect->top;
+  (*offscreenGWorld)->portRect.left = boundsRect->left;
+  (*offscreenGWorld)->portRect.bottom = boundsRect->bottom;
+  (*offscreenGWorld)->portRect.right = boundsRect->right;
+
+  return 0;
+}
+void DisposeGWorld(GWorldPtr offscreenWorld) {
+}
