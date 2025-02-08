@@ -21,7 +21,7 @@ int draw_text(
     int16_t face);
 
 // A context for all drawing and rendering operations, either attached to an SDL_Window or
-// in memory. Each GraphicsCanvas owns an SDL_Surface, may own an SDL_Texture, and has either a
+// in memory. Each GraphicsCanvas may own an SDL_Surface, may own an SDL_Texture, and has either a
 // shared reference to the parent SDL_Window or owns its own independent SDL_Renderer. After construction,
 // each GraphicsCanvas must invoke `init()` in order to establish these members and report any errors.
 //
@@ -29,12 +29,6 @@ int draw_text(
 // draw to the window. For example, each DialogItem and Text field will have its own GraphicsCanvas upon
 // which to draw itself and save its state to its texture. Then, when the window is redrawn, each
 // item's GraphicsCanvas will use the shared renderer to draw its saved texture to the window.
-//
-// The surface is used for drawing operations, such as drawing text or images. Surfaces are stored in CPU
-// RAM, and before rendering to the screen must be uploaded to the GPU's VRAM as a texture. When drawing to
-// the surface is finished, calling `save()` on the GraphicsCanvas will convert the surface to a texture,
-// thereby uploading its state to VRAM. Later, each call to `render()` will render the texture to the
-// window.
 class GraphicsCanvas {
 private:
   int width, height;
