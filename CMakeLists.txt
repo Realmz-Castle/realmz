@@ -182,12 +182,15 @@ set(SOURCES
     src/realmz_orig/wear.c
     src/macos/MenuController.mm
     src/RealmzCocoa.c
+    src/GraphicsCanvas.cpp
     src/EventManager.cpp
     src/FileManager.cpp
+    src/Font.cpp
     src/MemoryManager.cpp
     src/MenuManager.cpp
     src/QuickDraw.cpp
     src/ResourceManager.cpp
+    src/SDLHelpers.cpp
     src/SoundManager.cpp
     src/WindowManager.cpp
 )

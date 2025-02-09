@@ -81,13 +81,6 @@ GDHandle GetGDevice(void) {
   return NULL;
 }
 
-void GetGWorld(CGrafPtr* port, GDHandle* gdh) {
-}
-
-PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld) {
-  return NULL;
-}
-
 GDHandle GetMainDevice(void) {
   DisplayProperties dp = WindowManager_GetPrimaryDisplayProperties();
   gDevice.gdRect.top = 0;
@@ -236,17 +229,6 @@ void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBi
     const Rect* dstRect) {
 }
 
-QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,
-    GDHandle aGDevice, GWorldFlags flags) {
-  *offscreenGWorld = malloc(sizeof(CGrafPort));
-  (*offscreenGWorld)->portRect.top = boundsRect->top;
-  (*offscreenGWorld)->portRect.left = boundsRect->left;
-  (*offscreenGWorld)->portRect.bottom = boundsRect->bottom;
-  (*offscreenGWorld)->portRect.right = boundsRect->right;
-
-  return 0;
-}
-
 void OffsetRect(Rect* r, uint16_t dh, uint16_t dv) {
   r->left += dh;
   r->right += dh;
@@ -266,9 +248,6 @@ OSErr SetDefaultOutputVolume(uint32_t level) {
 
 OSErr SetDepth(GDHandle aDevice, uint16_t depth, uint16_t whichFlags, uint16_t flags) {
   return 0;
-}
-
-void SetGWorld(CGrafPtr port, GDHandle gdh) {
 }
 
 void SetRect(Rect* r, uint16_t left, uint16_t top, uint16_t right, uint16_t bottom) {
@@ -386,9 +365,6 @@ void TESetAlignment(int16_t just, TEHandle hTE) {
 }
 
 void TEScroll(int16_t dh, int16_t dv, TEHandle hTE) {
-}
-
-void DisposeGWorld(GWorldPtr offscreenWorld) {
 }
 
 void DisposePixPat(PixPatHandle ppat) {

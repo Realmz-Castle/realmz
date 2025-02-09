@@ -20,6 +20,7 @@
 
 #include "EventManager.h"
 #include "FileManager.h"
+#include "Font.h"
 #include "MemoryManager.h"
 #include "MenuManager-C-Interface.h"
 #include "QuickDraw.h"
@@ -108,23 +109,11 @@ static inline void C2PStr(char* x) {
   CtoPstr(x);
 }
 
-typedef struct {
-  Rect gdRect;
-  PixMapHandle gdPMap;
-} GDevice;
-
-typedef struct {
-} ColorTable;
-
-typedef GDevice *GDPtr, **GDHandle;
-typedef ColorTable* CTabPtr;
-typedef CTabPtr* CTabHandle;
 typedef Handle GammaTblHandle;
 typedef Handle TEHandle;
 typedef Handle CCrsrHandle;
 typedef Handle SndListHandle;
 typedef DialogPtr DialogRef;
-typedef int16_t QDErr;
 typedef BitMap* BitMapPtr;
 
 typedef struct {
