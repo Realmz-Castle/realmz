@@ -21,7 +21,11 @@
 
 static phosg::PrefixedLogger qd_log("[QuickDraw] ");
 static std::unordered_set<int16_t> already_decoded;
-static QuickDrawGlobals* globals = nullptr;
+
+// Originally declared in variables.h. It seems that `qd` was introduced by Myriad during the
+// port to PC in place of Classic Mac's global QuickDraw context. We can repurpose it here
+// for easier access in our code, while still exposing a C-compatible struct.
+QuickDrawGlobals qd{};
 
 Rect rect_from_reader(phosg::StringReader& data) {
   Rect r;
@@ -145,13 +149,13 @@ PicHandle GetPicture(int16_t id) {
 }
 
 void ForeColor(int32_t color) {
-  globals->thePort->fgColor = color;
-  globals->thePort->rgbFgColor = color_const_to_rgb(color);
+  qd.thePort->fgColor = color;
+  qd.thePort->rgbFgColor = color_const_to_rgb(color);
 }
 
 void BackColor(int32_t color) {
-  globals->thePort->bgColor = color;
-  globals->thePort->rgbBgColor = color_const_to_rgb(color);
+  qd.thePort->bgColor = color;
+  qd.thePort->rgbBgColor = color_const_to_rgb(color);
 }
 
 uint32_t rgba8888_for_rgb_color(const RGBColor& color) {
@@ -171,67 +175,64 @@ SDL_Color sdl_color_for_rgb_color(const RGBColor& color) {
 }
 
 void GetBackColor(RGBColor* color) {
-  *color = globals->thePort->rgbBgColor;
+  *color = qd.thePort->rgbBgColor;
 }
 uint32_t GetBackColorRGBA8888() {
-  return rgba8888_for_rgb_color(globals->thePort->rgbBgColor);
+  return rgba8888_for_rgb_color(qd.thePort->rgbBgColor);
 }
 SDL_Color GetBackColorSDL() {
-  return sdl_color_for_rgb_color(globals->thePort->rgbBgColor);
+  return sdl_color_for_rgb_color(qd.thePort->rgbBgColor);
 }
 
 void GetForeColor(RGBColor* color) {
-  *color = globals->thePort->rgbFgColor;
+  *color = qd.thePort->rgbFgColor;
 }
 uint32_t GetForeColorRGBA8888() {
-  return rgba8888_for_rgb_color(globals->thePort->rgbFgColor);
+  return rgba8888_for_rgb_color(qd.thePort->rgbFgColor);
 }
 SDL_Color GetForeColorSDL() {
-  return sdl_color_for_rgb_color(globals->thePort->rgbFgColor);
+  return sdl_color_for_rgb_color(qd.thePort->rgbFgColor);
 }
 
 void SetPort(CGrafPtr port) {
-  globals->thePort = port;
+  qd.thePort = port;
 }
 
+// Called in main.c, this function passes in the location of the global
+// QuickDraw context for initialization. However, since we've taken over
+// the implementation of the global qd object and have statically allocated
+// its members, there is no need for further initialization beyond updating
+// qd.thePort to point at the default port
 void InitGraf(QuickDrawGlobals* new_globals) {
-  globals = new_globals;
-
-  globals->default_graf_handle = NewHandleTyped<CGrafPort>();
-  globals->thePort = *globals->default_graf_handle;
-  memset(globals->thePort, 0, sizeof(*globals->thePort));
-}
-
-CGrafPtr get_default_quickdraw_port() {
-  return *globals->default_graf_handle;
+  qd.thePort = &qd.defaultPort;
 }
 
 void TextFont(uint16_t font) {
-  globals->thePort->txFont = font;
+  qd.thePort->txFont = font;
 }
 
 void TextMode(int16_t mode) {
-  globals->thePort->txMode = mode;
+  qd.thePort->txMode = mode;
 }
 
 void TextSize(uint16_t size) {
-  globals->thePort->txSize = size;
+  qd.thePort->txSize = size;
 }
 
 void TextFace(int16_t face) {
-  globals->thePort->txFace = face;
+  qd.thePort->txFace = face;
 }
 
 void GetPort(GrafPtr* port) {
-  *port = reinterpret_cast<GrafPtr>(globals->thePort);
+  *port = reinterpret_cast<GrafPtr>(qd.thePort);
 }
 
 void RGBBackColor(const RGBColor* color) {
-  globals->thePort->rgbBgColor = *color;
+  qd.thePort->rgbBgColor = *color;
 }
 
 void RGBForeColor(const RGBColor* color) {
-  globals->thePort->rgbFgColor = *color;
+  qd.thePort->rgbFgColor = *color;
 }
 
 CIconHandle GetCIcon(uint16_t iconID) {
@@ -249,11 +250,11 @@ CIconHandle GetCIcon(uint16_t iconID) {
 }
 
 void BackPixPat(PixPatHandle ppat) {
-  globals->thePort->bkPixPat = ppat;
+  qd.thePort->bkPixPat = ppat;
 }
 
 void MoveTo(int16_t h, int16_t v) {
-  globals->thePort->pnLoc = Point{v, h};
+  qd.thePort->pnLoc = Point{v, h};
 }
 
 void InsetRect(Rect* r, int16_t dh, int16_t dv) {
@@ -264,7 +265,7 @@ void InsetRect(Rect* r, int16_t dh, int16_t dv) {
 }
 
 void PenPixPat(PixPatHandle ppat) {
-  globals->thePort->pnPixPat = ppat;
+  qd.thePort->pnPixPat = ppat;
 }
 
 void GetGWorld(CGrafPtr* port, GDHandle* gdh) {

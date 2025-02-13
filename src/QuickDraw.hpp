@@ -9,8 +9,6 @@
 
 Rect rect_from_reader(phosg::StringReader& data);
 
-CGrafPtr get_default_quickdraw_port();
-
 uint32_t rgba8888_for_rgb_color(const RGBColor& color);
 SDL_Color sdl_color_for_rgb_color(const RGBColor& color);
 

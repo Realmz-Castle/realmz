@@ -13,7 +13,6 @@
 #include "SoundManager.h"
 #include "WindowManager.h"
 
-QuickDrawGlobals qd;
 GDevice gDevice;
 GDPtr gDevicePtr;
 PrefRecord prefs;

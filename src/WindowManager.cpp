@@ -157,8 +157,7 @@ public:
   void update() {
     canvas.clear();
 
-    CGrafPtr port;
-    GetPort(&port);
+    CGrafPtr port = qd.thePort;
 
     switch (type) {
       case ResourceFile::DecodedDialogItem::Type::PICTURE: {
@@ -391,8 +390,7 @@ public:
   // Draws the specified text at the current pen location and with the current
   // font characteristics stored in the window's port
   void draw_text(const std::string& text) {
-    CGrafPtr port{};
-    GetPort(&port);
+    CGrafPtr port = qd.thePort;
     auto pen_loc = port->pnLoc;
     auto font_id = port->txFont;
 
@@ -437,8 +435,7 @@ public:
     // Clear the backbuffer before drawing frame
     canvas.clear_window();
 
-    CGrafPtr port;
-    GetPort(&port);
+    CGrafPtr port = qd.thePort;
     if (port->bkPixPat) {
       draw_background(port->bkPixPat);
     }
@@ -529,8 +526,7 @@ public:
       int16_t proc_id,
       uint32_t ref_con,
       std::shared_ptr<std::vector<std::shared_ptr<DialogItem>>> dialog_items) {
-    CGrafPtr current_port;
-    GetPort(reinterpret_cast<GrafPtr*>(&current_port));
+    CGrafPtr current_port = qd.thePort;
 
     CGrafPort port{};
     port.portRect = bounds;
@@ -599,10 +595,9 @@ public:
 
     // If the current port is this window's port, set the current port back to
     // the default port
-    CGrafPtr current_port;
-    GetPort(reinterpret_cast<GrafPtr*>(&current_port));
+    CGrafPtr current_port = qd.thePort;
     if (current_port == record) {
-      SetPort(get_default_quickdraw_port());
+      SetPort(&qd.defaultPort);
     }
 
     CWindowRecord* const window = reinterpret_cast<CWindowRecord*>(record);
@@ -782,8 +777,7 @@ DisplayProperties WindowManager_GetPrimaryDisplayProperties(void) {
 }
 
 OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon) {
-  GrafPtr port;
-  GetPort(&port);
+  GrafPtr port = qd.thePort;
   auto window = wm.window_for_record(reinterpret_cast<CGrafPort*>(port));
   auto bounds = (*theIcon)->iconBMap.bounds;
   int w = bounds.right - bounds.left;
@@ -983,8 +977,7 @@ void SystemClick(const EventRecord* theEvent, WindowPtr theWindow) {
 }
 
 void DrawPicture(PicHandle myPicture, const Rect* dstRect) {
-  CGrafPtr port;
-  GetPort(&port);
+  CGrafPtr port = qd.thePort;
 
   try {
     auto window = wm.window_for_record(port);
@@ -1002,8 +995,7 @@ void DrawPicture(PicHandle myPicture, const Rect* dstRect) {
 }
 
 void LineTo(int16_t h, int16_t v) {
-  CGrafPtr port;
-  GetPort(&port);
+  CGrafPtr port = qd.thePort;
 
   try {
     auto window = wm.window_for_record(port);
@@ -1094,8 +1086,7 @@ void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit) {
   short item;
 
   // Retrieve the current window to only process events within that window
-  CGrafPtr port;
-  GetPort(&port);
+  CGrafPtr port = qd.thePort;
 
   do {
     WaitNextEvent(everyEvent, &e, 1, NULL);
@@ -1108,8 +1099,7 @@ void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit) {
 }
 
 void DrawString(ConstStr255Param s) {
-  CGrafPtr port;
-  GetPort(&port);
+  CGrafPtr port = qd.thePort;
 
   auto window = wm.window_for_record(port);
 
@@ -1124,8 +1114,7 @@ int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount) {
   // strlen as the byteCount, so we can ignore those parameters and just measure
   // the full string.
   // Realmz also seems to only call this with cstrings, so we're good there as well.
-  CGrafPtr port{};
-  GetPort(&port);
+  CGrafPtr port = qd.thePort;
 
   return ::draw_text(
       get_dummy_renderer().get(),

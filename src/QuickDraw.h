@@ -128,12 +128,14 @@ typedef struct {
   CGrafPtr thePort;
   BitMap screenBits;
 
-  // We internally allocate a handle for thePort, even though thePort itself is
-  // not a handle, so we store the handle here. This is not part of the Classic
-  // Mac OS API - they didn't intend for GrafPorts to be relocatable, but we
-  // never relocate handles anyway.
-  CGrafHandle default_graf_handle;
+  // The default port record. After InitGraf is called, `thePort` should point to
+  // this port.
+  CGrafPort defaultPort;
 } QuickDrawGlobals;
+
+// Global struct holding the current graphics port.
+// Moved from variables.h to avoid c++ keyword conflicts in prototype.h
+extern QuickDrawGlobals qd;
 
 Boolean PtInRect(Point pt, const Rect* r);
 // Note: Technically the argument to InitGraf is a void*, but we type it here
