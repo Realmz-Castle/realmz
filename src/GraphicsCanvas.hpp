@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CGrafPort.h"
+#include "QuickDraw.h"
 #include "SDLHelpers.hpp"
 
 #include <SDL3/SDL_render.h>
