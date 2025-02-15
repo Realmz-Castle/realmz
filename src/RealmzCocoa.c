@@ -235,9 +235,6 @@ void OffsetRect(Rect* r, uint16_t dh, uint16_t dv) {
   r->bottom += dv;
 }
 
-void PenSize(int16_t width, int16_t height) {
-}
-
 void SetCCursor(CCrsrHandle cCrsr) {
 }
 

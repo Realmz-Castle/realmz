@@ -1,4 +1,4 @@
-#include "QuickDraw.h"
+#include "QuickDraw.hpp"
 
 #include <SDL3/SDL_pixels.h>
 
@@ -14,13 +14,18 @@
 #include <resource_file/ResourceFormats.hh>
 #include <resource_file/ResourceTypes.hh>
 #include <resource_file/TextCodecs.hh>
+#include <stdexcept>
+#include <unordered_map>
 
 #include "MemoryManager.hpp"
 #include "ResourceManager.h"
+#include "StringConvert.hpp"
 #include "Types.hpp"
+#include "WindowManager.hpp"
 
 static phosg::PrefixedLogger qd_log("[QuickDraw] ");
-static std::unordered_set<int16_t> already_decoded;
+static std::unordered_set<int16_t> already_decoded{};
+static std::unordered_map<CGrafPtr, std::weak_ptr<GraphicsCanvas>> canvas_lookup{};
 
 // Originally declared in variables.h. It seems that `qd` was introduced by Myriad during the
 // port to PC in place of Classic Mac's global QuickDraw context. We can repurpose it here
@@ -61,6 +66,60 @@ RGBColor color_const_to_rgb(int32_t color_const) {
       break;
   }
   return RGBColor{};
+}
+
+void register_canvas(CGrafPtr port, std::shared_ptr<GraphicsCanvas> canvas) {
+  canvas_lookup.insert({port, canvas});
+}
+
+void deregister_canvas(CGrafPtr port) {
+  try {
+    canvas_lookup.erase(port);
+  } catch (std::out_of_range) {
+    qd_log.error("Tried to delete canvas with id %p, but it wasn't in lookup", port);
+  }
+}
+
+std::shared_ptr<GraphicsCanvas> lookup_canvas(CGrafPtr port) {
+  try {
+    return canvas_lookup.at(port).lock();
+  } catch (std::out_of_range) {
+    throw std::runtime_error("Could not find canvas for given id");
+  }
+}
+
+std::shared_ptr<GraphicsCanvas> current_canvas() {
+  return lookup_canvas(qd.thePort);
+}
+
+void draw_rect(const Rect& dispRect) {
+  current_canvas()->draw_rect(dispRect);
+}
+
+void draw_rgba_picture(void* pixels, int w, int h, const Rect& rect) {
+  current_canvas()->draw_rgba_picture(pixels, w, h, rect);
+}
+
+void set_draw_color(const RGBColor& color) {
+  current_canvas()->set_draw_color(color);
+}
+
+void draw_line(const Point& start, const Point& end) {
+  current_canvas()->draw_line(start, end);
+}
+
+void draw_text(const std::string& text) {
+  auto canvas = current_canvas();
+
+  canvas->draw_text(text);
+}
+
+int measure_text(const std::string& text) {
+  return current_canvas()->measure_text(text);
+}
+
+void render_current_canvas(const SDL_FRect* rect) {
+  current_canvas()->render(rect);
 }
 
 PixPatHandle GetPixPat(uint16_t patID) {
@@ -158,40 +217,12 @@ void BackColor(int32_t color) {
   qd.thePort->rgbBgColor = color_const_to_rgb(color);
 }
 
-uint32_t rgba8888_for_rgb_color(const RGBColor& color) {
-  return (
-      (((color.red / 0x0101) & 0xFF) << 24) |
-      (((color.green / 0x0101) & 0xFF) << 16) |
-      (((color.blue / 0x0101) & 0xFF) << 8) |
-      0xFF);
-}
-
-SDL_Color sdl_color_for_rgb_color(const RGBColor& color) {
-  return SDL_Color{
-      static_cast<uint8_t>(color.red / 0x0101),
-      static_cast<uint8_t>(color.green / 0x0101),
-      static_cast<uint8_t>(color.blue / 0x0101),
-      0xFF};
-}
-
 void GetBackColor(RGBColor* color) {
   *color = qd.thePort->rgbBgColor;
-}
-uint32_t GetBackColorRGBA8888() {
-  return rgba8888_for_rgb_color(qd.thePort->rgbBgColor);
-}
-SDL_Color GetBackColorSDL() {
-  return sdl_color_for_rgb_color(qd.thePort->rgbBgColor);
 }
 
 void GetForeColor(RGBColor* color) {
   *color = qd.thePort->rgbFgColor;
-}
-uint32_t GetForeColorRGBA8888() {
-  return rgba8888_for_rgb_color(qd.thePort->rgbFgColor);
-}
-SDL_Color GetForeColorSDL() {
-  return sdl_color_for_rgb_color(qd.thePort->rgbFgColor);
 }
 
 void SetPort(CGrafPtr port) {
@@ -249,6 +280,20 @@ CIconHandle GetCIcon(uint16_t iconID) {
   return h;
 }
 
+OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon) {
+  auto bounds = (*theIcon)->iconBMap.bounds;
+  int w = bounds.right - bounds.left;
+  int h = bounds.bottom - bounds.top;
+  draw_rgba_picture(
+      *((*theIcon)->iconData),
+      w, h, *theRect);
+  render_current_canvas(NULL);
+
+  render_window(qd.thePort);
+
+  return noErr;
+}
+
 void BackPixPat(PixPatHandle ppat) {
   qd.thePort->bkPixPat = ppat;
 }
@@ -268,14 +313,24 @@ void PenPixPat(PixPatHandle ppat) {
   qd.thePort->pnPixPat = ppat;
 }
 
+void PenSize(int16_t width, int16_t height) {
+  qd.thePort->pnSize = {height, width};
+}
+
+// The gdh return parameter, a graphics device handle, is only stored temporarily
+// by Realmz while it swaps out the current GWorld, then is used to reset to the
+// original graphics device. Since we don't actually need to use the graphics device,
+// we can ignore it.
 void GetGWorld(CGrafPtr* port, GDHandle* gdh) {
+  GetPort(port);
+}
+
+void SetGWorld(CGrafPtr port, GDHandle gdh) {
+  SetPort(port);
 }
 
 PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld) {
   return NULL;
-}
-
-void SetGWorld(CGrafPtr port, GDHandle gdh) {
 }
 
 QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,
@@ -288,5 +343,21 @@ QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boun
 
   return 0;
 }
+
 void DisposeGWorld(GWorldPtr offscreenWorld) {
+}
+
+void DrawString(ConstStr255Param s) {
+  auto str = string_for_pstr<255>(s);
+
+  draw_text(str);
+  render_current_canvas(NULL);
+}
+
+int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount) {
+  // Realmz always calls this procedure with 0 as the first byte, and the full
+  // strlen as the byteCount, so we can ignore those parameters and just measure
+  // the full string.
+  // Realmz also seems to only call this with cstrings, so we're good there as well.
+  return current_canvas()->measure_text(static_cast<const char*>(textBuf));
 }

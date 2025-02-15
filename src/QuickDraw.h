@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "FileManager.h"
 #include "Types.h"
 
 #define whiteColor 30
@@ -73,6 +72,7 @@ typedef struct {
   int16_t txMode;
   int16_t txSize;
   Point pnLoc;
+  Point pnSize;
   PixMapHandle portPixMap;
   PixPatHandle pnPixPat;
   PixPatHandle bkPixPat;
@@ -156,16 +156,20 @@ void TextFace(int16_t face);
 void RGBBackColor(const RGBColor* color);
 void RGBForeColor(const RGBColor* color);
 CIconHandle GetCIcon(uint16_t iconID);
+OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon);
 void BackPixPat(PixPatHandle ppat);
 void MoveTo(int16_t h, int16_t v);
 void InsetRect(Rect* r, int16_t dh, int16_t dv);
 void PenPixPat(PixPatHandle ppat);
+void PenSize(int16_t width, int16_t height);
 void GetGWorld(CGrafPtr* port, GDHandle* gdh);
 PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld);
 QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,
     GDHandle aGDevice, GWorldFlags flags);
 void SetGWorld(CGrafPtr port, GDHandle gdh);
 void DisposeGWorld(GWorldPtr offscreenWorld);
+void DrawString(ConstStr255Param s);
+int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount);
 
 #ifdef __cplusplus
 } // extern "C"

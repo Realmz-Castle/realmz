@@ -44,7 +44,6 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
 void WindowManager_DrawDialog(WindowPtr theWindow);
 void WindowManager_DisposeWindow(WindowPtr theWindow);
 DisplayProperties WindowManager_GetPrimaryDisplayProperties(void);
-OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon);
 void GetDialogItem(DialogPtr theDialog, int16_t itemNo, int16_t* itemType, Handle* item, Rect* box);
 void GetDialogItemText(Handle item, Str255 text);
 void SetDialogItemText(Handle item, ConstStr255Param text);
@@ -72,10 +71,8 @@ void ParamText(ConstStr255Param param0, ConstStr255Param param1, ConstStr255Para
 void NumToString(int32_t num, Str255 str);
 void StringToNum(ConstStr255Param str, int32_t* num);
 void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit);
-void DrawString(ConstStr255Param s);
 void DrawDialog(DialogPtr theDialog);
 void DisposeDialog(DialogPtr theDialog);
-int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount);
 
 #ifdef __cplusplus
 } // extern "C"

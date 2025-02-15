@@ -1,7 +1,6 @@
 #include "GraphicsCanvas.hpp"
 
 #include "Font.hpp"
-#include "QuickDraw.hpp"
 
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_render.h>
@@ -25,6 +24,22 @@ sdl_renderer_shared get_dummy_renderer() {
     dummy_renderer = sdl_make_shared(SDL_CreateSoftwareRenderer(surface));
   }
   return dummy_renderer;
+}
+
+static inline uint32_t rgba8888_for_rgb_color(const RGBColor& color) {
+  return (
+      (((color.red / 0x0101) & 0xFF) << 24) |
+      (((color.green / 0x0101) & 0xFF) << 16) |
+      (((color.blue / 0x0101) & 0xFF) << 8) |
+      0xFF);
+}
+
+static inline SDL_Color sdl_color_for_rgb_color(const RGBColor& color) {
+  return SDL_Color{
+      static_cast<uint8_t>(color.red / 0x0101),
+      static_cast<uint8_t>(color.green / 0x0101),
+      static_cast<uint8_t>(color.blue / 0x0101),
+      0xFF};
 }
 
 void debug_renderer_state(SDL_Renderer* renderer, const char* label) {
@@ -96,9 +111,14 @@ void draw_rgba_picture(std::shared_ptr<SDL_Renderer> sdlRenderer, void* pixels, 
   draw_rgba_picture(sdlRenderer, pixels, w, h, bounds);
 }
 
-bool draw_text_ttf(SDL_Renderer* sdlRenderer, TTF_Font* font, const std::string& processed_text, const Rect& rect) {
+bool draw_text_ttf(
+    SDL_Renderer* sdlRenderer,
+    TTF_Font* font,
+    const std::string& processed_text,
+    const Rect& rect,
+    const SDL_Color& color) {
   auto text_surface = sdl_make_unique(TTF_RenderText_Blended_Wrapped(
-      font, processed_text.data(), processed_text.size(), GetForeColorSDL(), rect.right - rect.left));
+      font, processed_text.data(), processed_text.size(), color, rect.right - rect.left));
   if (!text_surface) {
     canvas_log.error("Failed to create surface when rendering text: %s", SDL_GetError());
     return false;
@@ -111,14 +131,15 @@ bool draw_text_bitmap(
     SDL_Renderer* sdlRenderer,
     const ResourceDASM::BitmapFontRenderer& renderer,
     const std::string& processed_text,
-    const Rect& rect) {
+    const Rect& rect,
+    uint32_t rgba8888_color) {
   size_t rect_w = rect.right - rect.left;
   size_t rect_h = rect.bottom - rect.top;
   phosg::Image img(rect_w, rect_h, true);
   img.clear(0xFF00FF00); // Transparent (with magenta so it will be obvious if compositing is done incorrectly)
 
   std::string wrapped_text = renderer.wrap_text_to_pixel_width(processed_text, rect_w);
-  renderer.render_text(img, wrapped_text, 0, 0, GetForeColorRGBA8888());
+  renderer.render_text(img, wrapped_text, 0, 0, rgba8888_color);
 
   // DEBUG: Uncomment for debugging text rendering
   // img.save("bitmap_text.png", phosg::Image::Format::PNG);
@@ -140,7 +161,8 @@ int draw_text(
     int16_t y,
     int16_t font_id,
     float pt,
-    int16_t face) {
+    int16_t face,
+    const RGBColor& color) {
   std::string processed_text = replace_param_text(text);
 
   TTF_Font* tt_font = nullptr;
@@ -169,7 +191,7 @@ int draw_text(
         static_cast<int16_t>(y - descent),
         static_cast<int16_t>(x + w)};
     TTF_DestroyText(t);
-    if (!::draw_text_ttf(sdlRenderer, tt_font, processed_text, r)) {
+    if (!::draw_text_ttf(sdlRenderer, tt_font, processed_text, r, sdl_color_for_rgb_color(color))) {
       return -1;
     }
     return w;
@@ -182,32 +204,33 @@ int draw_text(
   return -1;
 }
 
+// By default, GraphicsCanvases are initialized with the current port
 GraphicsCanvas::GraphicsCanvas()
     : width(100),
       height(100),
-      is_initialized(false) {}
+      port(qd.thePort) {}
 
-GraphicsCanvas::GraphicsCanvas(int width, int height)
+GraphicsCanvas::GraphicsCanvas(int width, int height, CGrafPtr port)
     : width(width),
       height(height),
-      is_initialized(false) {}
+      port(port) {}
 
-GraphicsCanvas::GraphicsCanvas(sdl_window_shared window)
+GraphicsCanvas::GraphicsCanvas(sdl_window_shared window, CGrafPtr port)
     : sdlWindow(window),
-      is_initialized(false) {
+      port(port) {
   SDL_GetWindowSize(window.get(), &width, &height);
 }
 
-GraphicsCanvas::GraphicsCanvas(sdl_window_shared window, const Rect& rect)
+GraphicsCanvas::GraphicsCanvas(sdl_window_shared window, const Rect& rect, CGrafPtr port)
     : width(rect.right - rect.left),
       height(rect.bottom - rect.top),
       sdlWindow(window),
-      is_initialized(false) {}
+      port(port) {}
 
-GraphicsCanvas::GraphicsCanvas(const Rect& rect)
+GraphicsCanvas::GraphicsCanvas(const Rect& rect, CGrafPtr port)
     : width(rect.right - rect.left),
       height(rect.bottom - rect.top),
-      is_initialized(false) {}
+      port(port) {}
 
 GraphicsCanvas::GraphicsCanvas(GraphicsCanvas&& gc)
     : width{gc.width},
@@ -216,7 +239,8 @@ GraphicsCanvas::GraphicsCanvas(GraphicsCanvas&& gc)
       sdlSurface(std::move(gc.sdlSurface)),
       sdlTexture(std::move(gc.sdlTexture)),
       sdlRenderer(std::move(gc.sdlRenderer)),
-      sdlWindow(gc.sdlWindow) {
+      sdlWindow(gc.sdlWindow),
+      port(gc.port) {
   gc.is_initialized = false;
 }
 
@@ -228,6 +252,7 @@ GraphicsCanvas& GraphicsCanvas::operator=(GraphicsCanvas&& gc) {
   sdlTexture = std::move(gc.sdlTexture);
   sdlRenderer = std::move(gc.sdlRenderer);
   sdlWindow = gc.sdlWindow;
+  port = gc.port;
   gc.is_initialized = false;
   return *this;
 }
@@ -284,14 +309,15 @@ void GraphicsCanvas::clear_window() {
 }
 
 // Render this canvas' texture to the target window
-void GraphicsCanvas::render(sdl_window_shared window, const SDL_FRect* dest) {
-  auto renderer = SDL_GetRenderer(window.get());
+void GraphicsCanvas::render(const SDL_FRect* dest) {
+  auto renderer = SDL_GetRenderer(sdlWindow.get());
   SDL_RenderTexture(renderer, sdlTexture.get(), NULL, dest);
 }
 
-void GraphicsCanvas::sync(sdl_window_shared window) {
-  auto renderer = SDL_GetRenderer(window.get());
+void GraphicsCanvas::sync() {
+  auto renderer = SDL_GetRenderer(sdlWindow.get());
   SDL_RenderPresent(renderer);
+  SDL_SyncWindow(sdlWindow.get());
 }
 
 void GraphicsCanvas::set_draw_color(const RGBColor& color) {
@@ -324,10 +350,7 @@ void GraphicsCanvas::draw_rgba_picture(void* pixels, int w, int h, const Rect& r
 
 bool GraphicsCanvas::draw_text(
     const std::string& text,
-    const Rect& dispRect,
-    int16_t font_id,
-    float pt,
-    int16_t face) {
+    const Rect& dispRect) {
   auto renderer = start_draw(*this);
 
   std::string processed_text = replace_param_text(text);
@@ -335,22 +358,22 @@ bool GraphicsCanvas::draw_text(
   TTF_Font* tt_font = nullptr;
   ResourceDASM::BitmapFontRenderer* bm_renderer = nullptr;
 
-  bool success = load_font(font_id, &tt_font, &bm_renderer);
+  bool success = load_font(port->txFont, &tt_font, &bm_renderer);
 
   if (!success) {
     return false;
   }
 
   if (tt_font != nullptr) {
-    TTF_SetFontSize(tt_font, pt);
-    set_font_face(tt_font, face);
-    success = ::draw_text_ttf(renderer, tt_font, processed_text, dispRect);
+    TTF_SetFontSize(tt_font, port->txSize);
+    set_font_face(tt_font, port->txFace);
+    success = ::draw_text_ttf(renderer, tt_font, processed_text, dispRect, sdl_color_for_rgb_color(port->rgbFgColor));
   } else if (bm_renderer) {
-    success = ::draw_text_bitmap(renderer, *bm_renderer, processed_text, dispRect);
+    success = ::draw_text_bitmap(renderer, *bm_renderer, processed_text, dispRect, rgba8888_for_rgb_color(port->rgbFgColor));
   }
 
   if (!success) {
-    canvas_log.error("No renderer is available for font %hd; cannot render text \"%s\"", font_id, text.c_str());
+    canvas_log.error("No renderer is available for font %hd; cannot render text \"%s\"", port->txFont, text.c_str());
   }
 
   end_draw(*this);
@@ -358,21 +381,22 @@ bool GraphicsCanvas::draw_text(
   return success;
 }
 
-// Draws the specified text when the display bounds are unknown. Returns the width of
-// the rendered text in pixels.
-int GraphicsCanvas::draw_text(
-    const std::string& text,
-    int16_t x,
-    int16_t y,
-    int16_t font_id,
-    float pt,
-    int16_t face) {
+void GraphicsCanvas::draw_text(const std::string& text) {
 
   auto renderer = start_draw(*this);
 
-  ::draw_text(renderer, text, x, y, font_id, pt, face);
+  auto pen_loc = port->pnLoc;
+
+  int width = ::draw_text(renderer, text, pen_loc.h, pen_loc.v, port->txFont, port->txSize, port->txFace, port->rgbFgColor);
+  port->pnLoc.h += width;
 
   end_draw(*this);
+}
+
+int GraphicsCanvas::measure_text(const std::string& text) {
+  auto renderer = get_dummy_renderer();
+
+  return ::draw_text(renderer.get(), text, 0, 0, port->txFont, port->txSize, port->txFace, port->rgbFgColor);
 }
 
 void GraphicsCanvas::draw_rect(const Rect& dispRect) {

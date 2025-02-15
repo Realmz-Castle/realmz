@@ -1,4 +1,4 @@
-#include "WindowManager.h"
+#include "WindowManager.hpp"
 
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_properties.h>
@@ -146,8 +146,8 @@ public:
         text_str.c_str());
   }
 
-  bool init() {
-    canvas = GraphicsCanvas(sdlWindow, rect);
+  bool init(CGrafPtr port) {
+    canvas = GraphicsCanvas(sdlWindow, rect, port);
     return canvas.init();
   }
 
@@ -177,10 +177,7 @@ public:
         }
         if (!canvas.draw_text(
                 text,
-                Rect{0, 0, get_height(), get_width()},
-                port->txFont,
-                port->txSize,
-                port->txFace)) {
+                Rect{0, 0, get_height(), get_width()})) {
           wm_log.error("Error when rendering text item %d: %s", resource_id, SDL_GetError());
           dirty = false;
           return;
@@ -190,10 +187,7 @@ public:
       case ResourceFile::DecodedDialogItem::Type::BUTTON: {
         if (!canvas.draw_text(
                 text,
-                Rect{0, 0, get_height(), get_width()},
-                port->txFont,
-                port->txSize,
-                port->txFace)) {
+                Rect{0, 0, get_height(), get_width()})) {
           wm_log.error("Error when rendering button text item %d: %s", resource_id, SDL_GetError());
           dirty = false;
           return;
@@ -203,10 +197,7 @@ public:
       case ResourceFile::DecodedDialogItem::Type::EDIT_TEXT: {
         if (!canvas.draw_text(
                 text,
-                Rect{0, 0, get_height(), get_width()},
-                port->txFont,
-                port->txSize,
-                port->txFace)) {
+                Rect{0, 0, get_height(), get_width()})) {
           wm_log.error("Error when rendering editable text item %d: %s", resource_id, SDL_GetError());
           dirty = false;
           return;
@@ -233,7 +224,7 @@ public:
     dstRect.w = get_width();
     dstRect.h = get_height();
 
-    canvas.render(sdlWindow, &dstRect);
+    canvas.render(&dstRect);
   }
 
   int16_t get_width() const {
@@ -282,7 +273,7 @@ private:
   int h;
   CWindowRecord cWindowRecord;
   sdl_window_shared sdlWindow;
-  GraphicsCanvas canvas;
+  std::shared_ptr<GraphicsCanvas> canvas;
   std::shared_ptr<std::vector<std::shared_ptr<DialogItem>>> dialogItems;
   std::vector<std::shared_ptr<DialogItem>> renderableItems;
   std::vector<std::shared_ptr<DialogItem>> textItems;
@@ -317,14 +308,15 @@ public:
       throw std::runtime_error(phosg::string_printf("Could not create window: %s\n", SDL_GetError()));
     }
 
-    canvas = GraphicsCanvas(sdlWindow);
-    canvas.init();
+    canvas = std::make_shared<GraphicsCanvas>(sdlWindow, get_port());
+    register_canvas(&cWindowRecord.port, canvas);
+    canvas->init();
 
     if (dialogItems) {
       for (auto di : *dialogItems) {
         di->window = this->weak_from_this();
         di->sdlWindow = sdlWindow;
-        di->init();
+        di->init(get_port());
 
         // Set the focused text field to be the first EDIT_TEXT item encountered
         if (!focusedItem && di->type == DialogItemType::EDIT_TEXT) {
@@ -348,7 +340,7 @@ public:
       }
     }
 
-    canvas.clear();
+    canvas->clear();
   }
 
   void init_text_editing(SDL_Rect r) {
@@ -371,35 +363,12 @@ public:
     text_editing_active = true;
   }
 
-  void draw_rect(const Rect& dispRect) {
-    canvas.draw_rect(dispRect);
-  }
-
-  void draw_rgba_picture(void* pixels, int w, int h, const Rect& dispRect) {
-    canvas.draw_rgba_picture(pixels, w, h, dispRect);
-  }
-
-  void set_draw_color(const RGBColor& color) {
-    canvas.set_draw_color(color);
-  }
-
-  void draw_line(const Point& start, const Point& end) {
-    canvas.draw_line(start, end);
-  }
-
-  // Draws the specified text at the current pen location and with the current
-  // font characteristics stored in the window's port
-  void draw_text(const std::string& text) {
-    CGrafPtr port = qd.thePort;
-    auto pen_loc = port->pnLoc;
-    auto font_id = port->txFont;
-
-    int width = canvas.draw_text(text, pen_loc.h, pen_loc.v, font_id, port->txSize, port->txFace);
-    port->pnLoc.h += width;
-  }
-
   std::shared_ptr<DialogItem> get_focused_item() {
     return focusedItem;
+  }
+
+  CGrafPtr get_port() {
+    return &cWindowRecord.port;
   }
 
   void set_focused_item(std::shared_ptr<DialogItem> item) {
@@ -418,26 +387,17 @@ public:
     render(true);
   }
 
-  void sync() {
-    canvas.sync(sdlWindow);
-    SDL_SyncWindow(sdlWindow.get());
-  }
-
-  void draw_background(PixPatHandle bkPixPat) {
-    canvas.draw_background(sdlWindow, bkPixPat);
-  }
-
   void render(bool renderDialogItems = true) {
     if (!cWindowRecord.visible) {
       return;
     }
 
     // Clear the backbuffer before drawing frame
-    canvas.clear_window();
+    canvas->clear_window();
 
     CGrafPtr port = qd.thePort;
     if (port->bkPixPat) {
-      draw_background(port->bkPixPat);
+      canvas->draw_background(sdlWindow, port->bkPixPat);
     }
 
     // The DrawDialog procedure draws the entire contents of the specified dialog box. The
@@ -456,10 +416,10 @@ public:
       }
     }
 
-    canvas.render(sdlWindow, NULL);
+    canvas->render(NULL);
 
     // Flush changes to screen
-    sync();
+    canvas->sync();
   }
 
   void move(int hGlobal, int vGlobal) {
@@ -476,7 +436,7 @@ public:
     this->h = h;
 
     if (SDL_SetWindowSize(sdlWindow.get(), w, h)) {
-      sync();
+      canvas->sync();
     } else {
       wm_log.error("Could not resize window: %s", SDL_GetError());
     }
@@ -556,7 +516,7 @@ public:
 
     // Must call init here to create SDL resources and associate the window with its DialogItems
     window->init();
-    record_to_window.emplace(&wr->port, window);
+    record_to_window.emplace(window->get_port(), window);
     sdl_window_id_to_window.emplace(window->sdl_window_id(), window);
 
     if (wr->visible) {
@@ -571,7 +531,7 @@ public:
       }
     }
 
-    return &wr->port;
+    return window->get_port();
   }
 
   void destroy_window(WindowPtr record) {
@@ -599,9 +559,6 @@ public:
     if (current_port == record) {
       SetPort(&qd.defaultPort);
     }
-
-    CWindowRecord* const window = reinterpret_cast<CWindowRecord*>(record);
-    delete window;
   }
 
   std::shared_ptr<Window> window_for_record(WindowPtr record) {
@@ -621,6 +578,11 @@ private:
 };
 
 static WindowManager wm;
+
+void render_window(CGrafPtr record) {
+  auto window = wm.window_for_record(record);
+  window->render();
+}
 
 static void SDL_snprintfcat(SDL_OUT_Z_CAP(maxlen) char* text, size_t maxlen, SDL_PRINTF_FORMAT_STRING const char* fmt, ...) {
   size_t length = SDL_strlen(text);
@@ -774,20 +736,6 @@ DisplayProperties WindowManager_GetPrimaryDisplayProperties(void) {
   return DisplayProperties{
       bounds.w,
       bounds.h};
-}
-
-OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon) {
-  GrafPtr port = qd.thePort;
-  auto window = wm.window_for_record(reinterpret_cast<CGrafPort*>(port));
-  auto bounds = (*theIcon)->iconBMap.bounds;
-  int w = bounds.right - bounds.left;
-  int h = bounds.bottom - bounds.top;
-  window->draw_rgba_picture(
-      *((*theIcon)->iconData),
-      w, h, *theRect);
-  window->render();
-
-  return noErr;
 }
 
 void GetDialogItem(DialogPtr dialog, short item_id, short* item_type, Handle* item_handle, Rect* box) {
@@ -986,7 +934,7 @@ void DrawPicture(PicHandle myPicture, const Rect* dstRect) {
     int w = picFrame.right - picFrame.left;
     int h = picFrame.bottom - picFrame.top;
 
-    window->draw_rgba_picture(*((*myPicture)->data), w, h, *dstRect);
+    draw_rgba_picture(*((*myPicture)->data), w, h, *dstRect);
     window->render();
   } catch (std::out_of_range e) {
     wm_log.warning("Could not find window for current port");
@@ -1000,8 +948,8 @@ void LineTo(int16_t h, int16_t v) {
   try {
     auto window = wm.window_for_record(port);
 
-    window->set_draw_color(port->rgbBgColor);
-    window->draw_line(port->pnLoc, {v, h});
+    set_draw_color(port->rgbBgColor);
+    draw_line(port->pnLoc, {v, h});
     window->render();
     port->pnLoc = {v, h};
   } catch (std::out_of_range e) {
@@ -1096,32 +1044,4 @@ void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit) {
       !DialogSelect(&e, &dialog, &item));
 
   *itemHit = item;
-}
-
-void DrawString(ConstStr255Param s) {
-  CGrafPtr port = qd.thePort;
-
-  auto window = wm.window_for_record(port);
-
-  auto str = string_for_pstr<255>(s);
-
-  window->draw_text(str);
-  window->render();
-}
-
-int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount) {
-  // Realmz always calls this procedure with 0 as the first byte, and the full
-  // strlen as the byteCount, so we can ignore those parameters and just measure
-  // the full string.
-  // Realmz also seems to only call this with cstrings, so we're good there as well.
-  CGrafPtr port = qd.thePort;
-
-  return ::draw_text(
-      get_dummy_renderer().get(),
-      static_cast<const char*>(textBuf),
-      0,
-      0,
-      port->txFont,
-      port->txSize,
-      port->txFace);
 }

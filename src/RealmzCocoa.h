@@ -188,7 +188,6 @@ typedef uint32_t GWorldFlags;
 QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,
     GDHandle aGDevice, GWorldFlags flags);
 void SetGWorld(CGrafPtr port, GDHandle gdh);
-void PenSize(int16_t width, int16_t height);
 
 typedef struct OpaqueGammaInfo** GammaRef;
 // ----------
