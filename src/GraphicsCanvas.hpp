@@ -36,18 +36,29 @@ private:
   sdl_texture_ptr sdlTexture;
   sdl_renderer_ptr sdlRenderer;
   sdl_window_shared sdlWindow;
+  CGrafPort portRecord; // Owned CGrafPort, independent from window, for offscreen buffers
   CGrafPtr port;
 
 public:
   GraphicsCanvas();
+
+  // Constructs a new GraphicsCanvas that is attached to an SDL Window and may render io it.
+  // The rect parameter can be used to override the bounds of the canvas.
   GraphicsCanvas(sdl_window_shared window, const Rect& rect, CGrafPtr port);
+
+  // Constructs a GraphicsCanvas that is not tied to a specific window, with its own CGrafPort
+  // state and a software renderer targeting an in-memory buffer. The state is copied from the
+  // current CGrafPort record, including its bounds.
+  GraphicsCanvas(const CGrafPort& portRecord);
+
   ~GraphicsCanvas() = default;
   GraphicsCanvas(const GraphicsCanvas& gc) = delete; // Can't copy due to unique_ptr members
   GraphicsCanvas(GraphicsCanvas&& gc);
 
   GraphicsCanvas& operator=(GraphicsCanvas&& gc);
 
-  const CGrafPtr& get_port() const;
+  CGrafPtr get_port() const;
+  bool is_window() const;
   bool init();
   void clear();
   void clear_window();

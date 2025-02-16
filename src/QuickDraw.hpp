@@ -22,8 +22,8 @@ SDL_Color GetForeColorSDL();
 
 // Adds a canvas to the global lookup, so that they can be accessed directly via
 // a CGrafPtr.
-void register_canvas(CGrafPtr port, std::shared_ptr<GraphicsCanvas> canvas);
-void deregister_canvas(CGrafPtr port);
+void register_canvas(std::shared_ptr<GraphicsCanvas> canvas);
+void deregister_canvas(std::shared_ptr<GraphicsCanvas> canvas);
 std::shared_ptr<GraphicsCanvas> lookup_canvas(CGrafPtr port);
 
 // Drawing functions which operate on the current port, defined globally as qd.thePort

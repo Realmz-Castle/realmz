@@ -25,7 +25,7 @@
 
 static phosg::PrefixedLogger qd_log("[QuickDraw] ");
 static std::unordered_set<int16_t> already_decoded{};
-static std::unordered_map<CGrafPtr, std::weak_ptr<GraphicsCanvas>> canvas_lookup{};
+static std::unordered_map<CGrafPtr, std::shared_ptr<GraphicsCanvas>> canvas_lookup{};
 
 // Originally declared in variables.h. It seems that `qd` was introduced by Myriad during the
 // port to PC in place of Classic Mac's global QuickDraw context. We can repurpose it here
@@ -68,11 +68,19 @@ RGBColor color_const_to_rgb(int32_t color_const) {
   return RGBColor{};
 }
 
-void register_canvas(CGrafPtr port, std::shared_ptr<GraphicsCanvas> canvas) {
-  canvas_lookup.insert({port, canvas});
+void register_canvas(std::shared_ptr<GraphicsCanvas> canvas) {
+  canvas_lookup.insert({canvas->get_port(), canvas});
 }
 
-void deregister_canvas(CGrafPtr port) {
+void deregister_canvas(std::shared_ptr<GraphicsCanvas> canvas) {
+  try {
+    canvas_lookup.erase(canvas->get_port());
+  } catch (std::out_of_range) {
+    qd_log.error("Tried to delete canvas with id %p, but it wasn't in lookup", canvas->get_port());
+  }
+}
+
+void deregister_canvas(const CGrafPtr port) {
   try {
     canvas_lookup.erase(port);
   } catch (std::out_of_range) {
@@ -82,7 +90,7 @@ void deregister_canvas(CGrafPtr port) {
 
 std::shared_ptr<GraphicsCanvas> lookup_canvas(CGrafPtr port) {
   try {
-    return canvas_lookup.at(port).lock();
+    return canvas_lookup.at(port);
   } catch (std::out_of_range) {
     throw std::runtime_error("Could not find canvas for given id");
   }
@@ -333,18 +341,23 @@ PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld) {
   return NULL;
 }
 
+// Internally, we represent an offscreen GWorld as a windowless GraphicsCanvas, which by default
+// will use a software renderer and draw to an in-memory buffer rather than the GPU.
 QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,
     GDHandle aGDevice, GWorldFlags flags) {
-  *offscreenGWorld = (GWorldPtr)malloc(sizeof(CGrafPort));
-  (*offscreenGWorld)->portRect.top = boundsRect->top;
-  (*offscreenGWorld)->portRect.left = boundsRect->left;
-  (*offscreenGWorld)->portRect.bottom = boundsRect->bottom;
-  (*offscreenGWorld)->portRect.right = boundsRect->right;
+  auto portRecord = *qd.thePort;
+  portRecord.portRect = *boundsRect;
+  auto canvas = std::make_shared<GraphicsCanvas>(portRecord);
+  canvas->init();
+  register_canvas(canvas);
+
+  *offscreenGWorld = canvas->get_port();
 
   return 0;
 }
 
 void DisposeGWorld(GWorldPtr offscreenWorld) {
+  deregister_canvas(offscreenWorld);
 }
 
 void DrawString(ConstStr255Param s) {

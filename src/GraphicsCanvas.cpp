@@ -216,6 +216,11 @@ GraphicsCanvas::GraphicsCanvas(sdl_window_shared window, const Rect& rect, CGraf
       sdlWindow(window),
       port(port) {}
 
+GraphicsCanvas::GraphicsCanvas(const CGrafPort& portRecord)
+    : width(portRecord.portRect.right - portRecord.portRect.left),
+      height(portRecord.portRect.bottom - portRecord.portRect.top),
+      portRecord(portRecord), // Copy port parameters to local, owned record
+      port(&this->portRecord) {}
 
 GraphicsCanvas::GraphicsCanvas(GraphicsCanvas&& gc)
     : width{gc.width},
@@ -240,6 +245,14 @@ GraphicsCanvas& GraphicsCanvas::operator=(GraphicsCanvas&& gc) {
   port = gc.port;
   gc.is_initialized = false;
   return *this;
+}
+
+CGrafPtr GraphicsCanvas::get_port() const {
+  return port;
+}
+
+bool GraphicsCanvas::is_window() const {
+  return sdlWindow != nullptr;
 }
 
 bool GraphicsCanvas::init() {
@@ -295,14 +308,18 @@ void GraphicsCanvas::clear_window() {
 
 // Render this canvas' texture to the target window
 void GraphicsCanvas::render(const SDL_FRect* dest) {
-  auto renderer = SDL_GetRenderer(sdlWindow.get());
-  SDL_RenderTexture(renderer, sdlTexture.get(), NULL, dest);
+  if (sdlWindow) {
+    auto renderer = SDL_GetRenderer(sdlWindow.get());
+    SDL_RenderTexture(renderer, sdlTexture.get(), NULL, dest);
+  }
 }
 
 void GraphicsCanvas::sync() {
-  auto renderer = SDL_GetRenderer(sdlWindow.get());
-  SDL_RenderPresent(renderer);
-  SDL_SyncWindow(sdlWindow.get());
+  if (sdlWindow) {
+    auto renderer = SDL_GetRenderer(sdlWindow.get());
+    SDL_RenderPresent(renderer);
+    SDL_SyncWindow(sdlWindow.get());
+  }
 }
 
 void GraphicsCanvas::set_draw_color(const RGBColor& color) {
@@ -470,7 +487,13 @@ SDL_Renderer* GraphicsCanvas::start_draw(const GraphicsCanvas& self) {
 
 void GraphicsCanvas::end_draw(const GraphicsCanvas& self) {
   if (self.sdlWindow) {
+    // Restores the window's renderer's drawing target so that the next call to render the stored
+    // GraphicsCanvas texture will render to the screen.
     SDL_SetRenderTarget(SDL_GetRenderer(self.sdlWindow.get()), NULL);
+  } else {
+    // For software rendering, we still have to call SDL_RenderPresent for the draw calls
+    // to be flushed to the surface.
+    SDL_RenderPresent(sdlRenderer.get());
   }
 }
 

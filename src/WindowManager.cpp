@@ -3,6 +3,7 @@
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_properties.h>
 #include <memory>
+#include <stdexcept>
 #include <variant>
 #include <vector>
 
@@ -293,6 +294,10 @@ public:
     focusedItem = nullptr;
   }
 
+  ~Window() {
+    deregister_canvas(canvas);
+  }
+
   void init() {
     SDL_WindowFlags flags{};
 
@@ -580,8 +585,15 @@ private:
 static WindowManager wm;
 
 void render_window(CGrafPtr record) {
-  auto window = wm.window_for_record(record);
-  window->render();
+  try {
+    auto window = wm.window_for_record(record);
+    window->render();
+  } catch (std::out_of_range) {
+    // This is probably an offscreen GWorld with software renderer and no window
+    if (lookup_canvas(record)->is_window()) {
+      throw std::runtime_error("Tried to render a window from its port, but it doesn't exist in lookup");
+    }
+  }
 }
 
 static void SDL_snprintfcat(SDL_OUT_Z_CAP(maxlen) char* text, size_t maxlen, SDL_PRINTF_FORMAT_STRING const char* fmt, ...) {
