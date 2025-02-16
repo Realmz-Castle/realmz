@@ -40,10 +40,7 @@ private:
 
 public:
   GraphicsCanvas();
-  GraphicsCanvas(int width, int height, CGrafPtr port);
-  GraphicsCanvas(sdl_window_shared window, CGrafPtr port);
   GraphicsCanvas(sdl_window_shared window, const Rect& rect, CGrafPtr port);
-  GraphicsCanvas(const Rect& rect, CGrafPtr port);
   ~GraphicsCanvas() = default;
   GraphicsCanvas(const GraphicsCanvas& gc) = delete; // Can't copy due to unique_ptr members
   GraphicsCanvas(GraphicsCanvas&& gc);

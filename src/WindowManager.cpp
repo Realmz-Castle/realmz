@@ -308,8 +308,8 @@ public:
       throw std::runtime_error(phosg::string_printf("Could not create window: %s\n", SDL_GetError()));
     }
 
-    canvas = std::make_shared<GraphicsCanvas>(sdlWindow, get_port());
-    register_canvas(&cWindowRecord.port, canvas);
+    canvas = std::make_shared<GraphicsCanvas>(sdlWindow, bounds, get_port());
+    register_canvas(canvas);
     canvas->init();
 
     if (dialogItems) {

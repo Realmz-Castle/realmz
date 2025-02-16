@@ -210,27 +210,12 @@ GraphicsCanvas::GraphicsCanvas()
       height(100),
       port(qd.thePort) {}
 
-GraphicsCanvas::GraphicsCanvas(int width, int height, CGrafPtr port)
-    : width(width),
-      height(height),
-      port(port) {}
-
-GraphicsCanvas::GraphicsCanvas(sdl_window_shared window, CGrafPtr port)
-    : sdlWindow(window),
-      port(port) {
-  SDL_GetWindowSize(window.get(), &width, &height);
-}
-
 GraphicsCanvas::GraphicsCanvas(sdl_window_shared window, const Rect& rect, CGrafPtr port)
     : width(rect.right - rect.left),
       height(rect.bottom - rect.top),
       sdlWindow(window),
       port(port) {}
 
-GraphicsCanvas::GraphicsCanvas(const Rect& rect, CGrafPtr port)
-    : width(rect.right - rect.left),
-      height(rect.bottom - rect.top),
-      port(port) {}
 
 GraphicsCanvas::GraphicsCanvas(GraphicsCanvas&& gc)
     : width{gc.width},
