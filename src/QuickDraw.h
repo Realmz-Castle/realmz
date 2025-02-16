@@ -170,6 +170,8 @@ void SetGWorld(CGrafPtr port, GDHandle gdh);
 void DisposeGWorld(GWorldPtr offscreenWorld);
 void DrawString(ConstStr255Param s);
 int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount);
+void DrawPicture(PicHandle myPicture, const Rect* dstRect);
+void LineTo(int16_t h, int16_t v);
 
 #ifdef __cplusplus
 } // extern "C"

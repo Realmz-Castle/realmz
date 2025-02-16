@@ -374,3 +374,23 @@ int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount) {
   // Realmz also seems to only call this with cstrings, so we're good there as well.
   return current_canvas()->measure_text(static_cast<const char*>(textBuf));
 }
+
+void DrawPicture(PicHandle myPicture, const Rect* dstRect) {
+  auto picFrame = (*myPicture)->picFrame;
+  int w = picFrame.right - picFrame.left;
+  int h = picFrame.bottom - picFrame.top;
+
+  draw_rgba_picture(*((*myPicture)->data), w, h, *dstRect);
+  render_current_canvas(NULL);
+  render_window(qd.thePort);
+}
+
+void LineTo(int16_t h, int16_t v) {
+  CGrafPtr port = qd.thePort;
+
+  set_draw_color(port->rgbBgColor);
+  draw_line(port->pnLoc, {v, h});
+  port->pnLoc = {v, h};
+  render_current_canvas(NULL);
+  render_window(qd.thePort);
+}

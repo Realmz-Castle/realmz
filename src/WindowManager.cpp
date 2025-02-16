@@ -936,40 +936,6 @@ void SystemClick(const EventRecord* theEvent, WindowPtr theWindow) {
   // events, so we can just do nothing here.
 }
 
-void DrawPicture(PicHandle myPicture, const Rect* dstRect) {
-  CGrafPtr port = qd.thePort;
-
-  try {
-    auto window = wm.window_for_record(port);
-
-    auto picFrame = (*myPicture)->picFrame;
-    int w = picFrame.right - picFrame.left;
-    int h = picFrame.bottom - picFrame.top;
-
-    draw_rgba_picture(*((*myPicture)->data), w, h, *dstRect);
-    window->render();
-  } catch (std::out_of_range e) {
-    wm_log.warning("Could not find window for current port");
-    return;
-  }
-}
-
-void LineTo(int16_t h, int16_t v) {
-  CGrafPtr port = qd.thePort;
-
-  try {
-    auto window = wm.window_for_record(port);
-
-    set_draw_color(port->rgbBgColor);
-    draw_line(port->pnLoc, {v, h});
-    window->render();
-    port->pnLoc = {v, h};
-  } catch (std::out_of_range e) {
-    wm_log.warning("Could not find window for current port");
-    return;
-  }
-}
-
 void MoveWindow(WindowPtr theWindow, uint16_t hGlobal, uint16_t vGlobal, Boolean front) {
   if (theWindow == nullptr) {
     return;
