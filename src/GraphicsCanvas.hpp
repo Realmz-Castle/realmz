@@ -78,8 +78,8 @@ public:
   void draw_background(sdl_window_shared sdlWindow, PixPatHandle bkPixPat);
 
 private:
-  bool init_renderer(GraphicsCanvas& self);
-  SDL_Renderer* start_draw(const GraphicsCanvas& self);
-  void end_draw(const GraphicsCanvas& self);
+  bool init_renderer();
+  SDL_Renderer* start_draw();
+  void end_draw();
   void clear(SDL_Renderer* renderer);
 };

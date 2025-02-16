@@ -260,11 +260,11 @@ bool GraphicsCanvas::init() {
     return true;
   }
 
-  if (!init_renderer(*this)) {
+  if (!init_renderer()) {
     return false;
   }
 
-  auto renderer = start_draw(*this);
+  auto renderer = start_draw();
 
   // We'll use this texture as our own backbuffer, see
   // https://stackoverflow.com/questions/63759688/sdl-renderpresent-implementation
@@ -288,22 +288,22 @@ bool GraphicsCanvas::init() {
 }
 
 void GraphicsCanvas::clear() {
-  auto renderer = start_draw(*this);
+  auto renderer = start_draw();
 
   clear(renderer);
 
-  end_draw(*this);
+  end_draw();
 }
 
 void GraphicsCanvas::clear_window() {
-  auto renderer = start_draw(*this);
+  auto renderer = start_draw();
 
   // `start_draw` changes the renderer target to the local texture, so force it back to the window
   SDL_SetRenderTarget(renderer, NULL);
 
   clear(renderer);
 
-  end_draw(*this);
+  end_draw();
 }
 
 // Render this canvas' texture to the target window
@@ -323,13 +323,13 @@ void GraphicsCanvas::sync() {
 }
 
 void GraphicsCanvas::set_draw_color(const RGBColor& color) {
-  auto renderer = start_draw(*this);
+  auto renderer = start_draw();
   SDL_SetRenderDrawColor(renderer, color.red, color.green, color.blue, SDL_ALPHA_OPAQUE);
-  end_draw(*this);
+  end_draw();
 }
 
 void GraphicsCanvas::draw_rgba_picture(void* pixels, int w, int h, const Rect& rect) {
-  auto renderer = start_draw(*this);
+  auto renderer = start_draw();
 
   auto s = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGBA32, pixels, 4 * w);
   if (!s) {
@@ -347,13 +347,13 @@ void GraphicsCanvas::draw_rgba_picture(void* pixels, int w, int h, const Rect& r
   s->pixels = NULL;
   SDL_DestroySurface(s);
 
-  end_draw(*this);
+  end_draw();
 }
 
 bool GraphicsCanvas::draw_text(
     const std::string& text,
     const Rect& dispRect) {
-  auto renderer = start_draw(*this);
+  auto renderer = start_draw();
 
   std::string processed_text = replace_param_text(text);
 
@@ -378,21 +378,21 @@ bool GraphicsCanvas::draw_text(
     canvas_log.error("No renderer is available for font %hd; cannot render text \"%s\"", port->txFont, text.c_str());
   }
 
-  end_draw(*this);
+  end_draw();
 
   return success;
 }
 
 void GraphicsCanvas::draw_text(const std::string& text) {
 
-  auto renderer = start_draw(*this);
+  auto renderer = start_draw();
 
   auto pen_loc = port->pnLoc;
 
   int width = ::draw_text(renderer, text, pen_loc.h, pen_loc.v, port->txFont, port->txSize, port->txFace, port->rgbFgColor);
   port->pnLoc.h += width;
 
-  end_draw(*this);
+  end_draw();
 }
 
 int GraphicsCanvas::measure_text(const std::string& text) {
@@ -402,21 +402,21 @@ int GraphicsCanvas::measure_text(const std::string& text) {
 }
 
 void GraphicsCanvas::draw_rect(const Rect& dispRect) {
-  auto renderer = start_draw(*this);
+  auto renderer = start_draw();
   auto dest = sdl_frect(dispRect);
   SDL_RenderRect(renderer, &dest);
-  end_draw(*this);
+  end_draw();
 }
 
 void GraphicsCanvas::draw_line(const Point& start, const Point& end) {
-  auto renderer = start_draw(*this);
+  auto renderer = start_draw();
   SDL_RenderLine(
       renderer,
       static_cast<float>(start.h),
       static_cast<float>(start.v),
       static_cast<float>(end.h),
       static_cast<float>(end.v));
-  end_draw(*this);
+  end_draw();
 }
 
 void GraphicsCanvas::draw_background(sdl_window_shared sdlWindow, PixPatHandle bkPixPat) {
@@ -449,23 +449,23 @@ void GraphicsCanvas::draw_background(sdl_window_shared sdlWindow, PixPatHandle b
   }
 }
 
-bool GraphicsCanvas::init_renderer(GraphicsCanvas& self) {
-  if (self.sdlWindow) {
-    if (!SDL_GetRenderer(self.sdlWindow.get())) {
-      if (!SDL_CreateRenderer(self.sdlWindow.get(), "opengl")) {
+bool GraphicsCanvas::init_renderer() {
+  if (sdlWindow) {
+    if (!SDL_GetRenderer(sdlWindow.get())) {
+      if (!SDL_CreateRenderer(sdlWindow.get(), "opengl")) {
         canvas_log.error("Could not create window renderer: %s", SDL_GetError());
         return false;
       }
     }
   } else {
-    self.sdlSurface = sdl_make_unique(SDL_CreateSurface(self.width, self.height, SDL_PIXELFORMAT_RGBA32));
-    if (self.sdlSurface == nullptr) {
+    sdlSurface = sdl_make_unique(SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32));
+    if (sdlSurface == nullptr) {
       canvas_log.error("Could not create SDL_Surface for software rendering: %s", SDL_GetError());
       return false;
     }
 
-    self.sdlRenderer = sdl_make_unique(SDL_CreateSoftwareRenderer(self.sdlSurface.get()));
-    if (self.sdlRenderer == nullptr) {
+    sdlRenderer = sdl_make_unique(SDL_CreateSoftwareRenderer(sdlSurface.get()));
+    if (sdlRenderer == nullptr) {
       canvas_log.error("Could not create software SDL_Renderer: %s", SDL_GetError());
       return false;
     }
@@ -474,22 +474,22 @@ bool GraphicsCanvas::init_renderer(GraphicsCanvas& self) {
   return true;
 }
 
-SDL_Renderer* GraphicsCanvas::start_draw(const GraphicsCanvas& self) {
-  if (self.sdlWindow) {
-    auto r = SDL_GetRenderer(self.sdlWindow.get());
-    SDL_SetRenderTarget(r, self.sdlTexture.get());
+SDL_Renderer* GraphicsCanvas::start_draw() {
+  if (sdlWindow) {
+    auto r = SDL_GetRenderer(sdlWindow.get());
+    SDL_SetRenderTarget(r, sdlTexture.get());
     return r;
   } else {
     // Software renderer, already rendering to surface
-    return self.sdlRenderer.get();
+    return sdlRenderer.get();
   }
 }
 
-void GraphicsCanvas::end_draw(const GraphicsCanvas& self) {
-  if (self.sdlWindow) {
+void GraphicsCanvas::end_draw() {
+  if (sdlWindow) {
     // Restores the window's renderer's drawing target so that the next call to render the stored
     // GraphicsCanvas texture will render to the screen.
-    SDL_SetRenderTarget(SDL_GetRenderer(self.sdlWindow.get()), NULL);
+    SDL_SetRenderTarget(SDL_GetRenderer(sdlWindow.get()), NULL);
   } else {
     // For software rendering, we still have to call SDL_RenderPresent for the draw calls
     // to be flushed to the surface.
