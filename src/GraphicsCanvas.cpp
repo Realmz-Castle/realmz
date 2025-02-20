@@ -34,13 +34,6 @@ void debug_renderer_state(SDL_Renderer* renderer, const char* label) {
   }
 }
 
-void copy_rect(Rect& dst, const ResourceDASM::Rect& src) {
-  dst.top = src.y1;
-  dst.left = src.x1;
-  dst.bottom = src.y2;
-  dst.right = src.x2;
-}
-
 bool render_surface(SDL_Renderer* sdlRenderer, SDL_Surface* surface, const Rect& rect) {
   SDL_FRect text_dest;
   text_dest.x = rect.left;

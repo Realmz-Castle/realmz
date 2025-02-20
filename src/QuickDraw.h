@@ -31,6 +31,8 @@ typedef GDevice *GDPtr, **GDHandle;
 typedef int16_t QDErr;
 
 typedef struct {
+  size_t num_colors;
+  Handle colors; // RGBColor[num_colors]
 } ColorTable;
 
 typedef ColorTable* CTabPtr;

@@ -6,7 +6,7 @@
 #include "ResourceManager.h"
 #include "StringConvert.hpp"
 
-static std::unordered_map<int16_t, TTF_Font *> tt_fonts_by_id;
+static std::unordered_map<int16_t, TTF_Font*> tt_fonts_by_id;
 static std::unordered_map<int16_t, ResourceDASM::BitmapFontRenderer>
     bm_renderers_by_id;
 static std::array<std::string, 4> param_text_entries;
@@ -29,18 +29,18 @@ void init_fonts() {
 
 // Tries to load a TrueType font first; if it's not available, use a
 // bitmapped font instead.
-bool load_font(int16_t font_id, TTF_Font **ttf_font_handle,
-               ResourceDASM::BitmapFontRenderer **bm_font_handle) {
+bool load_font(int16_t font_id, TTF_Font** ttf_font_handle,
+    ResourceDASM::BitmapFontRenderer** bm_font_handle) {
   try {
     *ttf_font_handle = tt_fonts_by_id.at(font_id);
     return true;
-  } catch (const std::out_of_range &) {
+  } catch (const std::out_of_range&) {
   }
 
   try {
     *bm_font_handle = &bm_renderers_by_id.at(font_id);
     return true;
-  } catch (const std::out_of_range &) {
+  } catch (const std::out_of_range&) {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_FONT, font_id);
     auto decoded =
         std::make_shared<ResourceDASM::ResourceFile::DecodedFontResource>(
@@ -53,7 +53,7 @@ bool load_font(int16_t font_id, TTF_Font **ttf_font_handle,
   return (*bm_font_handle == nullptr) ? false : true;
 }
 
-void set_font_face(TTF_Font *font, int16_t face) {
+void set_font_face(TTF_Font* font, int16_t face) {
   TTF_FontStyleFlags styles{TTF_STYLE_NORMAL};
 
   if (face == bold) {
@@ -66,17 +66,14 @@ void set_font_face(TTF_Font *font, int16_t face) {
 }
 
 void ParamText(ConstStr255Param param0, ConstStr255Param param1,
-               ConstStr255Param param2, ConstStr255Param param3) {
+    ConstStr255Param param2, ConstStr255Param param3) {
   param_text_entries[0] = string_for_pstr<256>(param0);
   param_text_entries[1] = string_for_pstr<256>(param1);
   param_text_entries[2] = string_for_pstr<256>(param2);
   param_text_entries[3] = string_for_pstr<256>(param3);
-  fprintf(stderr, "ParamText(\"%s\", \"%s\", \"%s\", \"%s\")\n",
-          param_text_entries[0].c_str(), param_text_entries[1].c_str(),
-          param_text_entries[2].c_str(), param_text_entries[3].c_str());
 }
 
-std::string replace_param_text(const std::string &text) {
+std::string replace_param_text(const std::string& text) {
   char prev = 0;
   std::string ret;
   for (size_t z = 0; z < text.size(); z++) {

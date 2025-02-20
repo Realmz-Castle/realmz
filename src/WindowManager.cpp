@@ -28,12 +28,31 @@
 
 using ResourceDASM::ResourceFile;
 
-class DialogItem;
+class WindowManager;
+class Window;
+
+inline size_t unwrap_opaque_handle(Handle h) {
+  static_assert(sizeof(size_t) == sizeof(Handle));
+  return reinterpret_cast<size_t>(h);
+}
+inline Handle wrap_opaque_handle(size_t h) {
+  static_assert(sizeof(size_t) == sizeof(Handle));
+  return reinterpret_cast<Handle>(h);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// SDL and rendering helpers
 
 static phosg::PrefixedLogger wm_log("[WindowManager] ");
 
+static size_t generate_opaque_handle() {
+  static size_t next_handle = 1;
+  return next_handle++;
+}
+
 typedef std::variant<TTF_Font*, ResourceDASM::BitmapFontRenderer> Font;
-typedef size_t DialogItemHandle;
 
 using DialogItemType = ResourceDASM::ResourceFile::DecodedDialogItem::Type;
 
@@ -62,47 +81,243 @@ static int16_t macos_dialog_item_type_for_resource_dasm_type(DialogItemType type
   }
 }
 
-class WindowManager;
-class Window;
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Controls
+
+struct DialogItem;
+
+enum class ControlType {
+  // The values here match proc_id in the CNTL resource. There are more of
+  // these, but we probably won't need them
+  BUTTON = 0,
+  CHECKBOX = 1,
+  RADIO_BUTTON = 2,
+  WINDOW_FONT_BUTTON = 8,
+  WINDOW_FONT_CHECKBOX = 9,
+  WINDOW_FONT_RADIO_BUTTON = 10,
+  SCROLL_BAR = 16,
+  POPUP_MENU = 1008,
+  UNKNOWN = 0x10000,
+};
+
+// This structure is "private" (not accessible in C) like DialogItem; see the
+// comment on that structure for reasoning
+struct Control {
+  std::weak_ptr<DialogItem> dialog_item; // May be null for dynamically-created controls!
+  int32_t cntl_resource_id; // 0x00010000 = not from a resource
+  size_t opaque_handle;
+  ControlType type;
+  Rect bounds;
+  int16_t value;
+  int16_t min;
+  int16_t max;
+  bool visible = true;
+  std::string title;
+
+protected:
+  static std::shared_ptr<Control> make_shared(
+      int32_t cntl_res_id,
+      const Rect& bounds,
+      int16_t value,
+      int16_t min,
+      int16_t max,
+      int16_t proc_id,
+      bool visible,
+      const std::string& title) {
+    auto ret = std::make_shared<Control>();
+    ret->cntl_resource_id = cntl_res_id;
+    ret->opaque_handle = generate_opaque_handle();
+    switch (proc_id) {
+      case 0:
+        ret->type = ControlType::BUTTON;
+        break;
+      case 1:
+        ret->type = ControlType::CHECKBOX;
+        break;
+      case 2:
+        ret->type = ControlType::RADIO_BUTTON;
+        break;
+      case 8:
+        ret->type = ControlType::WINDOW_FONT_BUTTON;
+        break;
+      case 9:
+        ret->type = ControlType::WINDOW_FONT_CHECKBOX;
+        break;
+      case 10:
+        ret->type = ControlType::WINDOW_FONT_RADIO_BUTTON;
+        break;
+      case 16:
+        ret->type = ControlType::SCROLL_BAR;
+        break;
+      case 1008:
+        ret->type = ControlType::POPUP_MENU;
+        break;
+      default:
+        throw std::runtime_error(phosg::string_printf("Unknown control type %hd", proc_id));
+    }
+    ret->bounds = bounds;
+    ret->value = value;
+    ret->min = min;
+    ret->max = max;
+    ret->visible = visible;
+    ret->title = title;
+    return ret;
+  }
+
+public:
+  // Create a new control manually. This implements the NewControl syscall.
+  static std::shared_ptr<Control> from_params(
+      const Rect& bounds,
+      int16_t value,
+      int16_t min,
+      int16_t max,
+      int16_t proc_id,
+      bool visible,
+      const std::string& title) {
+    return Control::make_shared(0x00010000, bounds, value, min, max, proc_id, visible, title);
+  }
+  // Create a new control from a resource. This implements the GetNewControl syscall.
+  static std::shared_ptr<Control> from_CNTL(int16_t cntl_resource_id) {
+    auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_CNTL, cntl_resource_id);
+    auto def = ResourceDASM::ResourceFile::decode_CNTL(*data_handle, GetHandleSize(data_handle));
+    Rect bounds;
+    copy_rect(bounds, def.bounds);
+    return Control::make_shared(cntl_resource_id, bounds, def.value, def.min, def.max, def.proc_id, def.visible, def.title);
+  }
+  // Create a new control from a dialog item. This implements controls
+  // generated from DITL entries. Annoyingly, this can't be implemented here
+  // because it depends on the internals of DialogItem, which is still an
+  // incomplete type at this point.
+  static std::shared_ptr<Control> from_dialog_item(const DialogItem& item);
+
+  ~Control() = default;
+
+  std::string str() const {
+    static const std::unordered_map<ControlType, const char*> type_strs{
+        {ControlType::BUTTON, "BUTTON"},
+        {ControlType::CHECKBOX, "CHECKBOX"},
+        {ControlType::RADIO_BUTTON, "RADIO_BUTTON"},
+        {ControlType::WINDOW_FONT_BUTTON, "WINDOW_FONT_BUTTON"},
+        {ControlType::WINDOW_FONT_CHECKBOX, "WINDOW_FONT_CHECKBOX"},
+        {ControlType::WINDOW_FONT_RADIO_BUTTON, "WINDOW_FONT_RADIO_BUTTON"},
+        {ControlType::SCROLL_BAR, "SCROLL_BAR"},
+        {ControlType::POPUP_MENU, "POPUP_MENU"},
+    };
+    return phosg::string_printf(
+        "Control(cntl_resource_id=%hd, opaque_handle=%zu, type=%s, value=%hd, min=%hd, max=%hd, visible=%s)",
+        this->cntl_resource_id,
+        this->opaque_handle,
+        type_strs.at(this->type),
+        this->value,
+        this->min,
+        this->max,
+        this->visible ? "true" : "false");
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Dialog items
 
 // This structure is "private" (not accessible in C) because it isn't directly
 // used there: Realmz only interacts with dialog items through syscalls and
 // handles, so we can use C++ types here without breaking anything.
 struct DialogItem {
 public:
-  int16_t ditl_resource_id;
+  // Identity
+  size_t opaque_handle;
+
+  // Source information
+  int32_t ditl_resource_id; // 0x00010000 = not from a DITL
   size_t item_id;
+
+  // Options
   DialogItemType type;
-  int16_t resource_id;
+  int16_t resource_id; // From item definition (generally used for controls)
   Rect rect;
   bool enabled;
+  std::shared_ptr<Control> control; // May be null
+
+  // Window and renderer
   std::weak_ptr<Window> window;
   GraphicsCanvas canvas;
-  sdl_window_shared sdlWindow;
-  DialogItemHandle handle;
-  static DialogItemHandle next_di_handle;
-  static std::unordered_map<size_t, std::shared_ptr<DialogItem>> all_dialog_items;
+  sdl_window_shared sdl_window;
+
+  static std::unordered_map<size_t, std::weak_ptr<DialogItem>> all_items;
+
+  static std::shared_ptr<DialogItem> get_item_by_handle(size_t handle) {
+    auto item = DialogItem::all_items.at(handle).lock();
+    if (!item) {
+      throw std::logic_error(phosg::string_printf(
+          "Attempted to get missing or destroyed dialog item (handle was %zu)", handle));
+    }
+    return item;
+  }
 
 private:
   bool dirty;
   std::string text;
 
 public:
-  DialogItem(int16_t ditl_res_id, size_t item_id, const ResourceDASM::ResourceFile::DecodedDialogItem& def)
-      : ditl_resource_id(ditl_res_id),
-        item_id(item_id),
-        type(def.type),
-        text(def.text),
-        resource_id(def.resource_id),
-        enabled(def.enabled),
-        handle{next_di_handle++},
-        dirty{true} {
+  // Constructor from a definition
+  DialogItem(
+      int32_t ditl_res_id,
+      size_t item_id,
+      const ResourceDASM::ResourceFile::DecodedDialogItem& def)
+      : opaque_handle{generate_opaque_handle()},
+        ditl_resource_id{ditl_res_id},
+        item_id{item_id},
+        type{def.type},
+        resource_id{def.resource_id},
+        enabled{def.enabled},
+        dirty{true},
+        text{def.text} {
     this->rect.left = def.bounds.x1;
     this->rect.right = def.bounds.x2;
     this->rect.top = def.bounds.y1;
     this->rect.bottom = def.bounds.y2;
+    this->control = Control::from_dialog_item(*this); // May return null
+  }
+  // Constructor from a control
+  DialogItem(std::shared_ptr<Control> control)
+      : opaque_handle{control->opaque_handle},
+        ditl_resource_id{0x00010000},
+        item_id{0},
+        type{DialogItemType::UNKNOWN},
+        resource_id{0},
+        rect{control->bounds},
+        enabled{true},
+        control{control},
+        dirty{true},
+        text{control->title} {
+    switch (control->type) {
+      case ControlType::BUTTON:
+        this->type = DialogItemType::BUTTON;
+        break;
+      case ControlType::CHECKBOX:
+        this->type = DialogItemType::CHECKBOX;
+        break;
+      case ControlType::RADIO_BUTTON:
+        this->type = DialogItemType::RADIO_BUTTON;
+        break;
+
+      // TODO: Figure out how to implement this. We'll need it for the trade/shop screen.
+      // case ControlType::SCROLL_BAR:
+
+      // We don't support these (yet?)
+      // case ControlType::WINDOW_FONT_BUTTON:
+      // case ControlType::WINDOW_FONT_CHECKBOX:
+      // case ControlType::WINDOW_FONT_RADIO_BUTTON:
+      // case ControlType::POPUP_MENU:
+      default:
+        throw std::runtime_error("unsupported control type");
+    }
   }
 
+  // Create a list of dialog items from a DITL resource
   static std::vector<std::shared_ptr<DialogItem>> from_DITL(int16_t ditl_resource_id) {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_DITL, ditl_resource_id);
     auto defs = ResourceDASM::ResourceFile::decode_DITL(*data_handle, GetHandleSize(data_handle));
@@ -111,8 +326,22 @@ public:
     for (const auto& decoded_dialog_item : defs) {
       size_t item_id = ret.size() + 1;
       auto di = ret.emplace_back(new DialogItem(ditl_resource_id, item_id, decoded_dialog_item));
+      all_items[di->opaque_handle] = di;
     }
     return ret;
+  }
+
+  // Create a single dialog item from a CNTL resource. This is necessary for
+  // the NewControl and GetNewControl syscalls. The returned dialog item has
+  // an item_id of zero, which will be overwritten by add_dialog_item.
+  static std::shared_ptr<DialogItem> from_control(std::shared_ptr<Control> control) {
+    auto ret = std::make_shared<DialogItem>(control);
+    all_items[ret->opaque_handle] = ret;
+    return ret;
+  }
+
+  ~DialogItem() {
+    all_items.erase(opaque_handle);
   }
 
   std::string str() const {
@@ -130,8 +359,9 @@ public:
         {DialogItemType::UNKNOWN, "UNKNOWN"},
     };
     auto text_str = phosg::format_data_string(this->text);
+    auto control_str = this->control ? this->control->str() : "NULL";
     return phosg::string_printf(
-        "DialogItem(ditl_resource_id=%hd, item_id=%zu, type=%s, resource_id=%hd, rect=Rect(left=%hd, top=%hd, right=%hd, bottom=%hd), enabled=%s, handle=%zu, dirty=%s, text=%s)",
+        "DialogItem(ditl_resource_id=%" PRId32 ", item_id=%zu, type=%s, resource_id=%hd, rect=Rect(left=%hd, top=%hd, right=%hd, bottom=%hd), enabled=%s, control=%s, handle=%zu, dirty=%s, text=%s)",
         this->ditl_resource_id,
         this->item_id,
         type_strs.at(this->type),
@@ -141,13 +371,14 @@ public:
         this->rect.right,
         this->rect.bottom,
         this->enabled ? "true" : "false",
-        this->handle,
+        control_str.c_str(),
+        this->opaque_handle,
         this->dirty ? "true" : "false",
         text_str.c_str());
   }
 
   bool init() {
-    canvas = GraphicsCanvas(sdlWindow, rect);
+    canvas = GraphicsCanvas(sdl_window, rect);
     return canvas.init();
   }
 
@@ -171,6 +402,10 @@ public:
         canvas.draw_rgba_picture(*pict.data, w, h, Rect{0, 0, h, w});
         break;
       }
+      case ResourceFile::DecodedDialogItem::Type::ICON:
+        // TODO
+        wm_log.warning("Attempted to draw ICON dialog item, but it's not implemented");
+        break;
       case ResourceFile::DecodedDialogItem::Type::TEXT: {
         if (text.length() < 1) {
           dirty = false;
@@ -214,8 +449,38 @@ public:
         }
         break;
       }
+      case ResourceFile::DecodedDialogItem::Type::CHECKBOX:
+      case ResourceFile::DecodedDialogItem::Type::RADIO_BUTTON:
+        // TODO: For now, we just draw radio buttons the same as checkboxes. (Does Realmz even use radio buttons?)
+        // Draw checkbox
+        canvas.set_draw_color(port->rgbFgColor);
+        canvas.draw_line(Point{.h = 0, .v = 0}, Point{.h = 0, .v = 10}); // Left side
+        canvas.draw_line(Point{.h = 0, .v = 0}, Point{.h = 10, .v = 0}); // Top side
+        canvas.draw_line(Point{.h = 10, .v = 10}, Point{.h = 0, .v = 10}); // Bottom side
+        canvas.draw_line(Point{.h = 10, .v = 10}, Point{.h = 10, .v = 0}); // Right side
+        if (control && control->value) {
+          // Draw an X also if the checkbox is checked
+          canvas.draw_line(Point{.h = 0, .v = 0}, Point{.h = 10, .v = 10});
+          canvas.draw_line(Point{.h = 0, .v = 10}, Point{.h = 10, .v = 0});
+        }
+        if (!canvas.draw_text(
+                text,
+                Rect{12, 0, get_height(), get_width()},
+                port->txFont,
+                port->txSize,
+                port->txFace)) {
+          wm_log.error("Error when rendering button text item %d: %s", resource_id, SDL_GetError());
+          dirty = false;
+          return;
+        }
+        break;
+      case ResourceFile::DecodedDialogItem::Type::RESOURCE_CONTROL:
+      case ResourceFile::DecodedDialogItem::Type::HELP_BALLOON:
+      case ResourceFile::DecodedDialogItem::Type::CUSTOM:
+      case ResourceFile::DecodedDialogItem::Type::UNKNOWN:
+        // TODO: Should we draw anything for these types?
+        break;
       default:
-        // TODO: Render other DITL types
         break;
     }
 
@@ -234,7 +499,7 @@ public:
     dstRect.w = get_width();
     dstRect.h = get_height();
 
-    canvas.render(sdlWindow, &dstRect);
+    canvas.render(sdl_window, &dstRect);
   }
 
   int16_t get_width() const {
@@ -245,17 +510,23 @@ public:
     return rect.bottom - rect.top;
   }
 
-  const std::string& get_text() {
+  const std::string& get_text() const {
     return text;
   }
 
   void set_text(const std::string& new_text) {
     text = new_text;
+    if (control) {
+      control->title = text;
+    }
     dirty = true;
   }
 
   void set_text(std::string&& new_text) {
     text = std::move(new_text);
+    if (control) {
+      control->title = text;
+    }
     dirty = true;
   }
 
@@ -270,10 +541,107 @@ public:
       dirty = true;
     }
   }
+
+  bool set_control_visible(bool visible) {
+    if (this->control && (this->control->visible != visible)) {
+      this->control->visible = visible;
+      this->dirty = true;
+    }
+    return this->dirty;
+  }
+
+  bool move_control(short h, short v) {
+    if (this->control) {
+      Rect& bounds = this->control->bounds;
+      int32_t w = bounds.right - bounds.left;
+      int32_t h = bounds.bottom - bounds.top;
+      bounds.left = h;
+      bounds.top = v;
+      bounds.right = bounds.left + w;
+      bounds.bottom = bounds.top + h;
+      this->rect = bounds;
+      this->dirty = true;
+    }
+    return this->dirty;
+  }
+
+  bool resize_control(short w, short h) {
+    if (this->control) {
+      Rect& bounds = this->control->bounds;
+      bounds.right = bounds.left + w;
+      bounds.bottom = bounds.top + h;
+      this->rect = bounds;
+      this->dirty = true;
+    }
+    return this->dirty;
+  }
+
+  bool set_control_value(short value) {
+    if (this->control && (this->control->value != value)) {
+      this->control->value = value;
+      this->dirty = true;
+    }
+    return this->dirty;
+  }
+
+  bool set_control_minimum(short min) {
+    if (this->control && (this->control->min != min)) {
+      this->control->min = min;
+      this->control->max = std::max<int16_t>(this->control->max, this->control->min);
+      this->control->value = std::max<int16_t>(this->control->min, this->control->value);
+      this->dirty = true;
+    }
+    return this->dirty;
+  }
+
+  bool set_control_maximum(short max) {
+    if (this->control && (this->control->max != max)) {
+      this->control->max = max;
+      this->control->min = std::min<int16_t>(this->control->max, this->control->min);
+      this->control->value = std::min<int16_t>(this->control->max, this->control->value);
+      this->dirty = true;
+    }
+    return this->dirty;
+  }
 };
 
-// Initialize static handle sequence
-DialogItemHandle DialogItem::next_di_handle = 1;
+std::unordered_map<size_t, std::weak_ptr<DialogItem>> DialogItem::all_items;
+
+std::shared_ptr<Control> Control::from_dialog_item(const DialogItem& item) {
+  ControlType type;
+  switch (item.type) {
+    case DialogItemType::BUTTON:
+      type = ControlType::BUTTON;
+      break;
+    case DialogItemType::CHECKBOX:
+      type = ControlType::CHECKBOX;
+      break;
+    case DialogItemType::RADIO_BUTTON:
+      type = ControlType::RADIO_BUTTON;
+      break;
+    case DialogItemType::RESOURCE_CONTROL:
+      return Control::from_CNTL(item.resource_id);
+    default:
+      return nullptr;
+  }
+
+  auto ret = std::make_shared<Control>();
+  ret->cntl_resource_id = 0x00010000;
+  ret->opaque_handle = item.opaque_handle;
+  ret->type = type;
+  ret->bounds = item.rect;
+  ret->value = 0;
+  ret->min = 0;
+  ret->max = 1;
+  ret->visible = true;
+  ret->title = item.get_text();
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Windows
 
 class Window : public std::enable_shared_from_this<Window> {
 private:
@@ -282,25 +650,33 @@ private:
   int w;
   int h;
   CWindowRecord cWindowRecord;
-  sdl_window_shared sdlWindow;
+  sdl_window_shared sdl_window;
   GraphicsCanvas canvas;
-  std::shared_ptr<std::vector<std::shared_ptr<DialogItem>>> dialogItems;
-  std::vector<std::shared_ptr<DialogItem>> renderableItems;
-  std::vector<std::shared_ptr<DialogItem>> textItems;
-  std::shared_ptr<DialogItem> focusedItem;
+  bool is_dialog_flag;
+  std::vector<std::shared_ptr<DialogItem>> dialog_items; // All items (the below 3 vectors are disjoint subsets of this)
+  std::vector<std::shared_ptr<DialogItem>> static_items;
+  std::vector<std::shared_ptr<DialogItem>> control_items;
+  std::vector<std::shared_ptr<DialogItem>> text_items;
+  std::shared_ptr<DialogItem> focused_item;
   bool text_editing_active;
 
 public:
   Window() = default;
-  Window(std::string title, const Rect& bounds, CWindowRecord record, std::shared_ptr<std::vector<std::shared_ptr<DialogItem>>> dialog_items)
+  Window(
+      std::string title,
+      const Rect& bounds,
+      CWindowRecord record,
+      bool is_dialog,
+      std::vector<std::shared_ptr<DialogItem>>&& dialog_items)
       : title{title},
         bounds{bounds},
         cWindowRecord{record},
-        dialogItems{dialog_items},
+        is_dialog_flag{is_dialog},
+        dialog_items{std::move(dialog_items)},
         canvas{} {
     w = bounds.right - bounds.left;
     h = bounds.bottom - bounds.top;
-    focusedItem = nullptr;
+    focused_item = nullptr;
   }
 
   void init() {
@@ -312,40 +688,40 @@ public:
     if (!cWindowRecord.visible) {
       flags |= SDL_WINDOW_HIDDEN;
     }
-    sdlWindow = sdl_make_shared(SDL_CreateWindow(title.c_str(), w, h, flags));
+    sdl_window = sdl_make_shared(SDL_CreateWindow(title.c_str(), w, h, flags));
 
-    if (sdlWindow == NULL) {
+    if (sdl_window == NULL) {
       throw std::runtime_error(phosg::string_printf("Could not create window: %s\n", SDL_GetError()));
     }
 
-    canvas = GraphicsCanvas(sdlWindow);
+    canvas = GraphicsCanvas(sdl_window);
     canvas.init();
 
-    if (dialogItems) {
-      for (auto di : *dialogItems) {
-        di->window = this->weak_from_this();
-        di->sdlWindow = sdlWindow;
-        di->init();
+    for (auto di : this->dialog_items) {
+      di->window = this->weak_from_this();
+      di->sdl_window = sdl_window;
+      di->init();
 
-        // Set the focused text field to be the first EDIT_TEXT item encountered
-        if (!focusedItem && di->type == DialogItemType::EDIT_TEXT) {
-          focusedItem = di;
-        }
+      // Set the focused text field to be the first EDIT_TEXT item encountered
+      if (!focused_item && di->type == DialogItemType::EDIT_TEXT) {
+        focused_item = di;
+      }
 
-        if (di->type == DialogItemType::TEXT || di->type == DialogItemType::EDIT_TEXT) {
-          textItems.emplace_back(di);
-        } else {
-          renderableItems.emplace_back(di);
-        }
+      if (di->type == DialogItemType::TEXT || di->type == DialogItemType::EDIT_TEXT) {
+        text_items.emplace_back(di);
+      } else if (di->control) {
+        control_items.emplace_back(di);
+      } else {
+        static_items.emplace_back(di);
+      }
 
-        if (di->type == DialogItemType::EDIT_TEXT && !text_editing_active) {
-          SDL_Rect r{
-              di->rect.left,
-              di->rect.top,
-              di->rect.right - di->rect.left,
-              di->rect.bottom - di->rect.top};
-          init_text_editing(r);
-        }
+      if (di->type == DialogItemType::EDIT_TEXT && !text_editing_active) {
+        SDL_Rect r{
+            di->rect.left,
+            di->rect.top,
+            di->rect.right - di->rect.left,
+            di->rect.bottom - di->rect.top};
+        init_text_editing(r);
       }
     }
 
@@ -354,7 +730,7 @@ public:
 
   void init_text_editing(SDL_Rect r) {
     // Macintosh Toolbox Essentials 6-32
-    if (!SDL_SetTextInputArea(sdlWindow.get(), &r, 0)) {
+    if (!SDL_SetTextInputArea(sdl_window.get(), &r, 0)) {
       wm_log.error("Could not create text area: %s", SDL_GetError());
     }
 
@@ -363,7 +739,7 @@ public:
     SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, false);
     SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_NONE);
 
-    if (!SDL_StartTextInputWithProperties(sdlWindow.get(), props)) {
+    if (!SDL_StartTextInputWithProperties(sdl_window.get(), props)) {
       wm_log.error("Could not start text input: %s", SDL_GetError());
     }
 
@@ -374,6 +750,11 @@ public:
 
   void draw_rect(const Rect& dispRect) {
     canvas.draw_rect(dispRect);
+  }
+
+  void add_dialog_item(std::shared_ptr<DialogItem> item) {
+    item->item_id = this->dialog_items.size();
+    this->dialog_items.emplace_back(item);
   }
 
   void draw_rgba_picture(void* pixels, int w, int h, const Rect& dispRect) {
@@ -401,12 +782,12 @@ public:
   }
 
   std::shared_ptr<DialogItem> get_focused_item() {
-    return focusedItem;
+    return focused_item;
   }
 
   void set_focused_item(std::shared_ptr<DialogItem> item) {
-    if (item->window.lock()->sdlWindow == sdlWindow) {
-      focusedItem = item;
+    if (item->window.lock()->sdl_window == sdl_window) {
+      focused_item = item;
     }
   }
 
@@ -421,12 +802,12 @@ public:
   }
 
   void sync() {
-    canvas.sync(sdlWindow);
-    SDL_SyncWindow(sdlWindow.get());
+    canvas.sync(sdl_window);
+    SDL_SyncWindow(sdl_window.get());
   }
 
   void draw_background(PixPatHandle bkPixPat) {
-    canvas.draw_background(sdlWindow, bkPixPat);
+    canvas.draw_background(sdl_window, bkPixPat);
   }
 
   void render(bool renderDialogItems = true) {
@@ -449,25 +830,27 @@ public:
     // update all static and editable text items and to draw their display rectangles. The
     // DrawDialog procedure also calls the application-defined items’ draw procedures if
     // the items’ rectangles are within the update region.
-    if (dialogItems && renderDialogItems) {
-      for (auto item : renderableItems) {
+    if (renderDialogItems) {
+      for (auto item : this->static_items) {
         item->render();
       }
-
-      for (auto item : textItems) {
+      for (auto item : this->control_items) {
+        item->render();
+      }
+      for (auto item : this->text_items) {
         item->render();
       }
     }
 
-    canvas.render(sdlWindow, NULL);
+    canvas.render(sdl_window, NULL);
 
     // Flush changes to screen
     sync();
   }
 
   void move(int hGlobal, int vGlobal) {
-    SDL_SetWindowPosition(sdlWindow.get(), hGlobal, vGlobal);
-    SDL_SyncWindow(sdlWindow.get());
+    SDL_SetWindowPosition(sdl_window.get(), hGlobal, vGlobal);
+    SDL_SyncWindow(sdl_window.get());
   }
 
   void resize(uint16_t w, uint16_t h) {
@@ -478,7 +861,7 @@ public:
     this->w = w;
     this->h = h;
 
-    if (SDL_SetWindowSize(sdlWindow.get(), w, h)) {
+    if (SDL_SetWindowSize(sdl_window.get(), w, h)) {
       sync();
     } else {
       wm_log.error("Could not resize window: %s", SDL_GetError());
@@ -488,30 +871,35 @@ public:
   void show() {
     cWindowRecord.visible = true;
     render(false);
-    SDL_ShowWindow(sdlWindow.get());
+    SDL_ShowWindow(sdl_window.get());
   }
 
   SDL_WindowID sdl_window_id() const {
-    return SDL_GetWindowID(sdlWindow.get());
+    return SDL_GetWindowID(sdl_window.get());
   }
 
-  std::shared_ptr<std::vector<std::shared_ptr<DialogItem>>> get_dialog_items() const {
-    return this->dialogItems;
+  const std::vector<std::shared_ptr<DialogItem>>& get_dialog_items() const {
+    return this->dialog_items;
   }
 
   std::shared_ptr<DialogItem> dialog_item_for_position(const Point& pt, bool enabled_only) {
-    auto items = this->get_dialog_items();
-    if (items) {
-      for (size_t z = 0; z < items->size(); z++) {
-        const auto item = items->at(z);
-        if ((!enabled_only || item->enabled) && PtInRect(pt, &item->rect)) {
-          return item;
-        }
+    for (const auto& item : this->dialog_items) {
+      if ((!enabled_only || item->enabled) && PtInRect(pt, &item->rect)) {
+        return item;
       }
     }
     return nullptr;
   }
+
+  inline bool is_dialog() const {
+    return this->is_dialog_flag;
+  }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Window manager
 
 class WindowManager {
 private:
@@ -528,7 +916,8 @@ public:
       bool go_away,
       int16_t proc_id,
       uint32_t ref_con,
-      std::shared_ptr<std::vector<std::shared_ptr<DialogItem>>> dialog_items) {
+      bool is_dialog,
+      std::vector<std::shared_ptr<DialogItem>>&& dialog_items) {
     CGrafPtr current_port;
     GetPort(reinterpret_cast<GrafPtr*>(&current_port));
 
@@ -556,7 +945,7 @@ public:
     wr->windowKind = proc_id;
     wr->refCon = ref_con;
 
-    std::shared_ptr<Window> window = std::make_shared<Window>(title, bounds, *wr, dialog_items);
+    auto window = std::make_shared<Window>(title, bounds, *wr, is_dialog, std::move(dialog_items));
 
     // Must call init here to create SDL resources and associate the window with its DialogItems
     window->init();
@@ -569,10 +958,8 @@ public:
 
     // Maintain a shared lookup across all windows of their dialog items, by handle,
     // to support functions that modify the DITLs directly, like SetDialogItemText
-    if (dialog_items) {
-      for (auto di : *dialog_items) {
-        dialog_items_by_handle.insert({di->handle, di});
-      }
+    for (auto di : dialog_items) {
+      DialogItem::all_items[di->opaque_handle] = di;
     }
 
     return &wr->port;
@@ -582,16 +969,6 @@ public:
     auto window_it = record_to_window.find(record);
     if (window_it == record_to_window.end()) {
       throw std::logic_error("Attempted to delete nonexistent window");
-    }
-
-    // First, remove all of the window's dialog items from the lookup. Once the Window
-    // object is destructed and calls the destructor of its list of DialogItems, that should
-    // clean up everything owned by the Window.
-    auto dialog_items = window_it->second->get_dialog_items();
-    if (dialog_items) {
-      for (auto di : *dialog_items) {
-        dialog_items_by_handle.erase(di->handle);
-      }
     }
 
     sdl_window_id_to_window.erase(window_it->second->sdl_window_id());
@@ -686,6 +1063,11 @@ static void PrintDebugInfo(void) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Classic Mac OS API
+
 void WindowManager_Init(void) {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     wm_log.error("Couldn't initialize video driver: %s\n", SDL_GetError());
@@ -707,7 +1089,7 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
   bool go_away;
   uint32_t ref_con;
   size_t num_dialog_items;
-  std::shared_ptr<std::vector<std::shared_ptr<DialogItem>>> dialog_items;
+  std::vector<std::shared_ptr<DialogItem>> dialog_items;
 
   if (is_dialog) {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_DLOG, res_id);
@@ -721,7 +1103,7 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
     visible = dlog.visible;
     go_away = dlog.go_away;
     ref_con = dlog.ref_con;
-    dialog_items = make_shared<std::vector<std::shared_ptr<DialogItem>>>(DialogItem::from_DITL(dlog.items_id));
+    dialog_items = DialogItem::from_DITL(dlog.items_id);
 
   } else {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_WIND, res_id);
@@ -744,7 +1126,8 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
       go_away,
       proc_id,
       ref_con,
-      dialog_items);
+      is_dialog,
+      std::move(dialog_items));
 }
 
 void WindowManager_DrawDialog(WindowPtr theWindow) {
@@ -798,35 +1181,30 @@ OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon) {
 
 void GetDialogItem(DialogPtr dialog, short item_id, short* item_type, Handle* item_handle, Rect* box) {
   auto window = wm.window_for_record(reinterpret_cast<WindowPtr>(dialog));
-  auto items = window->get_dialog_items();
-  if (!items) {
-    throw std::logic_error("GetDialogItem called on non-dialog window");
-  }
+  auto& items = window->get_dialog_items();
 
   try {
-    auto item = items->at(item_id - 1);
+    auto item = items.at(item_id - 1);
     // Realmz doesn't use the handle directly; it only passes the handle to other
     // Classic Mac OS API functions. So, we can just return the DialogItem
     // opaque handle instead
     *item_type = macos_dialog_item_type_for_resource_dasm_type(item->type);
-    *item_handle = reinterpret_cast<Handle>(item->handle);
+    *item_handle = wrap_opaque_handle(item->opaque_handle);
     *box = item->rect;
   } catch (const std::out_of_range&) {
-    wm_log.warning("GetDialogItem called with invalid item_id %hd (there are only %zu items)", item_id, items->size());
+    wm_log.warning("GetDialogItem called with invalid item_id %hd (there are only %zu items)", item_id, items.size());
   }
 }
 
-void GetDialogItemText(Handle item_handle, Str255 text) {
-  // See comment in GetDialogItem about why this isn't a real Handle
-  auto handle = reinterpret_cast<DialogItemHandle>(item_handle);
-  auto item = wm.dialog_item_for_handle(handle);
+void GetDialogItemText(DialogItemHandle item_handle, Str255 text) {
+  size_t handle = unwrap_opaque_handle(item_handle);
+  auto item = DialogItem::get_item_by_handle(handle);
   pstr_for_string<256>(text, item->get_text());
 }
 
-void SetDialogItemText(Handle item_handle, ConstStr255Param text) {
-  // See comment in GetDialogItem about why this isn't a real Handle
-  auto handle = reinterpret_cast<DialogItemHandle>(item_handle);
-  auto item = wm.dialog_item_for_handle(handle);
+void SetDialogItemText(DialogItemHandle item_handle, ConstStr255Param text) {
+  size_t handle = unwrap_opaque_handle(item_handle);
+  auto item = DialogItem::get_item_by_handle(handle);
   item->set_text(string_for_pstr<256>(text));
   auto window = item->window.lock();
   window->render(true);
@@ -838,8 +1216,7 @@ int16_t StringWidth(ConstStr255Param s) {
 
 Boolean IsDialogEvent(const EventRecord* ev) {
   try {
-    auto window = wm.window_for_sdl_window_id(ev->sdl_window_id);
-    return (window->get_dialog_items() != nullptr);
+    return wm.window_for_sdl_window_id(ev->sdl_window_id)->is_dialog();
   } catch (const std::out_of_range&) {
     return false;
   }
@@ -902,19 +1279,15 @@ Boolean DialogSelect(const EventRecord* ev, DialogPtr* dialog, short* item_hit) 
   if ((ev->what == keyDown) && ((ev->message & 0xFF) == static_cast<uint8_t>('\\'))) {
     try {
       auto window = wm.window_for_sdl_window_id(ev->sdl_window_id);
-      auto items = window->get_dialog_items();
-      if (items) {
-        fprintf(stderr, "Dialog items at (%hu, %hu):\n", ev->where.h, ev->where.v);
-        for (size_t z = 0; z < items->size(); z++) {
-          const auto item = items->at(z);
-          if (PtInRect(ev->where, &item->rect)) {
-            auto s = item->str();
-            std::string processed_text_str = phosg::format_data_string(replace_param_text(item->get_text()));
-            fprintf(stderr, "%s (processed_text=%s)\n", s.c_str(), processed_text_str.c_str());
-          }
+      const auto& items = window->get_dialog_items();
+      fprintf(stderr, "Dialog items at (%hu, %hu):\n", ev->where.h, ev->where.v);
+      for (size_t z = 0; z < items.size(); z++) {
+        const auto item = items.at(z);
+        if (PtInRect(ev->where, &item->rect)) {
+          auto s = item->str();
+          std::string processed_text_str = phosg::format_data_string(replace_param_text(item->get_text()));
+          fprintf(stderr, "%s (processed_text=%s)\n", s.c_str(), processed_text_str.c_str());
         }
-      } else {
-        fprintf(stderr, "Current window does not have dialog items\n");
       }
     } catch (const std::out_of_range&) {
     }
@@ -1038,10 +1411,10 @@ void ShowWindow(WindowPtr theWindow) {
 
 void SizeWindow(CWindowPtr theWindow, uint16_t w, uint16_t h, Boolean fUpdate) {
   auto window = wm.window_for_record(theWindow);
-  // Hack: Don't resize the window if it's the main window. This is because SDL
-  // automatically centers windows, and we don't want the window to be
-  // full-screen anyway.
-  if (window->get_dialog_items() != nullptr) {
+  // Hack: Don't resize the window if it's the main window (not a dialog). This
+  // is because SDL automatically centers windows, and we don't want the window
+  // to be full-screen anyway.
+  if (window->is_dialog()) {
     window->resize(w, h);
   }
 }
@@ -1135,4 +1508,164 @@ int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount) {
       port->txFont,
       port->txSize,
       port->txFace);
+}
+
+ControlHandle GetNewControl(int16_t cntl_id, WindowPtr window) {
+  auto w = wm.window_for_record(window);
+  auto control = Control::from_CNTL(cntl_id);
+  auto item = DialogItem::from_control(control);
+  w->add_dialog_item(item);
+  return wrap_opaque_handle(item->opaque_handle);
+}
+
+ControlHandle NewControl(
+    WindowPtr window,
+    const Rect* bounds,
+    ConstStr255Param title,
+    Boolean visible,
+    short value,
+    short min,
+    short max,
+    short proc_id,
+    long ref_con) {
+  auto w = wm.window_for_record(window);
+  auto title_str = string_for_pstr<256>(title);
+  auto control = Control::from_params(*bounds, value, min, max, proc_id, visible, title_str);
+  auto item = DialogItem::from_control(control);
+  w->add_dialog_item(item);
+  return wrap_opaque_handle(item->opaque_handle);
+}
+
+static void render_window_for_item(std::shared_ptr<DialogItem> item) {
+  auto window = item->window.lock();
+  if (window) {
+    window->render();
+  }
+}
+
+static void set_control_visible(ControlHandle handle, bool visible) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+  if (item->set_control_visible(visible)) {
+    render_window_for_item(item);
+  }
+}
+
+void ShowControl(ControlHandle handle) {
+  set_control_visible(handle, true);
+}
+void HideControl(ControlHandle handle) {
+  set_control_visible(handle, false);
+}
+
+void GetControlBounds(ControlHandle handle, Rect* rect) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+  if (item->control) {
+    *rect = item->control->bounds;
+  } else {
+    // This probably actually resulted in undefined behavior on original MacOS
+    rect->left = 0;
+    rect->top = 0;
+    rect->right = 0;
+    rect->bottom = 0;
+  }
+}
+
+void MoveControl(ControlHandle handle, short h, short v) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+  if (item->move_control(h, v)) {
+    render_window_for_item(item);
+  }
+}
+
+void SizeControl(ControlHandle handle, short w, short h) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+  if (item->resize_control(w, h)) {
+    render_window_for_item(item);
+  }
+}
+
+void DrawControls(WindowPtr window) {
+  // TODO: Does this suffice? Do we need to also set the dirty flag for all
+  // controls or something like that?
+  auto w = wm.window_for_record(window);
+  w->render();
+}
+
+short FindControl(Point pt, WindowPtr window, ControlHandle* handle) {
+  auto w = wm.window_for_record(window);
+  for (const auto& item : w->get_dialog_items()) {
+    if (item->control && PtInRect(pt, &item->control->bounds)) {
+      *handle = wrap_opaque_handle(item->opaque_handle);
+      switch (item->control->type) {
+        case ControlType::BUTTON:
+        case ControlType::WINDOW_FONT_BUTTON:
+          return kControlButtonPart;
+        case ControlType::CHECKBOX:
+        case ControlType::WINDOW_FONT_CHECKBOX:
+          return kControlCheckBoxPart;
+        case ControlType::RADIO_BUTTON:
+        case ControlType::WINDOW_FONT_RADIO_BUTTON:
+          return kControlRadioButtonPart;
+        case ControlType::SCROLL_BAR:
+          // TODO: We should implement the up/down buttons at some point
+          return kControlIndicatorPart;
+        case ControlType::POPUP_MENU:
+          return kControlMenuPart;
+        case ControlType::UNKNOWN:
+        default:
+          throw std::logic_error("Unknown control type");
+      }
+    }
+  }
+  *handle = wrap_opaque_handle(0);
+  return 0;
+}
+
+short TrackControl(ControlHandle handle, Point pt, ProcPtr action_proc) {
+  // TODO: This should do something! It seems this is only used for the scroll
+  // bars in the shop screen, so I assume we can get to this later.
+  return 0;
+}
+
+short GetControlValue(ControlHandle handle) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+  return item->control ? item->control->value : 0;
+}
+
+short GetControlMinimum(ControlHandle handle) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+  return item->control ? item->control->min : 0;
+}
+
+short GetControlMaximum(ControlHandle handle) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+  return item->control ? item->control->max : 0;
+}
+
+void SetControlValue(ControlHandle handle, short value) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+  if (item->set_control_value(value)) {
+    render_window_for_item(item);
+  }
+}
+
+void SetControlMinimum(ControlHandle handle, short min) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+  if (item->set_control_minimum(min)) {
+    render_window_for_item(item);
+  }
+}
+
+void SetControlMaximum(ControlHandle handle, short max) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+  if (item->set_control_maximum(max)) {
+    render_window_for_item(item);
+  }
+}
+
+void GetControlTitle(ControlHandle handle, Str255 title) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+  if (item->control) {
+    pstr_for_string<256>(title, item->control->title);
+  }
 }

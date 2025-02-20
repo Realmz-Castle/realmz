@@ -6,6 +6,7 @@
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
 #include <memory>
+#include <resource_file/QuickDrawFormats.hh>
 
 #include "Types.h"
 
@@ -19,6 +20,13 @@ int draw_text(
     int16_t font_id,
     float pt,
     int16_t face);
+
+inline void copy_rect(Rect& dst, const ResourceDASM::Rect& src) {
+  dst.top = src.y1;
+  dst.left = src.x1;
+  dst.bottom = src.y2;
+  dst.right = src.x2;
+}
 
 // A context for all drawing and rendering operations, either attached to an SDL_Window or
 // in memory. Each GraphicsCanvas may own an SDL_Surface, may own an SDL_Texture, and has either a
