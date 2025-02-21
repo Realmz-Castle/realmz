@@ -13,7 +13,6 @@
 #include "SoundManager.h"
 #include "WindowManager.h"
 
-QuickDrawGlobals qd;
 GDevice gDevice;
 GDPtr gDevicePtr;
 PrefRecord prefs;
@@ -200,9 +199,6 @@ void OffsetRect(Rect* r, uint16_t dh, uint16_t dv) {
   r->right += dh;
   r->top += dv;
   r->bottom += dv;
-}
-
-void PenSize(int16_t width, int16_t height) {
 }
 
 void SetCCursor(CCrsrHandle cCrsr) {

@@ -1,4 +1,4 @@
-#include "QuickDraw.h"
+#include "QuickDraw.hpp"
 
 #include <SDL3/SDL_pixels.h>
 
@@ -14,14 +14,23 @@
 #include <resource_file/ResourceFormats.hh>
 #include <resource_file/ResourceTypes.hh>
 #include <resource_file/TextCodecs.hh>
+#include <stdexcept>
+#include <unordered_map>
 
 #include "MemoryManager.hpp"
 #include "ResourceManager.h"
+#include "StringConvert.hpp"
 #include "Types.hpp"
+#include "WindowManager.hpp"
 
 static phosg::PrefixedLogger qd_log("[QuickDraw] ");
-static std::unordered_set<int16_t> already_decoded;
-static QuickDrawGlobals* globals = nullptr;
+static std::unordered_set<int16_t> already_decoded{};
+static std::unordered_map<CGrafPtr, std::shared_ptr<GraphicsCanvas>> canvas_lookup{};
+
+// Originally declared in variables.h. It seems that `qd` was introduced by Myriad during the
+// port to PC in place of Classic Mac's global QuickDraw context. We can repurpose it here
+// for easier access in our code, while still exposing a C-compatible struct.
+QuickDrawGlobals qd{};
 
 Rect rect_from_reader(phosg::StringReader& data) {
   Rect r;
@@ -57,6 +66,68 @@ RGBColor color_const_to_rgb(int32_t color_const) {
       break;
   }
   return RGBColor{};
+}
+
+void register_canvas(std::shared_ptr<GraphicsCanvas> canvas) {
+  canvas_lookup.insert({canvas->get_port(), canvas});
+}
+
+void deregister_canvas(std::shared_ptr<GraphicsCanvas> canvas) {
+  try {
+    canvas_lookup.erase(canvas->get_port());
+  } catch (std::out_of_range) {
+    qd_log.error("Tried to delete canvas with id %p, but it wasn't in lookup", canvas->get_port());
+  }
+}
+
+void deregister_canvas(const CGrafPtr port) {
+  try {
+    canvas_lookup.erase(port);
+  } catch (std::out_of_range) {
+    qd_log.error("Tried to delete canvas with id %p, but it wasn't in lookup", port);
+  }
+}
+
+std::shared_ptr<GraphicsCanvas> lookup_canvas(CGrafPtr port) {
+  try {
+    return canvas_lookup.at(port);
+  } catch (std::out_of_range) {
+    throw std::runtime_error("Could not find canvas for given id");
+  }
+}
+
+std::shared_ptr<GraphicsCanvas> current_canvas() {
+  return lookup_canvas(qd.thePort);
+}
+
+void draw_rect(const Rect& dispRect) {
+  current_canvas()->draw_rect(dispRect);
+}
+
+void draw_rgba_picture(void* pixels, int w, int h, const Rect& rect) {
+  current_canvas()->draw_rgba_picture(pixels, w, h, rect);
+}
+
+void set_draw_color(const RGBColor& color) {
+  current_canvas()->set_draw_color(color);
+}
+
+void draw_line(const Point& start, const Point& end) {
+  current_canvas()->draw_line(start, end);
+}
+
+void draw_text(const std::string& text) {
+  auto canvas = current_canvas();
+
+  canvas->draw_text(text);
+}
+
+int measure_text(const std::string& text) {
+  return current_canvas()->measure_text(text);
+}
+
+void render_current_canvas(const SDL_FRect* rect) {
+  current_canvas()->render(rect);
 }
 
 PixPatHandle GetPixPat(uint16_t patID) {
@@ -145,93 +216,62 @@ PicHandle GetPicture(int16_t id) {
 }
 
 void ForeColor(int32_t color) {
-  globals->thePort->fgColor = color;
-  globals->thePort->rgbFgColor = color_const_to_rgb(color);
+  qd.thePort->fgColor = color;
+  qd.thePort->rgbFgColor = color_const_to_rgb(color);
 }
 
 void BackColor(int32_t color) {
-  globals->thePort->bgColor = color;
-  globals->thePort->rgbBgColor = color_const_to_rgb(color);
-}
-
-uint32_t rgba8888_for_rgb_color(const RGBColor& color) {
-  return (
-      (((color.red / 0x0101) & 0xFF) << 24) |
-      (((color.green / 0x0101) & 0xFF) << 16) |
-      (((color.blue / 0x0101) & 0xFF) << 8) |
-      0xFF);
-}
-
-SDL_Color sdl_color_for_rgb_color(const RGBColor& color) {
-  return SDL_Color{
-      static_cast<uint8_t>(color.red / 0x0101),
-      static_cast<uint8_t>(color.green / 0x0101),
-      static_cast<uint8_t>(color.blue / 0x0101),
-      0xFF};
+  qd.thePort->bgColor = color;
+  qd.thePort->rgbBgColor = color_const_to_rgb(color);
 }
 
 void GetBackColor(RGBColor* color) {
-  *color = globals->thePort->rgbBgColor;
-}
-uint32_t GetBackColorRGBA8888() {
-  return rgba8888_for_rgb_color(globals->thePort->rgbBgColor);
-}
-SDL_Color GetBackColorSDL() {
-  return sdl_color_for_rgb_color(globals->thePort->rgbBgColor);
+  *color = qd.thePort->rgbBgColor;
 }
 
 void GetForeColor(RGBColor* color) {
-  *color = globals->thePort->rgbFgColor;
-}
-uint32_t GetForeColorRGBA8888() {
-  return rgba8888_for_rgb_color(globals->thePort->rgbFgColor);
-}
-SDL_Color GetForeColorSDL() {
-  return sdl_color_for_rgb_color(globals->thePort->rgbFgColor);
+  *color = qd.thePort->rgbFgColor;
 }
 
 void SetPort(CGrafPtr port) {
-  globals->thePort = port;
+  qd.thePort = port;
 }
 
+// Called in main.c, this function passes in the location of the global
+// QuickDraw context for initialization. However, since we've taken over
+// the implementation of the global qd object and have statically allocated
+// its members, there is no need for further initialization beyond updating
+// qd.thePort to point at the default port
 void InitGraf(QuickDrawGlobals* new_globals) {
-  globals = new_globals;
-
-  globals->default_graf_handle = NewHandleTyped<CGrafPort>();
-  globals->thePort = *globals->default_graf_handle;
-  memset(globals->thePort, 0, sizeof(*globals->thePort));
-}
-
-CGrafPtr get_default_quickdraw_port() {
-  return *globals->default_graf_handle;
+  qd.thePort = &qd.defaultPort;
 }
 
 void TextFont(uint16_t font) {
-  globals->thePort->txFont = font;
+  qd.thePort->txFont = font;
 }
 
 void TextMode(int16_t mode) {
-  globals->thePort->txMode = mode;
+  qd.thePort->txMode = mode;
 }
 
 void TextSize(uint16_t size) {
-  globals->thePort->txSize = size;
+  qd.thePort->txSize = size;
 }
 
 void TextFace(int16_t face) {
-  globals->thePort->txFace = face;
+  qd.thePort->txFace = face;
 }
 
 void GetPort(GrafPtr* port) {
-  *port = reinterpret_cast<GrafPtr>(globals->thePort);
+  *port = reinterpret_cast<GrafPtr>(qd.thePort);
 }
 
 void RGBBackColor(const RGBColor* color) {
-  globals->thePort->rgbBgColor = *color;
+  qd.thePort->rgbBgColor = *color;
 }
 
 void RGBForeColor(const RGBColor* color) {
-  globals->thePort->rgbFgColor = *color;
+  qd.thePort->rgbFgColor = *color;
 }
 
 CIconHandle GetCIcon(uint16_t iconID) {
@@ -248,12 +288,26 @@ CIconHandle GetCIcon(uint16_t iconID) {
   return h;
 }
 
+OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon) {
+  auto bounds = (*theIcon)->iconBMap.bounds;
+  int w = bounds.right - bounds.left;
+  int h = bounds.bottom - bounds.top;
+  draw_rgba_picture(
+      *((*theIcon)->iconData),
+      w, h, *theRect);
+  render_current_canvas(NULL);
+
+  render_window(qd.thePort);
+
+  return noErr;
+}
+
 void BackPixPat(PixPatHandle ppat) {
-  globals->thePort->bkPixPat = ppat;
+  qd.thePort->bkPixPat = ppat;
 }
 
 void MoveTo(int16_t h, int16_t v) {
-  globals->thePort->pnLoc = Point{v, h};
+  qd.thePort->pnLoc = Point{v, h};
 }
 
 void InsetRect(Rect* r, int16_t dh, int16_t dv) {
@@ -264,28 +318,79 @@ void InsetRect(Rect* r, int16_t dh, int16_t dv) {
 }
 
 void PenPixPat(PixPatHandle ppat) {
-  globals->thePort->pnPixPat = ppat;
+  qd.thePort->pnPixPat = ppat;
 }
 
+void PenSize(int16_t width, int16_t height) {
+  qd.thePort->pnSize = {height, width};
+}
+
+// The gdh return parameter, a graphics device handle, is only stored temporarily
+// by Realmz while it swaps out the current GWorld, then is used to reset to the
+// original graphics device. Since we don't actually need to use the graphics device,
+// we can ignore it.
 void GetGWorld(CGrafPtr* port, GDHandle* gdh) {
+  GetPort(port);
+}
+
+void SetGWorld(CGrafPtr port, GDHandle gdh) {
+  SetPort(port);
 }
 
 PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld) {
   return NULL;
 }
 
-void SetGWorld(CGrafPtr port, GDHandle gdh) {
-}
-
+// Internally, we represent an offscreen GWorld as a windowless GraphicsCanvas, which by default
+// will use a software renderer and draw to an in-memory buffer rather than the GPU.
 QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,
     GDHandle aGDevice, GWorldFlags flags) {
-  *offscreenGWorld = (GWorldPtr)malloc(sizeof(CGrafPort));
-  (*offscreenGWorld)->portRect.top = boundsRect->top;
-  (*offscreenGWorld)->portRect.left = boundsRect->left;
-  (*offscreenGWorld)->portRect.bottom = boundsRect->bottom;
-  (*offscreenGWorld)->portRect.right = boundsRect->right;
+  auto portRecord = *qd.thePort;
+  portRecord.portRect = *boundsRect;
+  auto canvas = std::make_shared<GraphicsCanvas>(portRecord);
+  canvas->init();
+  register_canvas(canvas);
+
+  *offscreenGWorld = canvas->get_port();
 
   return 0;
 }
+
 void DisposeGWorld(GWorldPtr offscreenWorld) {
+  deregister_canvas(offscreenWorld);
+}
+
+void DrawString(ConstStr255Param s) {
+  auto str = string_for_pstr<255>(s);
+
+  draw_text(str);
+  render_current_canvas(NULL);
+}
+
+int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount) {
+  // Realmz always calls this procedure with 0 as the first byte, and the full
+  // strlen as the byteCount, so we can ignore those parameters and just measure
+  // the full string.
+  // Realmz also seems to only call this with cstrings, so we're good there as well.
+  return current_canvas()->measure_text(static_cast<const char*>(textBuf));
+}
+
+void DrawPicture(PicHandle myPicture, const Rect* dstRect) {
+  auto picFrame = (*myPicture)->picFrame;
+  int w = picFrame.right - picFrame.left;
+  int h = picFrame.bottom - picFrame.top;
+
+  draw_rgba_picture(*((*myPicture)->data), w, h, *dstRect);
+  render_current_canvas(NULL);
+  render_window(qd.thePort);
+}
+
+void LineTo(int16_t h, int16_t v) {
+  CGrafPtr port = qd.thePort;
+
+  set_draw_color(port->rgbBgColor);
+  draw_line(port->pnLoc, {v, h});
+  port->pnLoc = {v, h};
+  render_current_canvas(NULL);
+  render_window(qd.thePort);
 }

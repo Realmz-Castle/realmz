@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "CGrafPort.h"
-#include "FileManager.h"
 #include "Types.h"
 
 #define whiteColor 30
@@ -22,6 +20,68 @@ extern "C" {
 
 typedef Handle RgnHandle;
 typedef uint32_t GWorldFlags;
+
+typedef struct {
+  uint16_t red;
+  uint16_t green;
+  uint16_t blue;
+} RGBColor;
+
+typedef struct {
+  Ptr baseAddr;
+  int16_t rowBytes;
+  Rect bounds;
+} BitMap;
+
+/*
+ A pixel map, which is defined by a data structure of type PixMap, contains information about the
+ dimensions and contents of a pixel image, as well as information on the image’s storage format,
+ depth, resolution, and color usage.
+
+ Imaging with Quickdraw (4-46 Color QuickDraw Reference)
+ Imaging with Quickdraw (4-118 Summary of Color Quickdraw)
+ */
+typedef struct {
+  uint16_t pixelSize; // physical bits per pixel
+  Rect bounds; // boundary rectangle
+} PixMap;
+typedef PixMap *PixMapPtr, **PixMapHandle;
+
+// Imaging With Quickdraw (3-152 Summary of Quickdraw Drawing)
+typedef struct {
+  unsigned char pat[8];
+} Pattern;
+
+// Imaging With Quickdraw (4-120 Summary of Color Quickdraw)
+typedef struct {
+  uint16_t patType; /* pattern type */
+  PixMapHandle patMap; /* PixMap structure for pattern */
+  Handle patData; /* pixel-image defining pattern */
+  Handle patXData; /* expanded pattern image */
+  int16_t patXValid; /* for expanded pattern data */
+  Handle patXMap; /* handle to expanded pattern data */
+  Pattern pat1Data; /* a bit pattern for a GrafPort structure */
+} PixPat;
+typedef PixPat *PixPatPtr, **PixPatHandle;
+
+typedef struct {
+  BitMap portBits;
+  Rect portRect;
+  int16_t txFont;
+  Style txFace;
+  int16_t txMode;
+  int16_t txSize;
+  Point pnLoc;
+  Point pnSize;
+  PixMapHandle portPixMap;
+  PixPatHandle pnPixPat;
+  PixPatHandle bkPixPat;
+
+  int32_t fgColor;
+  int32_t bgColor;
+  RGBColor rgbFgColor;
+  RGBColor rgbBgColor;
+} CGrafPort;
 
 typedef struct {
   Rect gdRect;
@@ -70,12 +130,14 @@ typedef struct {
   CGrafPtr thePort;
   BitMap screenBits;
 
-  // We internally allocate a handle for thePort, even though thePort itself is
-  // not a handle, so we store the handle here. This is not part of the Classic
-  // Mac OS API - they didn't intend for GrafPorts to be relocatable, but we
-  // never relocate handles anyway.
-  CGrafHandle default_graf_handle;
+  // The default port record. After InitGraf is called, `thePort` should point to
+  // this port.
+  CGrafPort defaultPort;
 } QuickDrawGlobals;
+
+// Global struct holding the current graphics port.
+// Moved from variables.h to avoid c++ keyword conflicts in prototype.h
+extern QuickDrawGlobals qd;
 
 Boolean PtInRect(Point pt, const Rect* r);
 // Note: Technically the argument to InitGraf is a void*, but we type it here
@@ -96,16 +158,22 @@ void TextFace(int16_t face);
 void RGBBackColor(const RGBColor* color);
 void RGBForeColor(const RGBColor* color);
 CIconHandle GetCIcon(uint16_t iconID);
+OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon);
 void BackPixPat(PixPatHandle ppat);
 void MoveTo(int16_t h, int16_t v);
 void InsetRect(Rect* r, int16_t dh, int16_t dv);
 void PenPixPat(PixPatHandle ppat);
+void PenSize(int16_t width, int16_t height);
 void GetGWorld(CGrafPtr* port, GDHandle* gdh);
 PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld);
 QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,
     GDHandle aGDevice, GWorldFlags flags);
 void SetGWorld(CGrafPtr port, GDHandle gdh);
 void DisposeGWorld(GWorldPtr offscreenWorld);
+void DrawString(ConstStr255Param s);
+int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount);
+void DrawPicture(PicHandle myPicture, const Rect* dstRect);
+void LineTo(int16_t h, int16_t v);
 
 #ifdef __cplusplus
 } // extern "C"

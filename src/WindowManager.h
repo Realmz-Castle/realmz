@@ -65,14 +65,11 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
 void WindowManager_DrawDialog(WindowPtr theWindow);
 void WindowManager_DisposeWindow(WindowPtr theWindow);
 DisplayProperties WindowManager_GetPrimaryDisplayProperties(void);
-OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon);
-void GetDialogItem(DialogPtr theDialog, int16_t itemNo, int16_t* itemType, DialogItemHandle* item, Rect* box);
-void GetDialogItemText(DialogItemHandle item, Str255 text);
-void SetDialogItemText(DialogItemHandle item, ConstStr255Param text);
+void GetDialogItem(DialogPtr theDialog, int16_t itemNo, int16_t* itemType, Handle* item, Rect* box);
+void GetDialogItemText(Handle item, Str255 text);
+void SetDialogItemText(Handle item, ConstStr255Param text);
 int16_t StringWidth(ConstStr255Param s);
-void LineTo(int16_t h, int16_t v);
-void DrawPicture(PicHandle myPicture, const Rect* dstRect);
-void SetDialogItemText(DialogItemHandle item, ConstStr255Param text);
+void SetDialogItemText(Handle item, ConstStr255Param text);
 DialogPtr GetNewDialog(uint16_t dialogID, void* dStorage, WindowPtr behind);
 WindowPtr GetNewCWindow(int16_t windowID, void* wStorage, WindowPtr behind);
 void SizeWindow(WindowPtr theWindow, uint16_t w, uint16_t h, Boolean fUpdate);
@@ -91,10 +88,8 @@ void BringToFront(WindowPtr theWindow);
 void NumToString(int32_t num, Str255 str);
 void StringToNum(ConstStr255Param str, int32_t* num);
 void ModalDialog(ModalFilterProcPtr filterProc, short* itemHit);
-void DrawString(ConstStr255Param s);
 void DrawDialog(DialogPtr theDialog);
 void DisposeDialog(DialogPtr theDialog);
-int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount);
 
 ControlHandle GetNewControl(int16_t ctl_id, WindowPtr window);
 ControlHandle NewControl(

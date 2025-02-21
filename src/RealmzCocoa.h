@@ -184,7 +184,6 @@ void EraseRect(const Rect* r);
 void OffsetRect(Rect* r, uint16_t dh, uint16_t dv);
 void GetGWorld(CGrafPtr* port, GDHandle* gdh);
 void SetGWorld(CGrafPtr port, GDHandle gdh);
-void PenSize(int16_t width, int16_t height);
 
 typedef struct OpaqueGammaInfo** GammaRef;
 // ----------

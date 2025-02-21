@@ -1,11 +1,10 @@
 #pragma once
 
-#include "CGrafPort.h"
+#include "QuickDraw.h"
 #include "SDLHelpers.hpp"
 
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
-#include <memory>
 #include <resource_file/QuickDrawFormats.hh>
 
 #include "Types.h"
@@ -40,46 +39,55 @@ inline void copy_rect(Rect& dst, const ResourceDASM::Rect& src) {
 class GraphicsCanvas {
 private:
   int width, height;
-  bool is_initialized;
+  bool is_initialized = false;
   sdl_surface_ptr sdlSurface;
   sdl_texture_ptr sdlTexture;
   sdl_renderer_ptr sdlRenderer;
   sdl_window_shared sdlWindow;
+  CGrafPort portRecord; // Owned CGrafPort, independent from window, for offscreen buffers
+  CGrafPtr port;
 
 public:
   GraphicsCanvas();
-  GraphicsCanvas(int width, int height);
-  GraphicsCanvas(sdl_window_shared window);
-  GraphicsCanvas(sdl_window_shared window, const Rect& rect);
-  GraphicsCanvas(const Rect& rect);
+
+  // Constructs a new GraphicsCanvas that is attached to an SDL Window and may render io it.
+  // The rect parameter can be used to override the bounds of the canvas.
+  GraphicsCanvas(sdl_window_shared window, const Rect& rect, CGrafPtr port);
+
+  // Constructs a GraphicsCanvas that is not tied to a specific window, with its own CGrafPort
+  // state and a software renderer targeting an in-memory buffer. The state is copied from the
+  // current CGrafPort record, including its bounds.
+  GraphicsCanvas(const CGrafPort& portRecord);
+
   ~GraphicsCanvas() = default;
   GraphicsCanvas(const GraphicsCanvas& gc) = delete; // Can't copy due to unique_ptr members
   GraphicsCanvas(GraphicsCanvas&& gc);
 
   GraphicsCanvas& operator=(GraphicsCanvas&& gc);
 
+  CGrafPtr get_port() const;
+  bool is_window() const;
   bool init();
   void clear();
   void clear_window();
-  void render(sdl_window_shared window, const SDL_FRect*);
-  void sync(sdl_window_shared window);
+  void render(const SDL_FRect*);
+  void sync();
   void set_draw_color(const RGBColor& color);
   void draw_rgba_picture(void* pixels, int w, int h, const Rect& rect);
-  bool draw_text(const std::string& text, const Rect& dispRect, int16_t font_id, float pt, int16_t face);
-  int draw_text(
-      const std::string& text,
-      int16_t x,
-      int16_t y,
-      int16_t font_id,
-      float pt,
-      int16_t face);
+  bool draw_text(const std::string& text, const Rect& dispRect);
+  // Draws the specified text when the display bounds are unknown. Updates the port's pen location
+  // after the draw to be immediately to the right of the drawn text.
+  void draw_text(const std::string& text);
+  // Uses the GraphicsCanvas' port settings to draw the specified text to a dummy renderer and
+  // return its rendered width in pixels.
+  int measure_text(const std::string& text);
   void draw_rect(const Rect& dispRect);
   void draw_line(const Point& start, const Point& end);
   void draw_background(sdl_window_shared sdlWindow, PixPatHandle bkPixPat);
 
 private:
-  bool init_renderer(GraphicsCanvas& self);
-  SDL_Renderer* start_draw(const GraphicsCanvas& self);
-  void end_draw(const GraphicsCanvas& self);
+  bool init_renderer();
+  SDL_Renderer* start_draw();
+  void end_draw();
   void clear(SDL_Renderer* renderer);
 };
