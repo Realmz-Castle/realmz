@@ -980,6 +980,14 @@ public:
       throw std::logic_error("Attempted to delete nonexistent window");
     }
 
+    // When the window is dismissed via a mousedown, the enqueued mouseup event is either
+    // lost when the window is destroyed, or the button is not released in time for it to be
+    // handled by the window. It's not clear why the mouseup event isn't handled by the surviving
+    // window. In any case, we can simply reset the mouse state to prevent the StillDown function
+    // from thinking that the mouse button is still pressed.
+    // TODO: figure out a better way of handling this.
+    reset_mouse_state();
+
     sdl_window_id_to_window.erase(window_it->second->sdl_window_id());
     record_to_window.erase(window_it);
 
