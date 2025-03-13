@@ -41,7 +41,6 @@
 #define GetDialogFromWindow(x) (DialogPtr)(x)
 #define GetQDGlobalsThePort() ((CGrafPtr)qd.thePort)
 #define GetQDGlobalsScreenBits(x) (*(x) = qd.screenBits)
-#define GetPortBitMapForCopyBits(x) ((BitMap*)&(((GrafPtr)(x))->portBits))
 #define QDFlushPortBuffer(x, y)
 #define GetPortPixMap(x) &(((CGrafPtr)(x))->portPixMap);
 #define GetPortTextFont(x) ((x)->txFont)
@@ -110,7 +109,6 @@ static inline void C2PStr(char* x) {
 }
 
 typedef Handle GammaTblHandle;
-typedef Handle TEHandle;
 typedef Handle CCrsrHandle;
 typedef Handle SndListHandle;
 typedef DialogPtr DialogRef;
@@ -180,10 +178,7 @@ Size MaxMem(Size* grow);
 void BackPixPat(PixPatHandle ppat);
 void TextMode(int16_t mode);
 void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex);
-void EraseRect(const Rect* r);
 void OffsetRect(Rect* r, uint16_t dh, uint16_t dv);
-void GetGWorld(CGrafPtr* port, GDHandle* gdh);
-void SetGWorld(CGrafPtr port, GDHandle gdh);
 
 typedef struct OpaqueGammaInfo** GammaRef;
 // ----------
@@ -208,8 +203,6 @@ void SetPt(Point* pt, int16_t h, int16_t v);
 int16_t DIBadMount(Point where, int32_t evtMessage);
 void PenMode(int16_t mode);
 void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn);
-void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
-    RgnHandle maskRgn);
 void GlobalToLocal(Point* pt);
 void LocalToGlobal(Point* pt);
 
@@ -221,8 +214,6 @@ void SetItemMark(MenuHandle theMenu, int16_t item, int16_t markChar);
 void DisposeCCursor(CCrsrHandle cCrsr);
 void SelectWindow(WindowPtr theWindow);
 int16_t CountMItems(MenuHandle theMenu);
-void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
-    const Rect* dstRect);
 void PaintRect(const Rect* r);
 void ObscureCursor(void);
 OSErr DisposeCIcon(CIconHandle theIcon);
@@ -230,12 +221,6 @@ Boolean SectRect(const Rect* src1, const Rect* src2, Rect* dstRect);
 void FrameOval(const Rect* r);
 int32_t DeltaPoint(Point ptA, Point ptB);
 void FrameRect(const Rect* r);
-TEHandle TENew(const Rect* destRect, const Rect* viewRect);
-void TESetText(const void* text, int32_t length, TEHandle hTE);
-void TESetSelect(int32_t selStart, int32_t selEnd, TEHandle hTE);
-void TEUpdate(const Rect* rUpdate, TEHandle hTE);
-void TEDelete(TEHandle hTE);
-void TEDispose(TEHandle hTE);
 void HideCursor(void);
 void ShowCursor(void);
 void GetItemMark(MenuHandle theMenu, int16_t item, int16_t* markChar);
@@ -253,7 +238,6 @@ void TEStyleInsert(const void* text, int32_t length, StScrpHandle hSt, TEHandle 
 void TESetAlignment(int16_t just, TEHandle hTE);
 void TEScroll(int16_t dh, int16_t dv, TEHandle hTE);
 int32_t GetResourceSizeOnDisk(Handle theResource);
-void DisposeGWorld(GWorldPtr offscreenWorld);
 void DisposePixPat(PixPatHandle ppat);
 void SFPutFile(Point where, const Str255 prompt, const Str255 origName, Ptr dlgHook, SFReply* reply);
 OSErr GetProcessInformation(const ProcessSerialNumber* PSN, ProcessInfoRecPtr info);

@@ -394,3 +394,22 @@ void LineTo(int16_t h, int16_t v) {
   render_current_canvas(NULL);
   render_window(qd.thePort);
 }
+
+void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
+    RgnHandle maskRgn) {
+  auto srcCanvas = lookup_canvas(const_cast<CGrafPtr>(reinterpret_cast<const CGrafPort*>(srcBits)));
+  auto dstCanvas = lookup_canvas(const_cast<CGrafPtr>(reinterpret_cast<const CGrafPort*>(dstBits)));
+
+  dstCanvas->copy_from(*srcCanvas, *srcRect, *dstRect);
+  dstCanvas->render(NULL);
+  render_window(qd.thePort);
+}
+
+void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
+    const Rect* dstRect) {
+}
+
+void EraseRect(const Rect* r) {
+  current_canvas()->clear_rect(*r);
+  render_window(qd.thePort);
+}

@@ -318,6 +318,24 @@ public:
     }
   }
 
+  DialogItem(DialogItemType type, const Rect& disp_rect, const Rect& view_rect)
+      : opaque_handle{generate_opaque_handle()},
+        type{type},
+        dirty{true},
+        text{""},
+        enabled{true},
+        rect{disp_rect} {
+    if (type != DialogItemType::TEXT) {
+      throw std::runtime_error("Cannot dynamically create bounded dialog item unless it is type TEXT");
+    }
+    if (disp_rect.top != view_rect.top ||
+        disp_rect.left != view_rect.left ||
+        disp_rect.bottom != view_rect.bottom ||
+        disp_rect.right != view_rect.right) {
+      throw std::runtime_error("Layout and clip rects of monostyled edit record do not match");
+    }
+  }
+
   // Create a list of dialog items from a DITL resource
   static std::vector<std::shared_ptr<DialogItem>> from_DITL(int16_t ditl_resource_id) {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_DITL, ditl_resource_id);
@@ -337,6 +355,12 @@ public:
   // an item_id of zero, which will be overwritten by add_dialog_item.
   static std::shared_ptr<DialogItem> from_control(std::shared_ptr<Control> control) {
     auto ret = std::make_shared<DialogItem>(control);
+    all_items[ret->opaque_handle] = ret;
+    return ret;
+  }
+
+  static std::shared_ptr<DialogItem> from_text_edit(const Rect& dest_rect, const Rect& view_rect) {
+    auto ret = std::make_shared<DialogItem>(DialogItemType::TEXT, dest_rect, view_rect);
     all_items[ret->opaque_handle] = ret;
     return ret;
   }
@@ -744,6 +768,10 @@ public:
   void add_dialog_item(std::shared_ptr<DialogItem> item) {
     item->item_id = this->dialog_items.size();
     this->dialog_items.emplace_back(item);
+    // Initialize new DialogItem with the Window's CGrafPort record
+    item->window = this->weak_from_this();
+    item->sdl_window = sdl_window;
+    item->init(get_port());
   }
 
   std::shared_ptr<DialogItem> get_focused_item() {
@@ -833,6 +861,10 @@ public:
     SDL_ShowWindow(sdl_window.get());
   }
 
+  void bring_to_front() {
+    SDL_RaiseWindow(sdl_window.get());
+  }
+
   SDL_WindowID sdl_window_id() const {
     return SDL_GetWindowID(sdl_window.get());
   }
@@ -852,6 +884,24 @@ public:
 
   inline bool is_dialog() const {
     return this->is_dialog_flag;
+  }
+
+  TEHandle add_text_edit(const Rect& dest_rect, const Rect& view_rect) {
+    auto di = DialogItem::from_text_edit(dest_rect, view_rect);
+    add_dialog_item(di);
+    text_items.emplace_back(di);
+    return reinterpret_cast<TEHandle>(di->opaque_handle);
+  }
+
+  void remove_text_edit(std::shared_ptr<DialogItem> item) {
+    auto it = std::find(dialog_items.begin(), dialog_items.end(), item);
+    if (it != dialog_items.end()) {
+      dialog_items.erase(it);
+    }
+    it = std::find(text_items.begin(), text_items.end(), item);
+    if (it != text_items.end()) {
+      text_items.erase(it);
+    }
   }
 };
 
@@ -1552,4 +1602,46 @@ void GetControlTitle(ControlHandle handle, Str255 title) {
   if (item->control) {
     pstr_for_string<256>(title, item->control->title);
   }
+}
+
+WindowPtr FrontWindow() {
+  return NULL;
+}
+
+void BringToFront(WindowPtr theWindow) {
+  auto window = wm.window_for_record(theWindow);
+
+  window->bring_to_front();
+}
+
+void DisposeWindow(WindowPtr theWindow) {
+  WindowManager_DisposeWindow(theWindow);
+}
+
+TEHandle TENew(const Rect* destRect, const Rect* viewRect) {
+  auto window = wm.window_for_record(qd.thePort);
+
+  return window->add_text_edit(*destRect, *viewRect);
+}
+
+void TESetText(const void* text, int32_t length, TEHandle hTE) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(hTE));
+  item->set_text(string_for_pstr<256>(static_cast<const unsigned char*>(const_cast<void*>(text))));
+}
+
+void TESetSelect(int32_t selStart, int32_t selEnd, TEHandle hTE) {
+  // It looks like Realmz only uses this once, and sets the start and end to 0 and 1,
+  // respectively, effectively a no-op.
+}
+
+void TEUpdate(const Rect* rUpdate, TEHandle hTE) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(hTE));
+  auto window = item->window.lock();
+  window->render(true);
+}
+
+void TEDispose(TEHandle hTE) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(hTE));
+  auto window = item->window.lock();
+  window->remove_text_edit(item);
 }

@@ -84,6 +84,7 @@ Boolean IsDialogEvent(const EventRecord* ev);
 Boolean DialogSelect(const EventRecord* ev, DialogPtr* dlg, short* item_hit);
 void SystemClick(const EventRecord* ev, WindowPtr window);
 void DisposeWindow(WindowPtr theWindow);
+WindowPtr FrontWindow();
 void BringToFront(WindowPtr theWindow);
 void NumToString(int32_t num, Str255 str);
 void StringToNum(ConstStr255Param str, int32_t* num);
@@ -117,6 +118,12 @@ void SetControlValue(ControlHandle ctl, short value);
 void SetControlMinimum(ControlHandle ctl, short min);
 void SetControlMaximum(ControlHandle ctl, short max);
 void GetControlTitle(ControlHandle ctl, Str255 title);
+TEHandle TENew(const Rect* destRect, const Rect* viewRect);
+void TESetText(const void* text, int32_t length, TEHandle hTE);
+void TESetSelect(int32_t selStart, int32_t selEnd, TEHandle hTE);
+void TEUpdate(const Rect* rUpdate, TEHandle hTE);
+void TEDelete(TEHandle hTE);
+void TEDispose(TEHandle hTE);
 
 #ifdef __cplusplus
 } // extern "C"

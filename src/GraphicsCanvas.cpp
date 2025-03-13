@@ -8,8 +8,10 @@
 #include <SDL3/SDL_video.h>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <memory>
 #include <phosg/Strings.hh>
 #include <resource_file/BitmapFontRenderer.hh>
+#include <variant>
 
 static phosg::PrefixedLogger canvas_log("[GraphicsCanvas] ");
 
@@ -283,7 +285,15 @@ bool GraphicsCanvas::init() {
 void GraphicsCanvas::clear() {
   auto renderer = start_draw();
 
-  clear(renderer);
+  clear(renderer, NULL);
+
+  end_draw();
+}
+
+void GraphicsCanvas::clear_rect(const Rect& rect) {
+  auto renderer = start_draw();
+
+  clear(renderer, &rect);
 
   end_draw();
 }
@@ -294,7 +304,7 @@ void GraphicsCanvas::clear_window() {
   // `start_draw` changes the renderer target to the local texture, so force it back to the window
   SDL_SetRenderTarget(renderer, NULL);
 
-  clear(renderer);
+  clear(renderer, NULL);
 
   end_draw();
 }
@@ -426,13 +436,13 @@ void GraphicsCanvas::draw_background(sdl_window_shared sdlWindow, PixPatHandle b
       (*(*bkPixPat)->patData),
       3 * w));
 
-  if (s == NULL) {
+  if (s == nullptr) {
     canvas_log.error("Could not create surface: %s\n", SDL_GetError());
     return;
   }
 
   auto t = sdl_make_unique(SDL_CreateTextureFromSurface(renderer, s.get()));
-  if (t == NULL) {
+  if (t == nullptr) {
     canvas_log.error("Could not create texture: %s\n", SDL_GetError());
     return;
   }
@@ -440,6 +450,46 @@ void GraphicsCanvas::draw_background(sdl_window_shared sdlWindow, PixPatHandle b
   if (!SDL_RenderTextureTiled(renderer, t.get(), NULL, 1.0, NULL)) {
     canvas_log.error("Could not render background texture: %s", SDL_GetError());
   }
+}
+
+void GraphicsCanvas::copy_from(GraphicsCanvas& src, const Rect& srcRect, const Rect& dstRect) {
+  auto renderer = start_draw();
+
+  int w = dstRect.right - dstRect.left;
+  int h = dstRect.bottom - dstRect.top;
+
+  auto s = sdl_make_unique(SDL_CreateSurface(w, h, SDL_PIXELFORMAT_RGBA32));
+  const auto sr = sdl_rect(srcRect);
+
+  if (src.is_window()) {
+    // Here we have to start a draw operation on the source canvas. This temporarily sets the render
+    // target to the texture buffer, which we can then read from.
+    auto src_renderer = src.start_draw();
+    auto src_surface = sdl_make_unique(SDL_RenderReadPixels(src_renderer, &sr));
+    if (!SDL_BlitSurfaceScaled(src_surface.get(), &sr, s.get(), NULL, SDL_SCALEMODE_LINEAR)) {
+      canvas_log.error("Could not blit surface scaled: %s", SDL_GetError());
+      return;
+    }
+    src.end_draw();
+  } else {
+    if (!SDL_BlitSurfaceScaled(src.sdlSurface.get(), &sr, s.get(), NULL, SDL_SCALEMODE_LINEAR)) {
+      canvas_log.error("Could not blit surface scaled: %s", SDL_GetError());
+      return;
+    }
+  }
+
+  auto t = sdl_make_unique(SDL_CreateTextureFromSurface(renderer, s.get()));
+  if (t == nullptr) {
+    canvas_log.error("Could not create_texture: %s", SDL_GetError());
+    return;
+  }
+
+  const auto dr = sdl_frect(dstRect);
+  if (!SDL_RenderTexture(renderer, t.get(), NULL, &dr)) {
+    canvas_log.error("Could not copy bits: %s", SDL_GetError());
+  }
+
+  end_draw();
 }
 
 bool GraphicsCanvas::init_renderer() {
@@ -490,7 +540,7 @@ void GraphicsCanvas::end_draw() {
   }
 }
 
-void GraphicsCanvas::clear(SDL_Renderer* renderer) {
+void GraphicsCanvas::clear(SDL_Renderer* renderer, const Rect* rect) {
   // Clear the texture with transparent background pixels, using no blend mode
   SDL_BlendMode blendMode;
   uint8_t r, g, b, a;
@@ -501,7 +551,13 @@ void GraphicsCanvas::clear(SDL_Renderer* renderer) {
 
   SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
-  SDL_RenderClear(renderer);
+
+  if (rect) {
+    const auto frect = sdl_frect(*rect);
+    SDL_RenderFillRect(renderer, &frect);
+  } else {
+    SDL_RenderClear(renderer);
+  }
 
   // Restore state
   SDL_SetRenderDrawBlendMode(renderer, blendMode);

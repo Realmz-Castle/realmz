@@ -45,9 +45,6 @@ void GetSoundVol(short* x) {
   *x = v >> 16;
 }
 
-void EraseRect(const Rect* r) {
-}
-
 Boolean IsColorGammaAvailable(void) {
   return TRUE;
 }
@@ -58,10 +55,6 @@ OSErr FadeToBlack(UInt16 numSteps, FadeType typeOfFade) {
 
 OSErr FadeToGamma(GammaRef to, UInt16 numSteps, FadeType typeOfFade) {
   return 0;
-}
-
-WindowPtr FrontWindow(void) {
-  return NULL;
 }
 
 CCrsrHandle GetCCursor(uint16_t crsrID) {
@@ -120,21 +113,10 @@ void HiliteMenu(int16_t menuID) {
 void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex) {
 }
 
-void DisposeWindow(WindowPtr theWindow) {
-  WindowManager_DisposeWindow(theWindow);
-}
-
-void BringToFront(WindowPtr theWindow) {
-}
-
 void PenMode(int16_t mode) {
 }
 
 void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn) {
-}
-
-void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
-    RgnHandle maskRgn) {
 }
 
 void SelectDialogItemText(DialogPtr theDialog, int16_t itemNo, int16_t strtSel, int16_t endSel) {
@@ -188,10 +170,6 @@ Size MaxMem(Size* grow) {
 
 int16_t CountMItems(MenuHandle theMenu) {
   return 0;
-}
-
-void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
-    const Rect* dstRect) {
 }
 
 void OffsetRect(Rect* r, uint16_t dh, uint16_t dv) {
@@ -257,22 +235,6 @@ int32_t DeltaPoint(Point ptA, Point ptB) {
 }
 
 void FrameRect(const Rect* r) {
-}
-
-TEHandle TENew(const Rect* destRect, const Rect* viewRect) {
-  return NULL;
-}
-
-void TESetText(const void* text, int32_t length, TEHandle hTE) {
-}
-
-void TESetSelect(int32_t selStart, int32_t selEnd, TEHandle hTE) {
-}
-
-void TEUpdate(const Rect* rUpdate, TEHandle hTE) {
-}
-
-void TEDispose(TEHandle hTE) {
 }
 
 void GetItemMark(MenuHandle theMenu, int16_t item, int16_t* markChar) {

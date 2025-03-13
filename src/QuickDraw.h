@@ -14,6 +14,8 @@
 #define greenColor 341
 #define blueColor 409
 
+#define GetPortBitMapForCopyBits(x) ((BitMap*)x)
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -117,6 +119,8 @@ typedef CGrafPtr GWorldPtr;
 typedef GrafPort* GrafPtr;
 typedef GrafPort** GrafHandle; // Not part of Classic Mac OS API
 
+typedef Handle TEHandle;
+
 typedef struct {
   PixMap iconPMap;
   BitMap iconMask;
@@ -155,6 +159,7 @@ void TextFont(uint16_t font);
 void TextMode(int16_t mode);
 void TextSize(uint16_t size);
 void TextFace(int16_t face);
+
 void RGBBackColor(const RGBColor* color);
 void RGBForeColor(const RGBColor* color);
 CIconHandle GetCIcon(uint16_t iconID);
@@ -174,6 +179,11 @@ void DrawString(ConstStr255Param s);
 int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount);
 void DrawPicture(PicHandle myPicture, const Rect* dstRect);
 void LineTo(int16_t h, int16_t v);
+void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
+    RgnHandle maskRgn);
+void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
+    const Rect* dstRect);
+void EraseRect(const Rect* r);
 
 #ifdef __cplusplus
 } // extern "C"

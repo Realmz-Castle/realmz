@@ -3,6 +3,8 @@
 #include "QuickDraw.h"
 #include "SDLHelpers.hpp"
 
+#include <optional>
+
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
 #include <resource_file/QuickDrawFormats.hh>
@@ -69,6 +71,7 @@ public:
   bool is_window() const;
   bool init();
   void clear();
+  void clear_rect(const Rect& rect);
   void clear_window();
   void render(const SDL_FRect*);
   void sync();
@@ -84,10 +87,11 @@ public:
   void draw_rect(const Rect& dispRect);
   void draw_line(const Point& start, const Point& end);
   void draw_background(sdl_window_shared sdlWindow, PixPatHandle bkPixPat);
+  void copy_from(GraphicsCanvas& src, const Rect& srcRect, const Rect& dstRect);
 
 private:
   bool init_renderer();
   SDL_Renderer* start_draw();
   void end_draw();
-  void clear(SDL_Renderer* renderer);
+  void clear(SDL_Renderer* renderer, const Rect* rect);
 };

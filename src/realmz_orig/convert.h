@@ -32,10 +32,19 @@ static inline void SLOWSWAP_BIG32(long* x) {
 #endif
 
 static inline void rintel2moto(Rect* r) {
-  r->top = SWAP_BIG16(r->top);
-  r->left = SWAP_BIG16(r->left);
-  r->bottom = SWAP_BIG16(r->bottom);
-  r->right = SWAP_BIG16(r->right);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(danapplegate): This function appears to date from the period where Apple computers
+   * transitioned from using the Motorola 68k series of chips to Intel. The former were big-endian, and
+   * the latter are little-endian. It's only used in two places when loading Rect objects from
+   * resource data, as the resource data appears to all be stored in big-endian order. (I'm not sure why
+   * the name is what it is, it seems like it should be converting _from_ moto _to_ intel?) However,
+   * ResourceDASM already handles the conversion for us, so we no longer need to do this.
+   */
+  // r->top = SWAP_BIG16(r->top);
+  // r->left = SWAP_BIG16(r->left);
+  // r->bottom = SWAP_BIG16(r->bottom);
+  // r->right = SWAP_BIG16(r->right);
+  /* *** END CHANGES *** */
 }
 
 static inline void CvtShortToPc(short* x) { SLOWSWAP_BIG16(x); }

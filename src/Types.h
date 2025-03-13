@@ -36,6 +36,7 @@ typedef UInt32 ResType;
 typedef unsigned char Boolean;
 
 #define noErr 0
+#define resProblem -204
 
 typedef unsigned char Str255[256];
 typedef unsigned char Str63[64];

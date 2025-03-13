@@ -186,6 +186,12 @@ OSErr SndDoImmediate(SndChannelPtr chan, const SndCommand* cmd) {
 }
 
 OSErr SndPlay(SndChannelPtr chan, Handle data_handle, Boolean async) {
+  // Some Realmz data, such as the mapstats array loaded in loadland-loadpixmap.c, appears to
+  // specify a snd resource with id 0, which cannot be loaded. In these cases, we simply
+  // return an error.
+  if (data_handle == nullptr) {
+    return resProblem;
+  }
   sm.play_sound(chan->sdlAudioStream, data_handle);
-  return 0;
+  return noErr;
 }
