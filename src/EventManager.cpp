@@ -296,6 +296,10 @@ public:
     this->event_queue.emplace_back(EventRecord{mouseDown, 0, 0, where, 0});
   }
 
+  void reset_mouse_state() {
+    this->modifier_flags |= EVMOD_MOUSE_BUTTON_UP;
+  }
+
   inline const Point& get_mouse_loc() const {
     return this->mouse_loc;
   }
@@ -488,4 +492,8 @@ Boolean StillDown(void) {
 
 void PushMenuEvent(int16_t menu_id, int16_t item_id) {
   em.push_menu_event(menu_id, item_id);
+}
+
+void reset_mouse_state() {
+  em.reset_mouse_state();
 }
