@@ -605,7 +605,7 @@ void GetIndString(Str255 out, int16_t res_id, uint16_t index) {
       return;
     }
     auto decoded = ResourceDASM::ResourceFile::decode_STRN(res->source_res);
-    const auto& str = decoded.strs.at(index);
+    const auto& str = decoded.strs.at(index - 1);
     if (str.size() > 0xFF) {
       resError = resNotFound;
       out[0] = 0; // This should be impossible; the STR# format has a single-byte size field per string

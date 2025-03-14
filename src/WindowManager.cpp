@@ -523,6 +523,10 @@ public:
     return text;
   }
 
+  void set_dirty_flag() {
+    dirty = true;
+  }
+
   void set_text(const std::string& new_text) {
     text = new_text;
     if (control) {
@@ -854,6 +858,9 @@ public:
 
   void show() {
     cWindowRecord.visible = true;
+    for (auto di : dialog_items) {
+      di->set_dirty_flag();
+    }
     render(true);
     SDL_ShowWindow(sdl_window.get());
   }
@@ -1155,7 +1162,7 @@ void WindowManager_DrawDialog(WindowPtr theWindow) {
   CWindowRecord* const windowRecord = reinterpret_cast<CWindowRecord*>(theWindow);
   auto window = wm.window_for_record(theWindow);
 
-  window->render(true);
+  window->show();
 }
 
 void WindowManager_DisposeWindow(WindowPtr theWindow) {
@@ -1641,6 +1648,7 @@ void TESetSelect(int32_t selStart, int32_t selEnd, TEHandle hTE) {
 
 void TEUpdate(const Rect* rUpdate, TEHandle hTE) {
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(hTE));
+  item->set_dirty_flag(); // Force re-render of DialogItem
   auto window = item->window.lock();
   window->render(true);
 }

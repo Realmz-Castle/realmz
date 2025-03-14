@@ -402,7 +402,7 @@ void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect,
 
   dstCanvas->copy_from(*srcCanvas, *srcRect, *dstRect);
   dstCanvas->render(NULL);
-  render_window(qd.thePort);
+  render_window(dstCanvas->get_port());
 }
 
 void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
