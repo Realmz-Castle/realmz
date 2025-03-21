@@ -414,13 +414,18 @@ public:
 
     switch (type) {
       case ResourceFile::DecodedDialogItem::Type::PICTURE: {
-        const auto& pict = **GetPicture(resource_id);
-        const Rect& r = pict.picFrame;
-        int16_t w = r.right - r.left;
-        int16_t h = r.bottom - r.top;
-        // Since we're drawing to the local texture buffer, we want to fill it, rather than draw
-        // to the bounds specified by the resource.
-        canvas.draw_rgba_picture(*pict.data, w, h, Rect{0, 0, h, w});
+        auto pict_handle = GetPicture(resource_id);
+        if (!pict_handle) {
+          wm_log.warning("Attempted to draw PICT %hd, but it could not be loaded", resource_id);
+        } else {
+          const auto& pict = **pict_handle;
+          const Rect& r = pict.picFrame;
+          int16_t w = r.right - r.left;
+          int16_t h = r.bottom - r.top;
+          // Since we're drawing to the local texture buffer, we want to fill it, rather than draw
+          // to the bounds specified by the resource.
+          canvas.draw_rgba_picture(*pict.data, w, h, Rect{0, 0, h, w});
+        }
         break;
       }
       case ResourceFile::DecodedDialogItem::Type::ICON:

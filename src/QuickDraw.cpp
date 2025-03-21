@@ -182,6 +182,9 @@ PicHandle GetPicture(int16_t id) {
   // By default, the GetResource call leaves the raw bytes of the resource in data_handle. To
   // satisfy the above, we replace that with the fully decoded Picture resource.
   auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_PICT, id);
+  if (!data_handle) {
+    return nullptr;
+  }
 
   if (already_decoded.contains(id)) {
     return reinterpret_cast<PicHandle>(data_handle);

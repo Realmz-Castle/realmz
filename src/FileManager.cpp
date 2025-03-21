@@ -129,6 +129,19 @@ FILE* mac_fopen(const char* filename, const char* mode) {
   }
 
   std::string host_filename = host_filename_for_mac_filename(filename, false);
+
+  // Sometimes bugs may cause Realmz to try to open a directory. For example,
+  // when you click on an empty slot in the party select list, it will call
+  // fopen with ":Character Files:". Opening directories this way is an
+  // implementation detail; the usual pattern is to call opendir + readdir
+  // instead of fopen, but fopen still succeeds on some Unix-like systems. To
+  // handle this, we need to check if the file is a directory and not try to
+  // open it if so, which emulates the Classic Mac OS behavior.
+  if (phosg::isdir(host_filename)) {
+    fm_log.info("Cannot open file %s (host: %s) because it is a directory", filename, host_filename.c_str());
+    return nullptr;
+  }
+
   fm_log.info("Opening file %s (host: %s) with mode %s", filename, host_filename.c_str(), mode);
   return fopen(host_filename.c_str(), mode);
 }
