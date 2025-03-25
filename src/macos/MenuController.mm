@@ -57,12 +57,13 @@ NSMenu* MCCreateSubMenu(NSString* title, const Menu& menuRes, const std::list<st
   [_menuObject setAutoenablesItems:NO];
 
   for (auto menu : menuList.menus) {
-    NSString* title = [NSString stringWithUTF8String:menu->title.c_str()];
-    NSMenuItem* menuItem = [[NSMenuItem alloc] initWithTitle:title action:NULL keyEquivalent:@""];
+    const char* title = menu->title.c_str();
+    NSString* nstitle = [[NSString alloc] initWithBytes:title length:strlen(title) encoding:NSMacOSRomanStringEncoding];
+    NSMenuItem* menuItem = [[NSMenuItem alloc] initWithTitle:nstitle action:NULL keyEquivalent:@""];
     menuItem.enabled = menu->enabled;
     [_menuObject addItem:menuItem];
     if (menu->items.size()) {
-      NSMenu* subMenu = [self MCCreateSubMenu:title parentMenu:*menu submenus:menuList.submenus];
+      NSMenu* subMenu = [self MCCreateSubMenu:nstitle parentMenu:*menu submenus:menuList.submenus];
       [_menuObject setSubmenu:subMenu forItem:menuItem];
     }
   }
