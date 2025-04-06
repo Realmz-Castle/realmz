@@ -669,6 +669,7 @@ private:
   int h;
   CWindowRecord cWindowRecord;
   sdl_window_shared sdl_window;
+  sdl_window_shared base_window;
   std::shared_ptr<GraphicsCanvas> canvas;
   bool is_dialog_flag;
   std::vector<std::shared_ptr<DialogItem>> dialog_items; // All items (the below 3 vectors are disjoint subsets of this)
@@ -685,12 +686,14 @@ public:
       const Rect& bounds,
       CWindowRecord record,
       bool is_dialog,
-      std::vector<std::shared_ptr<DialogItem>>&& dialog_items)
+      std::vector<std::shared_ptr<DialogItem>>&& dialog_items,
+      sdl_window_shared base_window)
       : title{title},
         bounds{bounds},
         cWindowRecord{record},
         is_dialog_flag{is_dialog},
         dialog_items{std::move(dialog_items)},
+        base_window{base_window},
         canvas{} {
     w = bounds.right - bounds.left;
     h = bounds.bottom - bounds.top;
@@ -711,6 +714,8 @@ public:
       flags |= SDL_WINDOW_HIDDEN;
     }
     sdl_window = sdl_make_shared(SDL_CreateWindow(title.c_str(), w, h, flags));
+
+    SDL_SetWindowParent(sdl_window.get(), base_window.get());
 
     if (sdl_window == NULL) {
       throw std::runtime_error(phosg::string_printf("Could not create window: %s\n", SDL_GetError()));
@@ -920,12 +925,19 @@ public:
 // Window manager
 
 class WindowManager {
-private:
-  std::unordered_map<DialogItemHandle, std::shared_ptr<DialogItem>> dialog_items_by_handle;
-
 public:
   WindowManager() = default;
   ~WindowManager() = default;
+
+  void init() {
+    // Create a base SDL window which will be the parent of all virtual
+    // windows that Realmz creates
+    base_window = sdl_make_shared(SDL_CreateWindow("Realmz", 800, 600, 0));
+
+    if (base_window == nullptr) {
+      throw std::runtime_error("Could not create base window");
+    }
+  }
 
   WindowPtr create_window(
       const std::string& title,
@@ -962,7 +974,8 @@ public:
     wr->windowKind = proc_id;
     wr->refCon = ref_con;
 
-    auto window = std::make_shared<Window>(title, bounds, *wr, is_dialog, std::move(dialog_items));
+    auto window = std::make_shared<Window>(
+        title, bounds, *wr, is_dialog, std::move(dialog_items), base_window);
 
     // Must call init here to create SDL resources and associate the window with its DialogItems
     window->init();
@@ -1041,9 +1054,11 @@ public:
   }
 
 private:
+  std::unordered_map<DialogItemHandle, std::shared_ptr<DialogItem>> dialog_items_by_handle;
   std::unordered_map<WindowPtr, std::shared_ptr<Window>> record_to_window;
   std::unordered_map<SDL_WindowID, std::shared_ptr<Window>> sdl_window_id_to_window;
   std::list<std::shared_ptr<Window>> window_list;
+  sdl_window_shared base_window;
 };
 
 static WindowManager wm;
@@ -1129,6 +1144,8 @@ void WindowManager_Init(void) {
     wm_log.error("Couldn't initialize video driver: %s\n", SDL_GetError());
     return;
   }
+
+  wm.init();
 
   PrintDebugInfo();
 
