@@ -14,7 +14,7 @@ void flashmessage(Str255 strc, short x, short y, short duration, short toplay) /
   char string[255];
 
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-   * NOTE(danaapplegate): Realmz often calls this flashmessage function and passes in
+   * NOTE(danapplegate): Realmz often calls this flashmessage function and passes in
    * string literals as the strc argument. It then copies 255 bytes from that location
    * in program memory, regardless of the length of the string. This causes invalid access
    * to program memory beyond the bounds of the string, and could cause undefined behavior.

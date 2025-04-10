@@ -383,6 +383,8 @@ void DrawString(ConstStr255Param s) {
 
   draw_text(str);
   render_current_canvas(NULL);
+
+  render_window(qd.thePort);
 }
 
 int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount) {

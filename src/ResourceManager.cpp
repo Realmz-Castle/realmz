@@ -264,10 +264,13 @@ public:
   }
 
   std::shared_ptr<Resource> get_resource(int32_t type, int16_t id) {
-    if (id == 0) {
+    std::string type_str = ResourceDASM::string_for_resource_type(type);
+    if (type_str == "snd " && id == 0) {
+      // TODO: Apparently, snd 0 should be provided by the system resource fork. In fact,
+      // snd resources 0-8191 are reserved (Sound 2-154), but Realmz seems to use many of
+      // these.
       return nullptr;
     }
-    std::string type_str = ResourceDASM::string_for_resource_type(type);
     for (size_t z = this->search_start_index; z < this->files.size(); z++) {
       auto res = this->files[z]->get_resource(type, id);
       if (res != nullptr) {

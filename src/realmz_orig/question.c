@@ -203,9 +203,17 @@ short question3(Str255 p1, Str255 p2) {
   char prompt1[255];
   char prompt2[255];
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION *** */
+  /* Note (danapplegate): Another instance where BlockMove is called with a byteLength
+   * constant of 255, but is passed static string literals of various lengths. question3
+   * is only called with these string literals, so we know it's safe to call strlen here.
+   */
   // Myriad : C format instead off pascal string
-  BlockMove(p1, prompt1, 255); // Myriad
-  BlockMove(p2, prompt2, 255); // Myriad
+  // BlockMove(p1, prompt1, 255); // Myriad
+  // BlockMove(p2, prompt2, 255); // Myriad
+  BlockMove(p1, prompt1, strlen((const char*)p1) + 1);
+  BlockMove(p2, prompt2, strlen((const char*)p2) + 1);
+  /* *** END CHANGES *** */
   onechar = prompt1[0];
   twochar = prompt2[0];
   CtoPstr(prompt1); // Myriad

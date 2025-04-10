@@ -57,7 +57,7 @@ NSMenu* MCCreateSubMenu(NSString* title, const Menu& menuRes, const std::list<st
   [_menuObject setAutoenablesItems:NO];
 
   for (auto menu : menuList.menus) {
-    NSString* title = [NSString stringWithUTF8String:menu->title.c_str()];
+    NSString* title = [NSString stringWithCString:menu->title.c_str() encoding:NSMacOSRomanStringEncoding];
     NSMenuItem* menuItem = [[NSMenuItem alloc] initWithTitle:title action:NULL keyEquivalent:@""];
     menuItem.enabled = menu->enabled;
     [_menuObject addItem:menuItem];
@@ -81,7 +81,7 @@ NSMenu* MCCreateSubMenu(NSString* title, const Menu& menuRes, const std::list<st
       NSString* name = [NSString stringWithCString:subMenuItemRes.name.c_str() encoding:NSMacOSRomanStringEncoding];
       if (name != nullptr) {
         auto s = std::string(&subMenuItemRes.key_equivalent, 1);
-        NSString* key = [NSString stringWithUTF8String:s.c_str()];
+        NSString* key = [NSString stringWithCString:s.c_str() encoding:NSMacOSRomanStringEncoding];
         NSMenuItem* subMenuItem = [newMenu addItemWithTitle:name action:NULL keyEquivalent:@""];
         [subMenuItem setTarget:self];
         [subMenuItem setAction:@selector(MCHandleMenuClick:)];
