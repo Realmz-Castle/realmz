@@ -264,8 +264,7 @@ public:
   }
 
   std::shared_ptr<Resource> get_resource(int32_t type, int16_t id) {
-    std::string type_str = ResourceDASM::string_for_resource_type(type);
-    if (type_str == "snd " && id == 0) {
+    if (type == ResourceDASM::RESOURCE_TYPE_snd && id == 0) {
       // TODO: Apparently, snd 0 should be provided by the system resource fork. In fact,
       // snd resources 0-8191 are reserved (Sound 2-154), but Realmz seems to use many of
       // these.
@@ -277,6 +276,7 @@ public:
         return res;
       }
     }
+    std::string type_str = ResourceDASM::string_for_resource_type(type);
     rm_log.info("%s:%hd not found in any open resource file", type_str.c_str(), id);
     this->print_chain();
     throw std::out_of_range(phosg::string_printf("resource %s:%hd not found", type_str.c_str(), id));
