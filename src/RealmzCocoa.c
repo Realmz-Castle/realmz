@@ -99,6 +99,8 @@ int32_t MenuKey(int16_t ch) {
 int16_t FindWindow(Point thePoint, WindowPtr* theWindow) {
   if (thePoint.v < 0 && thePoint.h < 0) {
     return inMenuBar;
+  } else if (thePoint.v >= 0 && thePoint.h >= 0) {
+    return inContent;
   }
   return 0;
 }
