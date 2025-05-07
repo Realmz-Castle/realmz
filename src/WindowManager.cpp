@@ -1549,6 +1549,9 @@ void HideControl(ControlHandle handle) {
 }
 
 void GetControlBounds(ControlHandle handle, Rect* rect) {
+  if (!handle) {
+    return;
+  }
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
   if (item->control) {
     *rect = item->control->bounds;
