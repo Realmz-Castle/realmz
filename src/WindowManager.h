@@ -14,7 +14,15 @@ typedef Ptr ModalFilterProcPtr;
 
 // Macintosh Toolbox Essentials (Introduction to Windows 4-11)
 enum {
-  plainDBox = 2,
+  documentProc = 0, // movable, sizable window, no zoom box
+  dBoxProc = 1, // alert box or modal dialog box
+  plainDBox = 2, // plain box
+  altDBoxProc = 3, // plain box with shadow
+  noGrowDocProc = 4, // movable window, no size box or zoom box
+  movableDBoxProc = 5, // movable modal dialog box
+  zoomDocProc = 8, // standard document window
+  zoomNoGrow = 12, // zoomable, nonresizable window
+  rDocProc = 16, // rounded-corner window
 };
 
 enum {

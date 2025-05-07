@@ -707,7 +707,10 @@ public:
   void init() {
     SDL_WindowFlags flags{};
 
-    if (cWindowRecord.windowKind == plainDBox) {
+    bool is_borderless = ((cWindowRecord.windowKind == dBoxProc) ||
+        (cWindowRecord.windowKind == plainDBox) ||
+        (cWindowRecord.windowKind == altDBoxProc));
+    if (is_borderless) {
       flags |= SDL_WINDOW_BORDERLESS | SDL_WINDOW_UTILITY;
     }
     if (!cWindowRecord.visible) {
