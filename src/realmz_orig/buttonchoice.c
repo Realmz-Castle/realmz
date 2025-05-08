@@ -103,6 +103,20 @@ short buttonchoice(short skipin) {
             if (temp > 999)
               temp -= 1000;
 
+            /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+             * NOTE(fuzziqersoftware): This seems to be a bug in the original
+             * code. Some tiles have IDs beyond 402, which is the last entry in
+             * mapstats, and the original code liekly simply accessed memory
+             * out of bounds on this array. Since it was a global with plenty
+             * of memory after it, this probably didn't break on older systems.
+             * TODO: Should we use 200 here instead of 402? Currently we just
+             * limit to the size of the array, since that's closest to the
+             * original code's behavior.
+             */
+            if (temp > 402)
+              temp = basetile[lastpix];
+            /* *** END CHANGES *** */
+
             fieldx = partyx + lookx;
             fieldy = partyy + looky;
 
@@ -124,15 +138,21 @@ short buttonchoice(short skipin) {
 
               newland(partyx + lookx, partyy + looky, 0, 0, 0);
 
-              if (hit > 999) {
-                if (mapstats[hit - 1000].needboad == 1)
-                  goto doboat; /**** hit boat ****/
-              }
-
-              if (hit < 999) {
-                if (mapstats[hit].needboad == 1)
-                  goto doboat; /**** hit boat ****/
-              }
+              /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+               * NOTE(fuzziqersoftware): This check also accessed mapstats out
+               * of bounds, similar to the above comment.
+               */
+              // if (hit > 999) {
+              //   if (mapstats[hit - 1000].needboad == 1)
+              //     goto doboat; /**** hit boat ****/
+              // }
+              // if (hit < 999) {
+              //   if (mapstats[hit].needboad == 1)
+              //     goto doboat; /**** hit boat ****/
+              // }
+              if (mapstats[temp].needboad == 1)
+                goto doboat; /**** hit boat ****/
+              /* *** END CHANGES *** */
 
               goto next;
             }
