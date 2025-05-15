@@ -419,6 +419,43 @@ void GraphicsCanvas::draw_rect(const Rect& dispRect) {
   end_draw();
 }
 
+void GraphicsCanvas::draw_oval(const Rect& dispRect) {
+  auto renderer = start_draw();
+  int radius = (dispRect.right - dispRect.left) / 2.0;
+  int x0 = dispRect.left + radius;
+  int y0 = dispRect.top + radius;
+  int x = radius - 1;
+  int y = 0;
+  int dx = 1;
+  int dy = 1;
+  int err = dx - (radius << 1);
+
+  while (x >= y) {
+    SDL_RenderPoint(renderer, x0 + x, y0 + y);
+    SDL_RenderPoint(renderer, x0 + y, y0 + x);
+    SDL_RenderPoint(renderer, x0 - y, y0 + x);
+    SDL_RenderPoint(renderer, x0 - x, y0 + y);
+    SDL_RenderPoint(renderer, x0 - x, y0 - y);
+    SDL_RenderPoint(renderer, x0 - y, y0 - x);
+    SDL_RenderPoint(renderer, x0 + y, y0 - x);
+    SDL_RenderPoint(renderer, x0 + x, y0 - y);
+
+    if (err <= 0) {
+      y++;
+      err += dy;
+      dy += 2;
+    }
+
+    if (err > 0) {
+      x--;
+      dx += 2;
+      err += dx - (radius << 1);
+    }
+  }
+
+  end_draw();
+}
+
 void GraphicsCanvas::draw_line(const Point& start, const Point& end) {
   auto renderer = start_draw();
   SDL_RenderLine(

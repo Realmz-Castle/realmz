@@ -85,6 +85,7 @@ public:
   // return its rendered width in pixels.
   int measure_text(const std::string& text);
   void draw_rect(const Rect& dispRect);
+  void draw_oval(const Rect& dispRect);
   void draw_line(const Point& start, const Point& end);
   void draw_background(sdl_window_shared sdlWindow, PixPatHandle bkPixPat);
   void copy_from(GraphicsCanvas& src, const Rect& srcRect, const Rect& dstRect);

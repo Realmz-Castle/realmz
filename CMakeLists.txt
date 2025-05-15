@@ -26,6 +26,7 @@ find_package(SDL3_ttf REQUIRED)
 find_package(SDL3_image REQUIRED)
 
 # Executable definition
+set(REALMZ_EXECUTABLE_SRC src/realmz_orig/main.c)
 set(SOURCES
     src/realmz_orig/Display.c
     src/realmz_orig/GWorldInit.c
@@ -100,7 +101,6 @@ set(SOURCES
     src/realmz_orig/loadsavedgame.c
     src/realmz_orig/loadspell.c
     src/realmz_orig/lookupicon.c
-    src/realmz_orig/main.c
     src/realmz_orig/makescroll.c
     src/realmz_orig/mapstuff.c
     src/realmz_orig/menuinit.c
@@ -245,11 +245,58 @@ set_source_files_properties(${CHARACTER_RESOURCE_FILES} PROPERTIES
     MACOSX_PACKAGE_LOCATION "Resources/Character\ Files"
 )
 
+# All the sources besides the executable source files with main functions should
+# be shared as if they were a library to enable test executables
+add_library(realmz_lib STATIC ${SOURCES})
+target_compile_definitions(realmz_lib PUBLIC REALMZ_COCOA=1)
+target_compile_options(realmz_lib PUBLIC -fpascal-strings)
+target_include_directories(realmz_lib PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig src/macos)
+target_link_libraries(realmz_lib
+    ${SDL3_LIBRARIES}
+    SDL3_ttf::SDL3_ttf
+    SDL3_image::SDL3_image
+    resource_file::resource_file
+    "-framework Foundation"
+    "-framework Cocoa"
+)
+
 add_executable(Realmz MACOSX_BUNDLE
-    ${SOURCES}
+    ${REALMZ_EXECUTABLE_SRC}
     ${RESOURCE_FILES}
     ${DATA_RESOURCE_FILES}
 )
+
+target_compile_definitions(Realmz PUBLIC REALMZ_COCOA=1)
+target_compile_options(Realmz PUBLIC -fpascal-strings)
+target_include_directories(Realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig src/macos)
+target_link_libraries(Realmz
+    PUBLIC
+    realmz_lib
+    "-framework Foundation"
+    "-framework Cocoa"
+)
+
+target_compile_options(Realmz PRIVATE -fsanitize=address)
+target_link_options(Realmz PRIVATE -fsanitize=address)
+
+set(TEST_EXECUTABLES "GraphicsTest")
+foreach(TEST_EXECUTABLE ${TEST_EXECUTABLES})
+    add_executable(${TEST_EXECUTABLE} MACOSX_BUNDLE
+        src/tests/${TEST_EXECUTABLE}.cpp
+        ${RESOURCE_FILES}
+        ${DATA_RESOURCE_FILES}
+    )
+    target_compile_definitions(${TEST_EXECUTABLE} PUBLIC REALMZ_COCOA=1)
+    target_compile_options(${TEST_EXECUTABLE} PUBLIC -fpascal-strings)
+    target_include_directories(${TEST_EXECUTABLE} PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig src/macos)
+    target_link_libraries(${TEST_EXECUTABLE}
+        PUBLIC
+        realmz_lib
+    )
+
+    target_compile_options(${TEST_EXECUTABLE} PRIVATE -fsanitize=address)
+    target_link_options(${TEST_EXECUTABLE} PRIVATE -fsanitize=address)
+endforeach()
 
 # Scenario data installed in Contents/Resources/Scenarios
 set(SCENARIO_NAMES
@@ -281,22 +328,6 @@ target_sources(Realmz PRIVATE ${CHARACTER_DATA_FILES})
 set_source_files_properties(${CHARACTER_DATA_FILES} PROPERTIES
     MACOSX_PACKAGE_LOCATION "Resources/Character Files"
 )
-
-target_compile_definitions(Realmz PUBLIC REALMZ_COCOA=1)
-target_compile_options(Realmz PUBLIC -fpascal-strings)
-target_include_directories(Realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig src/macos)
-target_link_libraries(Realmz
-    PUBLIC
-    ${SDL3_LIBRARIES}
-    SDL3_ttf::SDL3_ttf
-    SDL3_image::SDL3_image
-    resource_file::resource_file
-    "-framework Foundation"
-    "-framework Cocoa"
-)
-
-target_compile_options(Realmz PRIVATE -fsanitize=address)
-target_link_options(Realmz PRIVATE -fsanitize=address)
 
 # Create save game directories. This should happen at cmake install time instead,
 # or during end user installation through an install script

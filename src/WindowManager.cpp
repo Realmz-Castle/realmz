@@ -2,7 +2,6 @@
 
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_properties.h>
-#include <list>
 #include <memory>
 #include <stdexcept>
 
@@ -27,9 +26,6 @@
 #include "StringConvert.hpp"
 
 using ResourceDASM::ResourceFile;
-
-class WindowManager;
-class Window;
 
 inline size_t unwrap_opaque_handle(Handle h) {
   static_assert(sizeof(size_t) == sizeof(Handle));
@@ -660,409 +656,377 @@ std::shared_ptr<Control> Control::from_dialog_item(const DialogItem& item) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // Windows
+Window::Window() = default;
+Window::Window(
+    std::string title,
+    const Rect& bounds,
+    CWindowRecord record,
+    bool is_dialog,
+    std::vector<std::shared_ptr<DialogItem>>&& dialog_items,
+    sdl_window_shared base_window)
+    : title{title},
+      bounds{bounds},
+      cWindowRecord{record},
+      is_dialog_flag{is_dialog},
+      dialog_items{std::move(dialog_items)},
+      base_window{base_window},
+      canvas{} {
+  w = bounds.right - bounds.left;
+  h = bounds.bottom - bounds.top;
+  focused_item = nullptr;
+}
 
-class Window : public std::enable_shared_from_this<Window> {
-private:
-  std::string title;
-  Rect bounds;
-  int w;
-  int h;
-  CWindowRecord cWindowRecord;
-  sdl_window_shared sdl_window;
-  sdl_window_shared base_window;
-  std::shared_ptr<GraphicsCanvas> canvas;
-  bool is_dialog_flag;
-  std::vector<std::shared_ptr<DialogItem>> dialog_items; // All items (the below 3 vectors are disjoint subsets of this)
-  std::vector<std::shared_ptr<DialogItem>> static_items;
-  std::vector<std::shared_ptr<DialogItem>> control_items;
-  std::vector<std::shared_ptr<DialogItem>> text_items;
-  std::shared_ptr<DialogItem> focused_item;
-  bool text_editing_active;
+Window::~Window() {
+  deregister_canvas(canvas);
+}
 
-public:
-  Window() = default;
-  Window(
-      std::string title,
-      const Rect& bounds,
-      CWindowRecord record,
-      bool is_dialog,
-      std::vector<std::shared_ptr<DialogItem>>&& dialog_items,
-      sdl_window_shared base_window)
-      : title{title},
-        bounds{bounds},
-        cWindowRecord{record},
-        is_dialog_flag{is_dialog},
-        dialog_items{std::move(dialog_items)},
-        base_window{base_window},
-        canvas{} {
-    w = bounds.right - bounds.left;
-    h = bounds.bottom - bounds.top;
-    focused_item = nullptr;
+void Window::init() {
+  SDL_WindowFlags flags{};
+
+  bool is_borderless = ((cWindowRecord.windowKind == dBoxProc) ||
+      (cWindowRecord.windowKind == plainDBox) ||
+      (cWindowRecord.windowKind == altDBoxProc));
+  if (is_borderless) {
+    flags |= SDL_WINDOW_BORDERLESS | SDL_WINDOW_UTILITY;
+  }
+  if (!cWindowRecord.visible) {
+    flags |= SDL_WINDOW_HIDDEN;
+  }
+  sdl_window = sdl_make_shared(SDL_CreateWindow(title.c_str(), w, h, flags));
+
+  SDL_SetWindowParent(sdl_window.get(), base_window.get());
+
+  if (sdl_window == NULL) {
+    throw std::runtime_error(phosg::string_printf("Could not create window: %s\n", SDL_GetError()));
   }
 
-  ~Window() {
-    deregister_canvas(canvas);
-  }
+  canvas = std::make_shared<GraphicsCanvas>(sdl_window, bounds, get_port());
+  register_canvas(canvas);
+  canvas->init();
 
-  void init() {
-    SDL_WindowFlags flags{};
+  for (auto di : this->dialog_items) {
+    di->window = this->weak_from_this();
+    di->sdl_window = sdl_window;
+    di->init(get_port());
 
-    bool is_borderless = ((cWindowRecord.windowKind == dBoxProc) ||
-        (cWindowRecord.windowKind == plainDBox) ||
-        (cWindowRecord.windowKind == altDBoxProc));
-    if (is_borderless) {
-      flags |= SDL_WINDOW_BORDERLESS | SDL_WINDOW_UTILITY;
-    }
-    if (!cWindowRecord.visible) {
-      flags |= SDL_WINDOW_HIDDEN;
-    }
-    sdl_window = sdl_make_shared(SDL_CreateWindow(title.c_str(), w, h, flags));
-
-    SDL_SetWindowParent(sdl_window.get(), base_window.get());
-
-    if (sdl_window == NULL) {
-      throw std::runtime_error(phosg::string_printf("Could not create window: %s\n", SDL_GetError()));
+    // Set the focused text field to be the first EDIT_TEXT item encountered
+    if (!focused_item && di->type == DialogItemType::EDIT_TEXT) {
+      focused_item = di;
     }
 
-    canvas = std::make_shared<GraphicsCanvas>(sdl_window, bounds, get_port());
-    register_canvas(canvas);
-    canvas->init();
-
-    for (auto di : this->dialog_items) {
-      di->window = this->weak_from_this();
-      di->sdl_window = sdl_window;
-      di->init(get_port());
-
-      // Set the focused text field to be the first EDIT_TEXT item encountered
-      if (!focused_item && di->type == DialogItemType::EDIT_TEXT) {
-        focused_item = di;
-      }
-
-      if (di->type == DialogItemType::TEXT || di->type == DialogItemType::EDIT_TEXT) {
-        text_items.emplace_back(di);
-      } else if (di->control) {
-        control_items.emplace_back(di);
-      } else {
-        static_items.emplace_back(di);
-      }
-
-      if (di->type == DialogItemType::EDIT_TEXT && !text_editing_active) {
-        SDL_Rect r{
-            di->rect.left,
-            di->rect.top,
-            di->rect.right - di->rect.left,
-            di->rect.bottom - di->rect.top};
-        init_text_editing(r);
-      }
-    }
-
-    canvas->clear();
-  }
-
-  void init_text_editing(SDL_Rect r) {
-    // Macintosh Toolbox Essentials 6-32
-    if (!SDL_SetTextInputArea(sdl_window.get(), &r, 0)) {
-      wm_log.error("Could not create text area: %s", SDL_GetError());
-    }
-
-    SDL_PropertiesID props = SDL_CreateProperties();
-    SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, false);
-    SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, false);
-    SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_NONE);
-
-    if (!SDL_StartTextInputWithProperties(sdl_window.get(), props)) {
-      wm_log.error("Could not start text input: %s", SDL_GetError());
-    }
-
-    SDL_DestroyProperties(props);
-
-    text_editing_active = true;
-  }
-
-  void add_dialog_item(std::shared_ptr<DialogItem> item) {
-    item->item_id = this->dialog_items.size();
-    this->dialog_items.emplace_back(item);
-    // Initialize new DialogItem with the Window's CGrafPort record
-    item->window = this->weak_from_this();
-    item->sdl_window = sdl_window;
-    item->init(get_port());
-  }
-
-  std::shared_ptr<DialogItem> get_focused_item() {
-    return focused_item;
-  }
-
-  CGrafPtr get_port() {
-    return &cWindowRecord.port;
-  }
-
-  void set_focused_item(std::shared_ptr<DialogItem> item) {
-    if (item->window.lock()->sdl_window == sdl_window) {
-      focused_item = item;
-    }
-  }
-
-  void handle_text_input(const std::string& text, std::shared_ptr<DialogItem> item) {
-    item->append_text(text);
-    render(true);
-  }
-
-  void delete_char(std::shared_ptr<DialogItem> item) {
-    item->delete_char();
-    render(true);
-  }
-
-  void render(bool renderDialogItems = true) {
-    if (!cWindowRecord.visible) {
-      return;
-    }
-
-    // Clear the backbuffer before drawing frame
-    canvas->clear_window();
-
-    CGrafPtr port = qd.thePort;
-    if (port->bkPixPat) {
-      canvas->draw_background(sdl_window, port->bkPixPat);
-    }
-
-    // The DrawDialog procedure draws the entire contents of the specified dialog box. The
-    // DrawDialog procedure draws all dialog items, calls the Control Manager procedure
-    // DrawControls to draw all controls, and calls the TextEdit procedure TEUpdate to
-    // update all static and editable text items and to draw their display rectangles. The
-    // DrawDialog procedure also calls the application-defined items’ draw procedures if
-    // the items’ rectangles are within the update region.
-    if (renderDialogItems) {
-      for (auto item : this->static_items) {
-        item->render();
-      }
-      for (auto item : this->control_items) {
-        item->render();
-      }
-      for (auto item : this->text_items) {
-        item->render();
-      }
-    }
-
-    canvas->render(NULL);
-
-    // Flush changes to screen
-    canvas->sync();
-  }
-
-  void move(int hGlobal, int vGlobal) {
-    SDL_SetWindowPosition(sdl_window.get(), hGlobal, vGlobal);
-    SDL_SyncWindow(sdl_window.get());
-  }
-
-  void resize(uint16_t w, uint16_t h) {
-    auto& portRect = cWindowRecord.port.portRect;
-    portRect.right = portRect.left + w;
-    portRect.bottom = portRect.top + h;
-
-    this->w = w;
-    this->h = h;
-
-    if (SDL_SetWindowSize(sdl_window.get(), w, h)) {
-      canvas->sync();
+    if (di->type == DialogItemType::TEXT || di->type == DialogItemType::EDIT_TEXT) {
+      text_items.emplace_back(di);
+    } else if (di->control) {
+      control_items.emplace_back(di);
     } else {
-      wm_log.error("Could not resize window: %s", SDL_GetError());
+      static_items.emplace_back(di);
+    }
+
+    if (di->type == DialogItemType::EDIT_TEXT && !text_editing_active) {
+      SDL_Rect r{
+          di->rect.left,
+          di->rect.top,
+          di->rect.right - di->rect.left,
+          di->rect.bottom - di->rect.top};
+      init_text_editing(r);
     }
   }
 
-  void show() {
-    cWindowRecord.visible = true;
-    for (auto di : dialog_items) {
-      di->set_dirty_flag();
+  canvas->clear();
+}
+
+void Window::init_text_editing(SDL_Rect r) {
+  // Macintosh Toolbox Essentials 6-32
+  if (!SDL_SetTextInputArea(sdl_window.get(), &r, 0)) {
+    wm_log.error("Could not create text area: %s", SDL_GetError());
+  }
+
+  SDL_PropertiesID props = SDL_CreateProperties();
+  SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, false);
+  SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, false);
+  SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_NONE);
+
+  if (!SDL_StartTextInputWithProperties(sdl_window.get(), props)) {
+    wm_log.error("Could not start text input: %s", SDL_GetError());
+  }
+
+  SDL_DestroyProperties(props);
+
+  text_editing_active = true;
+}
+
+void Window::add_dialog_item(std::shared_ptr<DialogItem> item) {
+  item->item_id = this->dialog_items.size();
+  this->dialog_items.emplace_back(item);
+  // Initialize new DialogItem with the Window's CGrafPort record
+  item->window = this->weak_from_this();
+  item->sdl_window = sdl_window;
+  item->init(get_port());
+}
+
+std::shared_ptr<DialogItem> Window::get_focused_item() {
+  return focused_item;
+}
+
+CGrafPtr Window::get_port() {
+  return &cWindowRecord.port;
+}
+
+void Window::set_focused_item(std::shared_ptr<DialogItem> item) {
+  if (item->window.lock()->sdl_window == sdl_window) {
+    focused_item = item;
+  }
+}
+
+void Window::handle_text_input(const std::string& text, std::shared_ptr<DialogItem> item) {
+  item->append_text(text);
+  render(true);
+}
+
+void Window::delete_char(std::shared_ptr<DialogItem> item) {
+  item->delete_char();
+  render(true);
+}
+
+void Window::render(bool renderDialogItems) {
+  if (!cWindowRecord.visible) {
+    return;
+  }
+
+  // Clear the backbuffer before drawing frame
+  canvas->clear_window();
+
+  CGrafPtr port = qd.thePort;
+  if (port->bkPixPat) {
+    canvas->draw_background(sdl_window, port->bkPixPat);
+  }
+
+  // The DrawDialog procedure draws the entire contents of the specified dialog box. The
+  // DrawDialog procedure draws all dialog items, calls the Control Manager procedure
+  // DrawControls to draw all controls, and calls the TextEdit procedure TEUpdate to
+  // update all static and editable text items and to draw their display rectangles. The
+  // DrawDialog procedure also calls the application-defined items’ draw procedures if
+  // the items’ rectangles are within the update region.
+  if (renderDialogItems) {
+    for (auto item : this->static_items) {
+      item->render();
     }
-    render(true);
-    SDL_ShowWindow(sdl_window.get());
-  }
-
-  void bring_to_front() {
-    SDL_RaiseWindow(sdl_window.get());
-  }
-
-  SDL_WindowID sdl_window_id() const {
-    return SDL_GetWindowID(sdl_window.get());
-  }
-
-  const std::vector<std::shared_ptr<DialogItem>>& get_dialog_items() const {
-    return this->dialog_items;
-  }
-
-  std::shared_ptr<DialogItem> dialog_item_for_position(const Point& pt, bool enabled_only) {
-    for (const auto& item : this->dialog_items) {
-      if ((!enabled_only || item->enabled) && PtInRect(pt, &item->rect)) {
-        return item;
-      }
+    for (auto item : this->control_items) {
+      item->render();
     }
-    return nullptr;
-  }
-
-  inline bool is_dialog() const {
-    return this->is_dialog_flag;
-  }
-
-  TEHandle add_text_edit(const Rect& dest_rect, const Rect& view_rect) {
-    auto di = DialogItem::from_text_edit(dest_rect, view_rect);
-    add_dialog_item(di);
-    text_items.emplace_back(di);
-    return reinterpret_cast<TEHandle>(di->opaque_handle);
-  }
-
-  void remove_text_edit(std::shared_ptr<DialogItem> item) {
-    auto it = std::find(dialog_items.begin(), dialog_items.end(), item);
-    if (it != dialog_items.end()) {
-      dialog_items.erase(it);
-    }
-    it = std::find(text_items.begin(), text_items.end(), item);
-    if (it != text_items.end()) {
-      text_items.erase(it);
+    for (auto item : this->text_items) {
+      item->render();
     }
   }
-};
+
+  canvas->render(NULL);
+
+  // Flush changes to screen
+  canvas->sync();
+}
+
+void Window::move(int hGlobal, int vGlobal) {
+  SDL_SetWindowPosition(sdl_window.get(), hGlobal, vGlobal);
+  SDL_SyncWindow(sdl_window.get());
+}
+
+void Window::resize(uint16_t w, uint16_t h) {
+  auto& portRect = cWindowRecord.port.portRect;
+  portRect.right = portRect.left + w;
+  portRect.bottom = portRect.top + h;
+
+  this->w = w;
+  this->h = h;
+
+  if (SDL_SetWindowSize(sdl_window.get(), w, h)) {
+    canvas->sync();
+  } else {
+    wm_log.error("Could not resize window: %s", SDL_GetError());
+  }
+}
+
+void Window::show() {
+  cWindowRecord.visible = true;
+  for (auto di : dialog_items) {
+    di->set_dirty_flag();
+  }
+  render(true);
+  SDL_ShowWindow(sdl_window.get());
+}
+
+void Window::bring_to_front() {
+  SDL_RaiseWindow(sdl_window.get());
+}
+
+SDL_WindowID Window::sdl_window_id() const {
+  return SDL_GetWindowID(sdl_window.get());
+}
+
+const std::vector<std::shared_ptr<DialogItem>>& Window::get_dialog_items() const {
+  return this->dialog_items;
+}
+
+std::shared_ptr<DialogItem> Window::dialog_item_for_position(const Point& pt, bool enabled_only) {
+  for (const auto& item : this->dialog_items) {
+    if ((!enabled_only || item->enabled) && PtInRect(pt, &item->rect)) {
+      return item;
+    }
+  }
+  return nullptr;
+}
+
+inline bool Window::is_dialog() const {
+  return this->is_dialog_flag;
+}
+
+TEHandle Window::add_text_edit(const Rect& dest_rect, const Rect& view_rect) {
+  auto di = DialogItem::from_text_edit(dest_rect, view_rect);
+  add_dialog_item(di);
+  text_items.emplace_back(di);
+  return reinterpret_cast<TEHandle>(di->opaque_handle);
+}
+
+void Window::remove_text_edit(std::shared_ptr<DialogItem> item) {
+  auto it = std::find(dialog_items.begin(), dialog_items.end(), item);
+  if (it != dialog_items.end()) {
+    dialog_items.erase(it);
+  }
+  it = std::find(text_items.begin(), text_items.end(), item);
+  if (it != text_items.end()) {
+    text_items.erase(it);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // Window manager
+WindowManager::WindowManager() = default;
+WindowManager::~WindowManager() = default;
 
-class WindowManager {
-public:
-  WindowManager() = default;
-  ~WindowManager() = default;
+void WindowManager::init() {
+  // Create a base SDL window which will be the parent of all virtual
+  // windows that Realmz creates
+  base_window = sdl_make_shared(SDL_CreateWindow("Realmz", 800, 600, 0));
 
-  void init() {
-    // Create a base SDL window which will be the parent of all virtual
-    // windows that Realmz creates
-    base_window = sdl_make_shared(SDL_CreateWindow("Realmz", 800, 600, 0));
+  if (base_window == nullptr) {
+    throw std::runtime_error("Could not create base window");
+  }
+}
 
-    if (base_window == nullptr) {
-      throw std::runtime_error("Could not create base window");
-    }
+WindowPtr WindowManager::create_window(
+    const std::string& title,
+    const Rect& bounds,
+    bool visible,
+    bool go_away,
+    int16_t proc_id,
+    uint32_t ref_con,
+    bool is_dialog,
+    std::vector<std::shared_ptr<DialogItem>>&& dialog_items) {
+  CGrafPtr current_port = qd.thePort;
+
+  CGrafPort port{};
+  port.portRect = bounds;
+
+  CWindowRecord* wr = new CWindowRecord();
+  wr->port = port;
+  wr->port.portRect = bounds;
+  wr->port.txFont = current_port->txFont;
+  wr->port.txFace = current_port->txFace;
+  wr->port.txMode = current_port->txMode;
+  wr->port.txSize = current_port->txSize;
+
+  wr->port.fgColor = current_port->fgColor;
+  wr->port.bgColor = current_port->bgColor;
+  wr->port.rgbFgColor = current_port->rgbFgColor;
+  wr->port.rgbBgColor = current_port->rgbBgColor;
+
+  // Note: Realmz doesn't actually use any of the following fields; we also
+  // don't use numItems and dItems internally here (we instead use the vector
+  // in the Window struct)
+  wr->visible = visible;
+  wr->goAwayFlag = go_away;
+  wr->windowKind = proc_id;
+  wr->refCon = ref_con;
+
+  auto window = std::make_shared<Window>(
+      title, bounds, *wr, is_dialog, std::move(dialog_items), base_window);
+
+  // Must call init here to create SDL resources and associate the window with its DialogItems
+  window->init();
+  record_to_window.emplace(window->get_port(), window);
+  sdl_window_id_to_window.emplace(window->sdl_window_id(), window);
+
+  if (wr->visible) {
+    window->render(false);
   }
 
-  WindowPtr create_window(
-      const std::string& title,
-      const Rect& bounds,
-      bool visible,
-      bool go_away,
-      int16_t proc_id,
-      uint32_t ref_con,
-      bool is_dialog,
-      std::vector<std::shared_ptr<DialogItem>>&& dialog_items) {
-    CGrafPtr current_port = qd.thePort;
-
-    CGrafPort port{};
-    port.portRect = bounds;
-
-    CWindowRecord* wr = new CWindowRecord();
-    wr->port = port;
-    wr->port.portRect = bounds;
-    wr->port.txFont = current_port->txFont;
-    wr->port.txFace = current_port->txFace;
-    wr->port.txMode = current_port->txMode;
-    wr->port.txSize = current_port->txSize;
-
-    wr->port.fgColor = current_port->fgColor;
-    wr->port.bgColor = current_port->bgColor;
-    wr->port.rgbFgColor = current_port->rgbFgColor;
-    wr->port.rgbBgColor = current_port->rgbBgColor;
-
-    // Note: Realmz doesn't actually use any of the following fields; we also
-    // don't use numItems and dItems internally here (we instead use the vector
-    // in the Window struct)
-    wr->visible = visible;
-    wr->goAwayFlag = go_away;
-    wr->windowKind = proc_id;
-    wr->refCon = ref_con;
-
-    auto window = std::make_shared<Window>(
-        title, bounds, *wr, is_dialog, std::move(dialog_items), base_window);
-
-    // Must call init here to create SDL resources and associate the window with its DialogItems
-    window->init();
-    record_to_window.emplace(window->get_port(), window);
-    sdl_window_id_to_window.emplace(window->sdl_window_id(), window);
-
-    if (wr->visible) {
-      window->render(false);
-    }
-
-    // Maintain a shared lookup across all windows of their dialog items, by handle,
-    // to support functions that modify the DITLs directly, like SetDialogItemText
-    for (auto di : dialog_items) {
-      DialogItem::all_items[di->opaque_handle] = di;
-    }
-
-    window_list.insert(window_list.begin(), window);
-    window->bring_to_front();
-
-    return window->get_port();
+  // Maintain a shared lookup across all windows of their dialog items, by handle,
+  // to support functions that modify the DITLs directly, like SetDialogItemText
+  for (auto di : dialog_items) {
+    DialogItem::all_items[di->opaque_handle] = di;
   }
 
-  void destroy_window(WindowPtr record) {
-    auto window_it = record_to_window.find(record);
-    if (window_it == record_to_window.end()) {
-      throw std::logic_error("Attempted to delete nonexistent window");
-    }
+  window_list.insert(window_list.begin(), window);
+  window->bring_to_front();
 
-    // When the window is dismissed via a mousedown, the enqueued mouseup event is either
-    // lost when the window is destroyed, or the button is not released in time for it to be
-    // handled by the window. It's not clear why the mouseup event isn't handled by the surviving
-    // window. In any case, we can simply reset the mouse state to prevent the StillDown function
-    // from thinking that the mouse button is still pressed.
-    // TODO: figure out a better way of handling this.
-    reset_mouse_state();
+  return window->get_port();
+}
 
-    sdl_window_id_to_window.erase(window_it->second->sdl_window_id());
-    window_list.remove(window_it->second);
-    record_to_window.erase(window_it);
-
-    // If the current port is this window's port, set the current port back to
-    // the default port
-    CGrafPtr current_port = qd.thePort;
-    if (current_port == record) {
-      SetPort(&qd.defaultPort);
-    }
+void WindowManager::destroy_window(WindowPtr record) {
+  auto window_it = record_to_window.find(record);
+  if (window_it == record_to_window.end()) {
+    throw std::logic_error("Attempted to delete nonexistent window");
   }
 
-  std::shared_ptr<Window> window_for_record(WindowPtr record) {
-    return this->record_to_window.at(record);
-  }
-  std::shared_ptr<Window> window_for_sdl_window_id(SDL_WindowID window_id) {
-    return this->sdl_window_id_to_window.at(window_id);
-  }
+  // When the window is dismissed via a mousedown, the enqueued mouseup event is either
+  // lost when the window is destroyed, or the button is not released in time for it to be
+  // handled by the window. It's not clear why the mouseup event isn't handled by the surviving
+  // window. In any case, we can simply reset the mouse state to prevent the StillDown function
+  // from thinking that the mouse button is still pressed.
+  // TODO: figure out a better way of handling this.
+  reset_mouse_state();
 
-  std::shared_ptr<DialogItem> dialog_item_for_handle(DialogItemHandle handle) {
-    return dialog_items_by_handle.at(handle);
-  }
+  sdl_window_id_to_window.erase(window_it->second->sdl_window_id());
+  window_list.remove(window_it->second);
+  record_to_window.erase(window_it);
 
-  std::shared_ptr<Window> front_window() {
-    if (window_list.empty()) {
-      return nullptr;
-    } else {
-      return window_list.front();
-    }
+  // If the current port is this window's port, set the current port back to
+  // the default port
+  CGrafPtr current_port = qd.thePort;
+  if (current_port == record) {
+    SetPort(&qd.defaultPort);
   }
+}
 
-  void bring_to_front(std::shared_ptr<Window> window) {
-    auto it = std::find(window_list.begin(), window_list.end(), window);
-    if (it == window_list.end()) {
-      return;
-    }
-    window_list.erase(it);
-    window_list.insert(window_list.begin(), window);
-    window->bring_to_front();
+std::shared_ptr<Window> WindowManager::window_for_record(WindowPtr record) {
+  return this->record_to_window.at(record);
+}
+std::shared_ptr<Window> WindowManager::window_for_sdl_window_id(SDL_WindowID window_id) {
+  return this->sdl_window_id_to_window.at(window_id);
+}
+
+std::shared_ptr<DialogItem> WindowManager::dialog_item_for_handle(DialogItemHandle handle) {
+  return dialog_items_by_handle.at(handle);
+}
+
+std::shared_ptr<Window> WindowManager::front_window() {
+  if (window_list.empty()) {
+    return nullptr;
+  } else {
+    return window_list.front();
   }
+}
 
-private:
-  std::unordered_map<DialogItemHandle, std::shared_ptr<DialogItem>> dialog_items_by_handle;
-  std::unordered_map<WindowPtr, std::shared_ptr<Window>> record_to_window;
-  std::unordered_map<SDL_WindowID, std::shared_ptr<Window>> sdl_window_id_to_window;
-  std::list<std::shared_ptr<Window>> window_list;
-  sdl_window_shared base_window;
-};
+void WindowManager::bring_to_front(std::shared_ptr<Window> window) {
+  auto it = std::find(window_list.begin(), window_list.end(), window);
+  if (it == window_list.end()) {
+    return;
+  }
+  window_list.erase(it);
+  window_list.insert(window_list.begin(), window);
+  window->bring_to_front();
+}
 
 static WindowManager wm;
 
