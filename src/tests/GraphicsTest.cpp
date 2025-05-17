@@ -29,6 +29,8 @@ int main() {
   // parameters when creating new windows.
   InitGraf(&qd);
 
+  qd.thePort->pnSize = {.v = 4, .h = 4};
+
   wm.init();
 
   auto bounds = Rect{0, 0, WINDOW_HEIGHT, WINDOW_WIDTH};

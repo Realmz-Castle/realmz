@@ -84,6 +84,7 @@ public:
   // Uses the GraphicsCanvas' port settings to draw the specified text to a dummy renderer and
   // return its rendered width in pixels.
   int measure_text(const std::string& text);
+  void draw_pen(SDL_Renderer* renderer, int x, int y);
   void draw_rect(const Rect& dispRect);
   void draw_oval(const Rect& dispRect);
   void draw_line(const Point& start, const Point& end);

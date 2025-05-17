@@ -30,7 +30,9 @@ static std::unordered_map<CGrafPtr, std::shared_ptr<GraphicsCanvas>> canvas_look
 // Originally declared in variables.h. It seems that `qd` was introduced by Myriad during the
 // port to PC in place of Classic Mac's global QuickDraw context. We can repurpose it here
 // for easier access in our code, while still exposing a C-compatible struct.
-QuickDrawGlobals qd{};
+QuickDrawGlobals qd{
+    .defaultPort = {
+        .pnSize = {.v = 1, .h = 1}}};
 
 Rect rect_from_reader(phosg::StringReader& data) {
   Rect r;

@@ -925,21 +925,9 @@ WindowPtr WindowManager::create_window(
     std::vector<std::shared_ptr<DialogItem>>&& dialog_items) {
   CGrafPtr current_port = qd.thePort;
 
-  CGrafPort port{};
-  port.portRect = bounds;
-
   CWindowRecord* wr = new CWindowRecord();
-  wr->port = port;
+  memcpy(&wr->port, current_port, sizeof(CGrafPort));
   wr->port.portRect = bounds;
-  wr->port.txFont = current_port->txFont;
-  wr->port.txFace = current_port->txFace;
-  wr->port.txMode = current_port->txMode;
-  wr->port.txSize = current_port->txSize;
-
-  wr->port.fgColor = current_port->fgColor;
-  wr->port.bgColor = current_port->bgColor;
-  wr->port.rgbFgColor = current_port->rgbFgColor;
-  wr->port.rgbBgColor = current_port->rgbBgColor;
 
   // Note: Realmz doesn't actually use any of the following fields; we also
   // don't use numItems and dItems internally here (we instead use the vector

@@ -412,10 +412,36 @@ int GraphicsCanvas::measure_text(const std::string& text) {
   return ::draw_text(renderer.get(), text, 0, 0, port->txFont, port->txSize, port->txFace, port->rgbFgColor);
 }
 
+void GraphicsCanvas::draw_pen(SDL_Renderer* renderer, int x, int y) {
+  auto [height, width] = port->pnSize;
+  for (int i{0}; i < width; i++) {
+    for (int j{0}; j < height; j++) {
+      SDL_RenderPoint(renderer, x + i, y + j);
+    }
+  }
+}
+
 void GraphicsCanvas::draw_rect(const Rect& dispRect) {
   auto renderer = start_draw();
-  auto dest = sdl_frect(dispRect);
-  SDL_RenderRect(renderer, &dest);
+
+  float rect_width = dispRect.right - dispRect.left;
+  float rect_height = dispRect.bottom - dispRect.top;
+
+  auto [height, width] = port->pnSize;
+
+  SDL_FRect rect;
+
+  for (int i{0}; i < width; i++) {
+    for (int j{0}; j < height; j++) {
+      rect = {
+          .x = static_cast<float>(dispRect.left + i),
+          .y = static_cast<float>(dispRect.top + j),
+          .w = rect_width,
+          .h = rect_height,
+      };
+      SDL_RenderRect(renderer, &rect);
+    }
+  }
   end_draw();
 }
 
@@ -451,20 +477,20 @@ void GraphicsCanvas::draw_oval(const Rect& dispRect) {
 
   // Foci
   // if (vertical) {
-  //   SDL_RenderPoint(renderer, x0, y0 + c);
-  //   SDL_RenderPoint(renderer, x0, y0 - c);
+  //   draw_pen(renderer, x0, y0 + c);
+  //   draw_pen(renderer, x0, y0 - c);
   // } else {
-  //   SDL_RenderPoint(renderer, x0 + c, y0);
-  //   SDL_RenderPoint(renderer, x0 - c, y0);
+  //   draw_pen(renderer, x0 + c, y0);
+  //   draw_pen(renderer, x0 - c, y0);
   // }
 
   int dx_f1{}, dx_f2{}, dy_f1{}, dy_f2{};
   while (x > 0) {
     // Mirror the pixel to quadrants 2, 3, and 4
-    SDL_RenderPoint(renderer, x0 + x, y0 + y);
-    SDL_RenderPoint(renderer, x0 + x, y0 - y);
-    SDL_RenderPoint(renderer, x0 - x, y0 + y);
-    SDL_RenderPoint(renderer, x0 - x, y0 - y);
+    draw_pen(renderer, x0 + x, y0 + y);
+    draw_pen(renderer, x0 + x, y0 - y);
+    draw_pen(renderer, x0 - x, y0 + y);
+    draw_pen(renderer, x0 - x, y0 - y);
 
     // Search next point to draw, starting with y+1, then y+1 and x-1, then
     // just x-1. The first one that is inside the bounds of the ellipse is our
@@ -509,11 +535,11 @@ void GraphicsCanvas::draw_oval(const Rect& dispRect) {
 
   // Draw one final pixel at (0, [a|b]) and (0, [-a|-b])
   if (vertical) {
-    SDL_RenderPoint(renderer, x0, y0 + a);
-    SDL_RenderPoint(renderer, x0, y0 - a);
+    draw_pen(renderer, x0, y0 + a);
+    draw_pen(renderer, x0, y0 - a);
   } else {
-    SDL_RenderPoint(renderer, x0, y0 + b);
-    SDL_RenderPoint(renderer, x0, y0 - b);
+    draw_pen(renderer, x0, y0 + b);
+    draw_pen(renderer, x0, y0 - b);
   }
 
   end_draw();
