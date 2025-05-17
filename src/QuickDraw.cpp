@@ -415,6 +415,15 @@ void LineTo(int16_t h, int16_t v) {
   render_window(qd.thePort);
 }
 
+void FrameOval(const Rect* r) {
+  CGrafPtr port = qd.thePort;
+
+  set_draw_color(port->rgbBgColor);
+  current_canvas()->draw_oval(*r);
+  render_current_canvas(NULL);
+  render_window(qd.thePort);
+}
+
 void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
     RgnHandle maskRgn) {
   auto srcCanvas = lookup_canvas(const_cast<CGrafPtr>(reinterpret_cast<const CGrafPort*>(srcBits)));

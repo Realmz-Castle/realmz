@@ -182,6 +182,7 @@ void DrawString(ConstStr255Param s);
 int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount);
 void DrawPicture(PicHandle myPicture, const Rect* dstRect);
 void LineTo(int16_t h, int16_t v);
+void FrameOval(const Rect* r);
 void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
     RgnHandle maskRgn);
 void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,

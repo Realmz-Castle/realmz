@@ -212,9 +212,6 @@ Boolean SectRect(const Rect* src1, const Rect* src2, Rect* dstRect) {
   return FALSE;
 }
 
-void FrameOval(const Rect* r) {
-}
-
 int32_t DeltaPoint(Point ptA, Point ptB) {
   return 0;
 }

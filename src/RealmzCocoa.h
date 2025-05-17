@@ -212,7 +212,6 @@ void SelectWindow(WindowPtr theWindow);
 int16_t CountMItems(MenuHandle theMenu);
 void PaintRect(const Rect* r);
 Boolean SectRect(const Rect* src1, const Rect* src2, Rect* dstRect);
-void FrameOval(const Rect* r);
 int32_t DeltaPoint(Point ptA, Point ptB);
 void FrameRect(const Rect* r);
 void GetItemMark(MenuHandle theMenu, int16_t item, int16_t* markChar);
