@@ -21,7 +21,7 @@ public:
 
   std::shared_ptr<Menu> get_menu(int16_t res_id) {
     if (!this->res_id_to_menu.contains(res_id)) {
-      mm_log.info("Loading MENU:%d from resource forks", res_id);
+      mm_log.info_f("Loading MENU:{} from resource forks", res_id);
       auto handle = GetResource(ResourceDASM::RESOURCE_TYPE_MENU, res_id);
       auto decoded_menu = ResourceFile::decode_MENU(*handle, GetHandleSize(handle));
       auto menu = std::make_shared<Menu>(Menu(decoded_menu));
@@ -60,7 +60,7 @@ public:
       // to get a handle to the unloaded menu. To try to satisfy that, assume that the
       // resource id of the menu is the same as the given menu id, try loading the menu,
       // and return it.
-      mm_log.warning("Attempted to get menu with ID %d, but it doesn't appear in current MBAR", menu_id);
+      mm_log.warning_f("Attempted to get menu with ID {}, but it doesn't appear in current MBAR", menu_id);
       try {
         this->get_menu(menu_id);
         return this->menu_id_to_handle.at(menu_id);
@@ -112,7 +112,7 @@ private:
 static MenuManager mm;
 
 Handle GetNewMBar(int16_t menuBarID) {
-  mm_log.info("Loading MBAR:%d from resource forks", menuBarID);
+  mm_log.info_f("Loading MBAR:{} from resource forks", menuBarID);
   auto handle = GetResource(ResourceDASM::RESOURCE_TYPE_MBAR, menuBarID);
   mm.load_menu_list(handle);
   return handle;
@@ -133,7 +133,7 @@ void SetMenuBar(Handle menuList) {
 
 void InsertMenu(MenuHandle theMenu, int16_t beforeID) {
   if (beforeID != -1) {
-    mm_log.error("Called InsertMenu on a non sub-menu");
+    mm_log.error_f("Called InsertMenu on a non sub-menu");
     return;
   }
 
@@ -157,7 +157,7 @@ void DeleteMenu(int16_t menuID) {
 void SetMenuItemText(MenuHandle theMenu, uint16_t item, ConstStr255Param itemString) {
   auto menu = mm.get_menu(theMenu);
   if (item > menu->items.size()) {
-    mm_log.info("Tried to set text of menu item %d on menu %s but it only has %lu items", item, menu->title.c_str(), menu->items.size());
+    mm_log.info_f("Tried to set text of menu item {} on menu {} but it only has {} items", item, menu->title, menu->items.size());
     return;
   }
   menu->items.at(item - 1).name = string_for_pstr<256>(itemString);
@@ -166,7 +166,7 @@ void SetMenuItemText(MenuHandle theMenu, uint16_t item, ConstStr255Param itemStr
 int32_t MenuSelect(Point startPt) {
   int16_t menu_id = -startPt.v;
   int16_t item_id = -startPt.h;
-  mm_log.info("Clicked menu %d, item %d", menu_id, item_id);
+  mm_log.info_f("Clicked menu {}, item {}", menu_id, item_id);
   return (static_cast<int32_t>(menu_id) << 16) + item_id;
 }
 
@@ -176,7 +176,7 @@ void DisableItem(MenuHandle theMenu, uint16_t item) {
     menu->enabled = false;
   } else {
     if (item > menu->items.size()) {
-      mm_log.warning("Attempted to disable MENU:%d item %d, but it doesn't exist", menu->menu_id, item);
+      mm_log.warning_f("Attempted to disable MENU:{} item {}, but it doesn't exist", menu->menu_id, item);
     } else {
       menu->items[item - 1].enabled = false;
     }
@@ -189,7 +189,7 @@ void EnableItem(MenuHandle theMenu, uint16_t item) {
     menu->enabled = true;
   } else {
     if (item > menu->items.size()) {
-      mm_log.warning("Attempted to enable MENU:%d item %d, but it doesn't exist", menu->menu_id, item);
+      mm_log.warning_f("Attempted to enable MENU:{} item {}, but it doesn't exist", menu->menu_id, item);
     } else {
       menu->items[item - 1].enabled = true;
     }
@@ -199,7 +199,7 @@ void EnableItem(MenuHandle theMenu, uint16_t item) {
 void CheckItem(MenuHandle theMenu, uint16_t item, Boolean checked) {
   auto menu = mm.get_menu(theMenu);
   if (item > menu->items.size()) {
-    mm_log.warning("Attempted to (un)check MENU:%d item %d, but it doesn't exist", menu->menu_id, item);
+    mm_log.warning_f("Attempted to (un)check MENU:{} item {}, but it doesn't exist", menu->menu_id, item);
   } else {
     menu->items.at(item - 1).checked = checked;
   }

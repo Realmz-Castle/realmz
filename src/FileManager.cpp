@@ -1,6 +1,7 @@
 #include "FileManager.h"
 
 #include <SDL3/SDL_filesystem.h>
+#include <filesystem>
 #include <phosg/Strings.hh>
 
 #include "StringConvert.hpp"
@@ -13,7 +14,7 @@ std::string host_filename_for_mac_filename(const std::string& mac_path, bool imp
   // If the path begins with ':', it's a relative path. On modern systems,
   // paths starting with / are absolute instead, so remove the : before
   // replacing : with /
-  bool explicitly_local = phosg::starts_with(ret, ":");
+  bool explicitly_local = ret.starts_with(":");
   if (explicitly_local) {
     ret = ret.substr(1);
   }
@@ -27,7 +28,7 @@ std::string host_filename_for_mac_filename(const std::string& mac_path, bool imp
 
     auto base_path = SDL_GetBasePath();
     if (!base_path) {
-      fm_log.error("Failed to get SDL base path: %s", SDL_GetError());
+      fm_log.error_f("Failed to get SDL base path: {}", SDL_GetError());
       return "";
     }
 
@@ -42,17 +43,17 @@ std::string host_filename_for_FSSpec(const FSSpec* fsp) {
   // We only support relative paths (see above) and only references to the
   // default volume and no directory
   if (fsp->vRefNum != 0) {
-    throw std::runtime_error(phosg::string_printf("FSSpec vRefNum is not zero (received %hd)", fsp->vRefNum));
+    throw std::runtime_error(std::format("FSSpec vRefNum is not zero (received {})", fsp->vRefNum));
   }
   if ((fsp->parID != 0) && (fsp->parID != -1)) {
-    throw std::runtime_error(phosg::string_printf("FSSpec parID is not 0 or -1 (received %" PRId32 ")", fsp->parID));
+    throw std::runtime_error(std::format("FSSpec parID is not 0 or -1 (received {})", fsp->parID));
   }
 
   return host_filename_for_mac_filename(string_for_pstr<64>(fsp->name), (fsp->parID == -1));
 }
 
 OSErr GetVInfo(int16_t drvNum, StringPtr volName, int16_t* vRefNum, int32_t* freeBytes) {
-  fm_log.info("Volume info requested for drive %hd", drvNum);
+  fm_log.info_f("Volume info requested for drive {}", drvNum);
 
   // Return fake volume info
   strcpy(reinterpret_cast<char*>(volName), "Macintosh HD");
@@ -63,7 +64,7 @@ OSErr GetVInfo(int16_t drvNum, StringPtr volName, int16_t* vRefNum, int32_t* fre
 
 void GetFInfo(const Str63 fName, int16_t vRefNum, FInfo* fInfo) {
   auto filename = string_for_pstr<64>(fName);
-  fm_log.info("Finder info requested for file %s (on volume %hd)", filename.c_str(), vRefNum);
+  fm_log.info_f("Finder info requested for file {} (on volume {})", filename, vRefNum);
 
   // Return fake Finder info (Realmz doesn't use it anyway)
   fInfo->fdType = 0x31313131; // '1111'
@@ -76,15 +77,15 @@ void GetFInfo(const Str63 fName, int16_t vRefNum, FInfo* fInfo) {
 
 OSErr FSpGetFInfo(const FSSpec* spec, FInfo* fndrInfo) {
   auto filename = string_for_pstr<64>(spec->name);
-  fm_log.info("Finder info requested for file %s (on volume %hd) via FSSpec", filename.c_str(), spec->vRefNum);
+  fm_log.info_f("Finder info requested for file {} (on volume {}) via FSSpec", filename, spec->vRefNum);
   GetFInfo(spec->name, spec->vRefNum, fndrInfo);
   return 0;
 }
 
 OSErr FSpSetFInfo(const FSSpec* spec, const FInfo* fndrInfo) {
   auto filename = string_for_pstr<64>(spec->name);
-  fm_log.info("Skipping Finder info write for file %s (on volume %hd): type=%08" PRIX32 " creator=%08" PRIX32 " flags=%04hX loc.h=%hd loc.v=%hd folder=%hd",
-      filename.c_str(),
+  fm_log.info_f("Skipping Finder info write for file {} (on volume {}): type={:08X} creator={:08X} flags={:04X} loc.h={} loc.v={} folder={}",
+      filename,
       spec->vRefNum,
       fndrInfo->fdType,
       fndrInfo->fdCreator,
@@ -98,7 +99,7 @@ OSErr FSpSetFInfo(const FSSpec* spec, const FInfo* fndrInfo) {
 
 OSErr FSpDelete(const FSSpec* spec) {
   auto filename = string_for_pstr<64>(spec->name);
-  fm_log.info("Skipping delete of file %s (on volume %hd)", filename.c_str(), spec->vRefNum);
+  fm_log.info_f("Skipping delete of file {} (on volume {})", filename, spec->vRefNum);
   // TODO: We probably should have an allow-list of files that can be safely
   // deleted, instead of just ignoring all deletes.
   return 0;
@@ -137,11 +138,11 @@ FILE* mac_fopen(const char* filename, const char* mode) {
   // instead of fopen, but fopen still succeeds on some Unix-like systems. To
   // handle this, we need to check if the file is a directory and not try to
   // open it if so, which emulates the Classic Mac OS behavior.
-  if (phosg::isdir(host_filename)) {
-    fm_log.info("Cannot open file %s (host: %s) because it is a directory", filename, host_filename.c_str());
+  if (std::filesystem::is_directory(host_filename)) {
+    fm_log.info_f("Cannot open file {} (host: {}) because it is a directory", filename, host_filename);
     return nullptr;
   }
 
-  fm_log.info("Opening file %s (host: %s) with mode %s", filename, host_filename.c_str(), mode);
+  fm_log.info_f("Opening file {} (host: {}) with mode {}", filename, host_filename, mode);
   return fopen(host_filename.c_str(), mode);
 }

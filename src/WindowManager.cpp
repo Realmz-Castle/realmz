@@ -149,7 +149,7 @@ protected:
         ret->type = ControlType::POPUP_MENU;
         break;
       default:
-        throw std::runtime_error(phosg::string_printf("Unknown control type %hd", proc_id));
+        throw std::runtime_error(std::format("Unknown control type {}", proc_id));
     }
     ret->bounds = bounds;
     ret->value = value;
@@ -199,8 +199,8 @@ public:
         {ControlType::SCROLL_BAR, "SCROLL_BAR"},
         {ControlType::POPUP_MENU, "POPUP_MENU"},
     };
-    return phosg::string_printf(
-        "Control(cntl_resource_id=%hd, opaque_handle=%zu, type=%s, value=%hd, min=%hd, max=%hd, visible=%s)",
+    return std::format(
+        "Control(cntl_resource_id={}, opaque_handle={}, type={}, value={}, min={}, max={}, visible={})",
         this->cntl_resource_id,
         this->opaque_handle,
         type_strs.at(this->type),
@@ -245,8 +245,8 @@ public:
   static std::shared_ptr<DialogItem> get_item_by_handle(size_t handle) {
     auto item = DialogItem::all_items.at(handle).lock();
     if (!item) {
-      throw std::logic_error(phosg::string_printf(
-          "Attempted to get missing or destroyed dialog item (handle was %zu)", handle));
+      throw std::logic_error(std::format(
+          "Attempted to get missing or destroyed dialog item (handle was {})", handle));
     }
     return item;
   }
@@ -378,8 +378,8 @@ public:
     };
     auto text_str = phosg::format_data_string(this->text);
     auto control_str = this->control ? this->control->str() : "NULL";
-    return phosg::string_printf(
-        "DialogItem(ditl_resource_id=%" PRId32 ", item_id=%zu, type=%s, resource_id=%hd, rect=Rect(left=%hd, top=%hd, right=%hd, bottom=%hd), enabled=%s, control=%s, handle=%zu, dirty=%s, text=%s)",
+    return std::format(
+        "DialogItem(ditl_resource_id={}, item_id={}, type={}, resource_id={}, rect=Rect(left={}, top={}, right={}, bottom={}), enabled={}, control={}, handle={}, dirty={}, text={})",
         this->ditl_resource_id,
         this->item_id,
         type_strs.at(this->type),
@@ -412,7 +412,7 @@ public:
       case ResourceFile::DecodedDialogItem::Type::PICTURE: {
         auto pict_handle = GetPicture(resource_id);
         if (!pict_handle) {
-          wm_log.warning("Attempted to draw PICT %hd, but it could not be loaded", resource_id);
+          wm_log.warning_f("Attempted to draw PICT:{}, but it could not be loaded", resource_id);
         } else {
           const auto& pict = **pict_handle;
           const Rect& r = pict.picFrame;
@@ -426,7 +426,7 @@ public:
       }
       case ResourceFile::DecodedDialogItem::Type::ICON:
         // TODO
-        wm_log.warning("Attempted to draw ICON dialog item, but it's not implemented");
+        wm_log.warning_f("Attempted to draw ICON dialog item, but it's not implemented");
         break;
       case ResourceFile::DecodedDialogItem::Type::TEXT: {
         if (text.length() < 1) {
@@ -436,7 +436,7 @@ public:
         if (!canvas.draw_text(
                 text,
                 Rect{0, 0, get_height(), get_width()})) {
-          wm_log.error("Error when rendering text item %d: %s", resource_id, SDL_GetError());
+          wm_log.error_f("Error when rendering text item {}: {}", resource_id, SDL_GetError());
           dirty = false;
           return;
         }
@@ -446,7 +446,7 @@ public:
         if (!canvas.draw_text(
                 text,
                 Rect{0, 0, get_height(), get_width()})) {
-          wm_log.error("Error when rendering button text item %d: %s", resource_id, SDL_GetError());
+          wm_log.error_f("Error when rendering button text item {}: {}", resource_id, SDL_GetError());
           dirty = false;
           return;
         }
@@ -456,7 +456,7 @@ public:
         if (!canvas.draw_text(
                 text,
                 Rect{0, 0, get_height(), get_width()})) {
-          wm_log.error("Error when rendering editable text item %d: %s", resource_id, SDL_GetError());
+          wm_log.error_f("Error when rendering editable text item {}: {}", resource_id, SDL_GetError());
           dirty = false;
           return;
         }
@@ -479,7 +479,7 @@ public:
         if (!canvas.draw_text(
                 text,
                 Rect{12, 0, get_height(), get_width()})) {
-          wm_log.error("Error when rendering button text item %d: %s", resource_id, SDL_GetError());
+          wm_log.error_f("Error when rendering button text item {}: {}", resource_id, SDL_GetError());
           dirty = false;
           return;
         }
@@ -697,7 +697,7 @@ void Window::init() {
   SDL_SetWindowParent(sdl_window.get(), base_window.get());
 
   if (sdl_window == NULL) {
-    throw std::runtime_error(phosg::string_printf("Could not create window: %s\n", SDL_GetError()));
+    throw std::runtime_error(std::format("Could not create window: {}", SDL_GetError()));
   }
 
   canvas = std::make_shared<GraphicsCanvas>(sdl_window, bounds, get_port());
@@ -738,7 +738,7 @@ void Window::init() {
 void Window::init_text_editing(SDL_Rect r) {
   // Macintosh Toolbox Essentials 6-32
   if (!SDL_SetTextInputArea(sdl_window.get(), &r, 0)) {
-    wm_log.error("Could not create text area: %s", SDL_GetError());
+    wm_log.error_f("Could not create text area: {}", SDL_GetError());
   }
 
   SDL_PropertiesID props = SDL_CreateProperties();
@@ -747,7 +747,7 @@ void Window::init_text_editing(SDL_Rect r) {
   SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_NONE);
 
   if (!SDL_StartTextInputWithProperties(sdl_window.get(), props)) {
-    wm_log.error("Could not start text input: %s", SDL_GetError());
+    wm_log.error_f("Could not start text input: {}", SDL_GetError());
   }
 
   SDL_DestroyProperties(props);
@@ -841,7 +841,7 @@ void Window::resize(uint16_t w, uint16_t h) {
   if (SDL_SetWindowSize(sdl_window.get(), w, h)) {
     canvas->sync();
   } else {
-    wm_log.error("Could not resize window: %s", SDL_GetError());
+    wm_log.error_f("Could not resize window: {}", SDL_GetError());
   }
 }
 
@@ -1108,7 +1108,7 @@ static void PrintDebugInfo(void) {
 
 void WindowManager_Init(void) {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
-    wm_log.error("Couldn't initialize video driver: %s\n", SDL_GetError());
+    wm_log.error_f("Couldn't initialize video driver: {}", SDL_GetError());
     return;
   }
 
@@ -1189,13 +1189,13 @@ DisplayProperties WindowManager_GetPrimaryDisplayProperties(void) {
   auto displayID = SDL_GetPrimaryDisplay();
 
   if (displayID == 0) {
-    wm_log.error("Could not get primary display: %s", SDL_GetError());
+    wm_log.error_f("Could not get primary display: {}", SDL_GetError());
     return {};
   }
 
   SDL_Rect bounds{};
   if (!SDL_GetDisplayBounds(displayID, &bounds)) {
-    wm_log.error("Could not get display bounds: %s", SDL_GetError());
+    wm_log.error_f("Could not get display bounds: {}", SDL_GetError());
     return {};
   }
 
@@ -1217,7 +1217,7 @@ void GetDialogItem(DialogPtr dialog, short item_id, short* item_type, Handle* it
     *item_handle = wrap_opaque_handle(item->opaque_handle);
     *box = item->rect;
   } catch (const std::out_of_range&) {
-    wm_log.warning("GetDialogItem called with invalid item_id %hd (there are only %zu items)", item_id, items.size());
+    wm_log.warning_f("GetDialogItem called with invalid item_id {} (there are only {} items)", item_id, items.size());
   }
 }
 

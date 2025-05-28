@@ -107,7 +107,7 @@ public:
 
     std::shared_ptr<Resource> add_resource(uint32_t type, int16_t id, std::string&& name, Handle data_handle) {
       if (this->rf->resource_exists(type, id)) {
-        throw std::invalid_argument(phosg::string_printf("Resource %08" PRIX32 ":%hd already exists", type, id));
+        throw std::invalid_argument(std::format("Resource {:08X}:{} already exists", type, id));
       }
 
       this->mark_modified(nullptr); // Throws if the file is read-only
@@ -128,14 +128,12 @@ public:
       res->data_handle = data_handle;
       res->data_modified = false;
       if (!this->resource_for_type_id.emplace(this->key_for_type_id(type, id), res).second) {
-        throw std::logic_error(phosg::string_printf(
-            "Added resource %08" PRIX32 ":%hd but it already exists in the ResourceFile",
-            type, id));
+        throw std::logic_error(std::format(
+            "Added resource {:08X}:{} but it already exists in the ResourceFile", type, id));
       }
       if (!this->resource_for_handle.emplace(res->data_handle, res).second) {
-        throw std::logic_error(phosg::string_printf(
-            "Added resource %08" PRIX32 ":%hd but its handle is already owned by the Resource Manager",
-            type, id));
+        throw std::logic_error(std::format(
+            "Added resource {:08X}:{} but its handle is already owned by the Resource Manager", type, id));
       }
 
       return res;
@@ -197,11 +195,11 @@ public:
   ~ResourceManager() = default;
 
   void print_chain() const {
-    rm_log.info("Open files list:");
+    rm_log.info_f("Open files list:");
     for (size_t z = 0; z < this->files.size(); z++) {
       auto f = this->files[z];
-      rm_log.info("  %s (ref %hd)%s",
-          f->host_filename.c_str(),
+      rm_log.info_f("  {} (ref {}){}",
+          f->host_filename,
           f->refnum,
           (z == this->search_start_index) ? " (GetResource search starts here)" : "");
     }
@@ -260,7 +258,7 @@ public:
         return f;
       }
     }
-    throw std::out_of_range(phosg::string_printf("Resource file with refnum %hd is not open", refnum));
+    throw std::out_of_range(std::format("Resource file with refnum {} is not open", refnum));
   }
 
   std::shared_ptr<Resource> get_resource(int32_t type, int16_t id) {
@@ -277,9 +275,9 @@ public:
       }
     }
     std::string type_str = ResourceDASM::string_for_resource_type(type);
-    rm_log.info("%s:%hd not found in any open resource file", type_str.c_str(), id);
+    rm_log.info_f("{}:{} not found in any open resource file", type_str, id);
     this->print_chain();
-    throw std::out_of_range(phosg::string_printf("resource %s:%hd not found", type_str.c_str(), id));
+    throw std::out_of_range(std::format("resource {}:{} not found", type_str, id));
   }
 
   std::shared_ptr<Resource> get_resource(Handle data_handle) {
@@ -289,7 +287,7 @@ public:
         return res;
       }
     }
-    rm_log.info("Handle not found in any open resource file");
+    rm_log.info_f("Handle not found in any open resource file");
     this->print_chain();
     throw std::out_of_range("resource not found by handle");
   }
@@ -349,7 +347,7 @@ static ResourceManager rm;
 
 std::string host_resource_filename_for_host_filename(const std::string& host_path, bool allow_missing = false) {
   std::string full_path = host_path + ".rsrc";
-  if (allow_missing || phosg::isfile(full_path)) {
+  if (allow_missing || std::filesystem::is_regular_file(full_path)) {
     return full_path;
   }
 
@@ -391,7 +389,7 @@ int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
   auto host_filename = host_resource_filename_for_FSSpec(spec);
   if (host_filename.empty()) {
     auto filename = string_for_pstr<64>(spec->name);
-    rm_log.info("Failed to load resource file %s", filename.c_str());
+    rm_log.info_f("Failed to load resource file {}", filename);
     resError = fnfErr;
     return -1;
   }
@@ -401,14 +399,14 @@ int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
     auto rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
     bool writable = (permission == fsCurPerm) || (permission > fsRdPerm);
     int16_t ret = rm.use(host_filename, rf, writable);
-    rm_log.info("Loaded %s with reference number %hd (%s with permission %hhd)",
+    rm_log.info_f("Loaded {} with reference number {} ({} with permission {})",
         host_filename.c_str(), ret, writable ? "writable" : "read-only", permission);
     rm.print_chain();
     resError = noErr;
     return ret;
 
   } catch (const phosg::cannot_open_file&) {
-    rm_log.info("Failed to load resource file %s", host_filename.c_str());
+    rm_log.info_f("Failed to load resource file {}", host_filename.c_str());
     resError = fnfErr;
     return -1;
   }
@@ -418,7 +416,7 @@ void CloseResFile(int16_t refnum) {
   UpdateResFile(refnum);
   rm.close(refnum);
   resError = noErr;
-  rm_log.info("Closed file reference number %hd", refnum);
+  rm_log.info_f("Closed file reference number {}", refnum);
   rm.print_chain();
 }
 
@@ -472,11 +470,11 @@ void SetResAttrs(Handle data_handle, int16_t attrs) {
   try {
     auto res = rm.get_resource(data_handle);
     resError = noErr;
-    rm_log.info("Skipping SetResAttrs on resource %08" PRIX32 ":%hd (value=%04X)",
+    rm_log.info_f("Skipping SetResAttrs on resource {:08X}:{} (value={:04X})",
         res->source_res->type, res->source_res->id, attrs);
   } catch (const std::out_of_range&) {
     resError = resNotFound;
-    rm_log.info("Skipping SetResAttrs on missing resource");
+    rm_log.info_f("Skipping SetResAttrs on missing resource");
   }
 }
 
@@ -484,10 +482,10 @@ void AddResource(Handle data_handle, ResType type, int16_t id, ConstStr255Param 
   auto name_str = string_for_pstr<256>(name);
   try {
     rm.add_resource(type, id, std::move(name_str), data_handle);
-    rm_log.info("Resource %08" PRIX32 ":%hd added", type, id);
+    rm_log.info_f("Resource {:08X}:{} added", type, id);
   } catch (const std::exception& e) {
     resError = addResFailed;
-    rm_log.info("Failed to add resource %08" PRIX32 ":%hd: %s", type, id, e.what());
+    rm_log.info_f("Failed to add resource {:08X}:{}: {}", type, id, e.what());
   }
 }
 
@@ -495,11 +493,11 @@ void RemoveResource(Handle data_handle) {
   try {
     auto res = rm.remove_resource(data_handle);
     resError = noErr;
-    rm_log.info("Resource %08" PRIX32 ":%hd deleted", res->source_res->type, res->source_res->id);
+    rm_log.info_f("Resource {:08X}:{} deleted", res->source_res->type, res->source_res->id);
 
   } catch (const std::exception& e) {
     resError = addResFailed;
-    rm_log.info("Failed to delete resource: %s", e.what());
+    rm_log.info_f("Failed to delete resource: {}", e.what());
   }
 }
 
@@ -508,11 +506,11 @@ void ChangedResource(Handle data_handle) {
     auto res = rm.get_resource(data_handle);
     rm.mark_modified(data_handle);
     resError = noErr;
-    rm_log.info("Resource %08" PRIX32 ":%hd marked modified", res->source_res->type, res->source_res->id);
+    rm_log.info_f("Resource {:08X}:{} marked modified", res->source_res->type, res->source_res->id);
 
   } catch (const std::out_of_range&) {
     resError = resNotFound;
-    rm_log.info("Resource cannot be marked modified because the handle is not owned by the Resource Manager");
+    rm_log.info_f("Resource cannot be marked modified because the handle is not owned by the Resource Manager");
   }
 }
 
@@ -532,10 +530,10 @@ void WriteResource(Handle data_handle) {
 void UpdateResFile(int16_t refnum) {
   try {
     rm.write_file(refnum);
-    rm_log.info("Wrote resource file %hd", refnum);
+    rm_log.info_f("Wrote resource file {}", refnum);
     resError = noErr;
   } catch (const std::exception& e) {
-    rm_log.info("Failed to write resource file %hd: %s", refnum, e.what());
+    rm_log.info_f("Failed to write resource file {}: {}", refnum, e.what());
     resError = resFNotFound;
   }
 }

@@ -360,7 +360,7 @@ protected:
         break;
       case SDL_EVENT_KEY_DOWN:
       case SDL_EVENT_KEY_UP: {
-        em_log.info("%s mod=%04hX key=%08" PRIX32,
+        em_log.info_f("{} mod={:04X} key={:08X}",
             (e.type == SDL_EVENT_KEY_UP) ? "SDL_EVENT_KEY_UP" : "SDL_EVENT_KEY_DOWN",
             e.key.mod, e.key.key);
         this->set_modifier_value(EVMOD_RIGHT_CONTROL_KEY_DOWN, e.key.mod & SDL_KMOD_RCTRL);
@@ -376,7 +376,7 @@ protected:
         if (message != 0) {
           this->enqueue_event((e.type == SDL_EVENT_KEY_DOWN) ? keyDown : keyUp, message, e.key.windowID, "");
         } else {
-          em_log.warning("Unknown key pressed: key=0x%zX scancode=0x%zX",
+          em_log.warning_f("Unknown key pressed: key=0x{:X} scancode=0x{:X}",
               static_cast<size_t>(e.key.key), static_cast<size_t>(e.key.scancode));
         }
         break;
@@ -389,7 +389,7 @@ protected:
         break;
       case SDL_EVENT_MOUSE_BUTTON_DOWN:
       case SDL_EVENT_MOUSE_BUTTON_UP:
-        em_log.info("%s %hhu %hhu %g %g",
+        em_log.info_f("{} {} {} {:g} {:g}",
             (e.type == SDL_EVENT_MOUSE_BUTTON_UP) ? "SDL_EVENT_MOUSE_BUTTON_UP" : "SDL_EVENT_MOUSE_BUTTON_DOWN",
             e.button.button, e.button.clicks, e.button.x, e.button.y);
         // Ignore events for all mouse buttons except the primary (left) button
@@ -402,7 +402,7 @@ protected:
         break;
       case SDL_EVENT_TEXT_EDITING:
       case SDL_EVENT_TEXT_INPUT:
-        em_log.info("%s %s",
+        em_log.info_f("{} {}",
             (e.type == SDL_EVENT_TEXT_EDITING) ? "SDL_EVENT_TEXT_EDITING" : "SDL_EVENT_TEXT_INPUT", e.text.text);
 
         // We can use the otherwise unused app4Evt to signal a text input event, the handling of which
@@ -410,7 +410,7 @@ protected:
         this->enqueue_event(app4Evt, 0, e.text.windowID, e.text.text);
         break;
       default:
-        em_log.info("Unhandled SDL event type 0x%" PRIX32, e.type);
+        em_log.info_f("Unhandled SDL event type 0x{:X}", e.type);
     }
   }
 
@@ -444,7 +444,7 @@ void FlushEvents(int16_t which_mask, uint16_t stop_mask) {
   // Realmz only calls this with which_mask = everyEvent and stop_mask = 0, so
   // we don't bother to implement filtering.
   if (which_mask != everyEvent) {
-    throw std::logic_error(phosg::string_printf("which_mask (%04hX) masks out some events in FlushEvents", which_mask));
+    throw std::logic_error(std::format("which_mask ({:04X}) masks out some events in FlushEvents", which_mask));
   }
   if (stop_mask != 0) {
     throw std::logic_error("stop_mask specifies some events");
@@ -457,7 +457,7 @@ Boolean GetNextEvent(int16_t which_mask, EventRecord* ret) {
   // Realmz only calls this with which_mask = everyEvent, so we don't bother to
   // implement filtering.
   if (which_mask != everyEvent) {
-    throw std::logic_error(phosg::string_printf("which_mask (%04hX) masks out some events in GetNextEvent", which_mask));
+    throw std::logic_error(std::format("which_mask ({:04X}) masks out some events in GetNextEvent", which_mask));
   }
 
   *ret = em.get_next_event(0);
@@ -468,7 +468,7 @@ Boolean WaitNextEvent(int16_t which_mask, EventRecord* ret, uint32_t sleep, RgnH
   // Realmz doesn't use mask, sleep, or mouse_rgn (thankfully, since mouse_rgn
   // would be annoying to implement!)
   if (which_mask != everyEvent) {
-    throw std::logic_error(phosg::string_printf("which_mask (%04hX) masks out some events in WaitNextEvent", which_mask));
+    throw std::logic_error(std::format("which_mask ({:04X}) masks out some events in WaitNextEvent", which_mask));
   }
   if (mouse_rgn) {
     throw std::logic_error("mouse_rgn must be null");

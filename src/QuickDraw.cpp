@@ -62,7 +62,7 @@ RGBColor color_const_to_rgb(int32_t color_const) {
     case blueColor:
       return RGBColor{0, 0, 65535};
     default:
-      qd_log.error("Unrecognized color constant %d", color_const);
+      qd_log.error_f("Unrecognized color constant {}", color_const);
       break;
   }
   return RGBColor{};
@@ -76,7 +76,7 @@ void deregister_canvas(std::shared_ptr<GraphicsCanvas> canvas) {
   try {
     canvas_lookup.erase(canvas->get_port());
   } catch (std::out_of_range) {
-    qd_log.error("Tried to delete canvas with id %p, but it wasn't in lookup", canvas->get_port());
+    qd_log.error_f("Tried to delete canvas with id {}, but it wasn't in lookup", reinterpret_cast<const void*>(canvas->get_port()));
   }
 }
 
@@ -84,7 +84,7 @@ void deregister_canvas(const CGrafPtr port) {
   try {
     canvas_lookup.erase(port);
   } catch (std::out_of_range) {
-    qd_log.error("Tried to delete canvas with id %p, but it wasn't in lookup", port);
+    qd_log.error_f("Tried to delete canvas with id {}, but it wasn't in lookup", reinterpret_cast<const void*>(port));
   }
 }
 
@@ -133,7 +133,7 @@ void render_current_canvas(const SDL_FRect* rect) {
 PixPatHandle GetPixPat(uint16_t patID) {
   auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_ppat, patID);
   if (!data_handle) {
-    throw std::runtime_error(phosg::string_printf("Resource ppat:%hd was not found", patID));
+    throw std::runtime_error(std::format("Resource ppat:{} was not found", patID));
   }
   auto r = read_from_handle(data_handle);
   const auto& header = r.get<ResourceDASM::PixelPatternResourceHeader>();
@@ -200,7 +200,7 @@ PicHandle GetPicture(int16_t id) {
   auto p = ResourceDASM::ResourceFile::decode_PICT_only(*data_handle, GetHandleSize(data_handle));
 
   if (p.image.get_height() == 0 || p.image.get_width() == 0) {
-    throw std::runtime_error(phosg::string_printf("Failed to decode PICT %hd", id));
+    throw std::runtime_error(std::format("Failed to decode PICT {}", id));
   }
 
   // Normalize all image data to have an alpha channel, for convenience

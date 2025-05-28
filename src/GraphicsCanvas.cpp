@@ -60,7 +60,7 @@ bool render_surface(SDL_Renderer* sdlRenderer, SDL_Surface* surface, const Rect&
   auto texture = SDL_CreateTextureFromSurface(sdlRenderer, surface);
 
   if (!texture) {
-    canvas_log.error("Could not render surface: %s", SDL_GetError());
+    canvas_log.error_f("Could not render surface: {}", SDL_GetError());
     return false;
   }
 
@@ -74,10 +74,10 @@ bool render_surface(SDL_Renderer* sdlRenderer, SDL_Surface* surface, const Rect&
   SDL_FRect src_rect = {0, 0, text_dest.w, text_dest.h};
 
   if (!text_texture) {
-    canvas_log.error("Failed to create texture when rendering text: %s", SDL_GetError());
+    canvas_log.error_f("Failed to create texture when rendering text: {}", SDL_GetError());
     return false;
   } else if (!SDL_RenderTexture(sdlRenderer, text_texture.get(), &src_rect, &text_dest)) {
-    canvas_log.error("Failed to render text texture: %s", SDL_GetError());
+    canvas_log.error_f("Failed to render text texture: {}", SDL_GetError());
     return false;
   }
   return true;
@@ -86,12 +86,12 @@ bool render_surface(SDL_Renderer* sdlRenderer, SDL_Surface* surface, const Rect&
 void draw_rgba_picture(std::shared_ptr<SDL_Renderer> sdlRenderer, void* pixels, int w, int h, const Rect& rect) {
   auto s = sdl_make_unique(SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGBA32, pixels, 4 * w));
   if (!s) {
-    canvas_log.error("Could not create surface: %s\n", SDL_GetError());
+    canvas_log.error_f("Could not create surface: {}", SDL_GetError());
     return;
   }
   auto t = sdl_make_unique(SDL_CreateTextureFromSurface(sdlRenderer.get(), s.get()));
   if (!t) {
-    canvas_log.error("Could not create texture: %s\n", SDL_GetError());
+    canvas_log.error_f("Could not create texture: {}", SDL_GetError());
     return;
   }
   SDL_FRect dest;
@@ -117,7 +117,7 @@ bool draw_text_ttf(
   auto text_surface = sdl_make_unique(TTF_RenderText_Blended_Wrapped(
       font, processed_text.data(), processed_text.size(), color, rect.right - rect.left + 50));
   if (!text_surface) {
-    canvas_log.error("Failed to create surface when rendering text: %s", SDL_GetError());
+    canvas_log.error_f("Failed to create surface when rendering text: {}", SDL_GetError());
     return false;
   } else {
     return render_surface(sdlRenderer, text_surface.get(), rect);
@@ -130,7 +130,7 @@ bool render_img(SDL_Renderer* sdlRenderer, const phosg::Image& img, const Rect& 
   auto surface = sdl_make_unique(SDL_CreateSurfaceFrom(
       w, h, SDL_PIXELFORMAT_RGBA32, const_cast<void*>(img.get_data()), 4 * img.get_width()));
   if (!surface) {
-    canvas_log.error("Failed to create surface when rendering text: %s", SDL_GetError());
+    canvas_log.error_f("Failed to create surface when rendering text: {}", SDL_GetError());
     return false;
   } else {
     return render_surface(sdlRenderer, surface.get(), rect);
@@ -206,7 +206,7 @@ int draw_text(
     return width;
   }
 
-  canvas_log.error("No renderer is available for font %hd; cannot render text \"%s\"", font_id, text.c_str());
+  canvas_log.error_f("No renderer is available for font {}; cannot render text \"{}\"", font_id, text);
   return -1;
 }
 
@@ -285,7 +285,7 @@ bool GraphicsCanvas::init() {
           height));
 
   if (sdlTexture.get() == nullptr) {
-    canvas_log.error("Could not create SDL_Texture: %s", SDL_GetError());
+    canvas_log.error_f("Could not create SDL_Texture: {}", SDL_GetError());
     return false;
   }
 
@@ -347,7 +347,7 @@ void GraphicsCanvas::draw_rgba_picture(void* pixels, int w, int h, const Rect& r
 
   auto s = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGBA32, pixels, 4 * w);
   if (!s) {
-    canvas_log.error("Could not create surface: %s\n", SDL_GetError());
+    canvas_log.error_f("Could not create surface: {}", SDL_GetError());
     return;
   }
 
@@ -386,7 +386,7 @@ bool GraphicsCanvas::draw_text(
   }
 
   if (!success) {
-    canvas_log.error("No renderer is available for font %hd; cannot render text \"%s\"", port->txFont, text.c_str());
+    canvas_log.error_f("No renderer is available for font {}; cannot render text \"{}\"", port->txFont, text);
   }
 
   end_draw();
@@ -545,18 +545,18 @@ void GraphicsCanvas::draw_background(sdl_window_shared sdlWindow, PixPatHandle b
       3 * w));
 
   if (s == nullptr) {
-    canvas_log.error("Could not create surface: %s\n", SDL_GetError());
+    canvas_log.error_f("Could not create surface: {}", SDL_GetError());
     return;
   }
 
   auto t = sdl_make_unique(SDL_CreateTextureFromSurface(renderer, s.get()));
   if (t == nullptr) {
-    canvas_log.error("Could not create texture: %s\n", SDL_GetError());
+    canvas_log.error_f("Could not create texture: {}", SDL_GetError());
     return;
   }
 
   if (!SDL_RenderTextureTiled(renderer, t.get(), NULL, 1.0, NULL)) {
-    canvas_log.error("Could not render background texture: %s", SDL_GetError());
+    canvas_log.error_f("Could not render background texture: {}", SDL_GetError());
   }
 }
 
@@ -575,26 +575,26 @@ void GraphicsCanvas::copy_from(GraphicsCanvas& src, const Rect& srcRect, const R
     auto src_renderer = src.start_draw();
     auto src_surface = sdl_make_unique(SDL_RenderReadPixels(src_renderer, &sr));
     if (!SDL_BlitSurfaceScaled(src_surface.get(), &sr, s.get(), NULL, SDL_SCALEMODE_LINEAR)) {
-      canvas_log.error("Could not blit surface scaled: %s", SDL_GetError());
+      canvas_log.error_f("Could not blit surface scaled: {}", SDL_GetError());
       return;
     }
     src.end_draw();
   } else {
     if (!SDL_BlitSurfaceScaled(src.sdlSurface.get(), &sr, s.get(), NULL, SDL_SCALEMODE_LINEAR)) {
-      canvas_log.error("Could not blit surface scaled: %s", SDL_GetError());
+      canvas_log.error_f("Could not blit surface scaled: {}", SDL_GetError());
       return;
     }
   }
 
   auto t = sdl_make_unique(SDL_CreateTextureFromSurface(renderer, s.get()));
   if (t == nullptr) {
-    canvas_log.error("Could not create_texture: %s", SDL_GetError());
+    canvas_log.error_f("Could not create_texture: {}", SDL_GetError());
     return;
   }
 
   const auto dr = sdl_frect(dstRect);
   if (!SDL_RenderTexture(renderer, t.get(), NULL, &dr)) {
-    canvas_log.error("Could not copy bits: %s", SDL_GetError());
+    canvas_log.error_f("Could not copy bits: {}", SDL_GetError());
   }
 
   end_draw();
@@ -604,20 +604,20 @@ bool GraphicsCanvas::init_renderer() {
   if (sdlWindow) {
     if (!SDL_GetRenderer(sdlWindow.get())) {
       if (!SDL_CreateRenderer(sdlWindow.get(), "opengl")) {
-        canvas_log.error("Could not create window renderer: %s", SDL_GetError());
+        canvas_log.error_f("Could not create window renderer: {}", SDL_GetError());
         return false;
       }
     }
   } else {
     sdlSurface = sdl_make_unique(SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32));
     if (sdlSurface == nullptr) {
-      canvas_log.error("Could not create SDL_Surface for software rendering: %s", SDL_GetError());
+      canvas_log.error_f("Could not create SDL_Surface for software rendering: {}", SDL_GetError());
       return false;
     }
 
     sdlRenderer = sdl_make_unique(SDL_CreateSoftwareRenderer(sdlSurface.get()));
     if (sdlRenderer == nullptr) {
-      canvas_log.error("Could not create software SDL_Renderer: %s", SDL_GetError());
+      canvas_log.error_f("Could not create software SDL_Renderer: {}", SDL_GetError());
       return false;
     }
   }

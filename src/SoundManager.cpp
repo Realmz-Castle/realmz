@@ -30,15 +30,15 @@ public:
       return;
     }
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
-      sm_log.warning("Could not initialize audio subsystem: %s", SDL_GetError());
+      sm_log.warning_f("Could not initialize audio subsystem: {}", SDL_GetError());
       return;
     }
     this->device_id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL);
-    sm_log.info("Using device: %s ", SDL_GetAudioDeviceName(this->device_id));
+    sm_log.info_f("Using device: {}", SDL_GetAudioDeviceName(this->device_id));
     if (this->device_id == 0) {
-      sm_log.warning("Failed to open audio: %s", SDL_GetError());
+      sm_log.warning_f("Failed to open audio: {}", SDL_GetError());
     } else {
-      sm_log.info("Audio device paused: %d", SDL_AudioDevicePaused(this->device_id));
+      sm_log.info_f("Audio device paused: {}", SDL_AudioDevicePaused(this->device_id));
     }
   }
 
@@ -54,15 +54,15 @@ public:
     spec.freq = OUTPUT_SAMPLE_RATE;
     channel->sdlAudioStream = SDL_CreateAudioStream(&spec, &spec);
     if (channel->sdlAudioStream == NULL) {
-      sm_log.warning("Could not create SDL audio stream: %s", SDL_GetError());
+      sm_log.warning_f("Could not create SDL audio stream: {}", SDL_GetError());
       return nullptr;
     }
 
     SDL_BindAudioStream(this->device_id, channel->sdlAudioStream);
-    sm_log.info("Created output channel on audio stream device: %d", SDL_GetAudioStreamDevice(channel->sdlAudioStream));
+    sm_log.info_f("Created output channel on audio stream device: {}", SDL_GetAudioStreamDevice(channel->sdlAudioStream));
 
     if (SDL_SetAudioStreamFormat(channel->sdlAudioStream, &spec, NULL) < 0) {
-      sm_log.warning("Could not set audio stream format: %s", SDL_GetError());
+      sm_log.warning_f("Could not set audio stream format: {}", SDL_GetError());
     }
 
     this->all_channels.emplace(channel);
@@ -74,12 +74,12 @@ public:
     try {
       sound = this->sound_for_handle(data_handle);
     } catch (const std::exception& e) {
-      sm_log.warning("Can't find or decode sound: %s", e.what());
+      sm_log.warning_f("Can't find or decode sound: {}", e.what());
       return;
     }
 
     if (SDL_PutAudioStreamData(sdlAudioStream, sound->data.data(), sound->data.size()) < 0) {
-      sm_log.warning("Could not put audio stream data: %s", SDL_GetError());
+      sm_log.warning_f("Could not put audio stream data: {}", SDL_GetError());
     }
   }
 
@@ -176,7 +176,7 @@ OSErr SndNewChannel(SndChannelPtr* chan, uint16_t synth, int32_t init, void* use
     *chan = sm_chan.get();
     return noErr;
   } catch (const std::exception& e) {
-    sm_log.warning("Failed to create audio channel: %s", e.what());
+    sm_log.warning_f("Failed to create audio channel: {}", e.what());
     return badChannel;
   }
 }

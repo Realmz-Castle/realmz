@@ -21,7 +21,7 @@ constexpr RGBColor white{255, 255, 255};
 
 int main() {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
-    wm_log.error("Couldn't initialize video driver: %s\n", SDL_GetError());
+    wm_log.error_f("Couldn't initialize video driver: {}", SDL_GetError());
     return 1;
   }
 
