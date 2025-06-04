@@ -101,6 +101,7 @@
     "print": "cpp",
     "prototypes.h": "c",
     "files.h": "c",
-    "structs.h": "c"
+    "structs.h": "c",
+    "format": "cpp"
   }
 }

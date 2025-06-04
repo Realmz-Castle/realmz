@@ -2,6 +2,7 @@
 
 #include "MemoryManager.h"
 
+#include <functional>
 #include <phosg/Strings.hh>
 #include <string>
 
@@ -34,3 +35,5 @@ void DisposeHandleTyped(ObjT** handle) {
   (*handle)->~ObjT();
   DisposeHandle(reinterpret_cast<Handle>(handle));
 }
+
+void add_destroy_callback(Handle handle, std::function<void()> cb);

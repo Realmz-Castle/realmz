@@ -221,6 +221,9 @@ PicHandle GetPicture(int16_t id) {
   ReplaceHandle(data_handle, reinterpret_cast<Handle>(ret));
 
   already_decoded.emplace(id);
+  add_destroy_callback(data_handle, [id]() -> void {
+    already_decoded.erase(id);
+  });
 
   return reinterpret_cast<PicHandle>(data_handle);
 }

@@ -40,11 +40,39 @@ public:
     size_t size = 0;
     uint16_t flags = 0;
     std::weak_ptr<MemoryManager> memory_manager;
+    std::vector<std::function<void()>> destroy_callbacks;
+
+    HandleMeta() = default;
+    HandleMeta(const HandleMeta&) = delete;
+    HandleMeta(HandleMeta&& other) = default;
+    HandleMeta& operator=(const HandleMeta&) = delete;
+    HandleMeta& operator=(HandleMeta&& other) {
+      this->run_destroy_callbacks();
+      this->data = other.data;
+      this->size = other.size;
+      this->flags = other.flags;
+      this->memory_manager = std::move(other.memory_manager);
+      this->destroy_callbacks = std::move(other.destroy_callbacks);
+      other.data = nullptr;
+      other.size = 0;
+      other.flags = 0;
+      other.memory_manager.reset();
+      other.destroy_callbacks.clear();
+      return *this;
+    }
 
     ~HandleMeta() {
       if (this->data) {
+        this->run_destroy_callbacks();
         free(this->data);
       }
+    }
+
+    void run_destroy_callbacks() {
+      for (auto it : this->destroy_callbacks) {
+        it();
+      }
+      this->destroy_callbacks.clear();
     }
   };
 
@@ -133,13 +161,12 @@ public:
     if (dest_meta->data) {
       free(dest_meta->data);
     }
-    dest_meta->data = src_meta_it->second->data;
-    dest_meta->size = src_meta_it->second->size;
-    dest_meta->flags = src_meta_it->second->flags;
-    src_meta_it->second->data = nullptr;
-    src_meta_it->second->size = 0;
-    src_meta_it->second->flags = 0;
+    *dest_meta = std::move(*src_meta_it->second);
     this->meta_for_handle.erase(src_meta_it);
+  }
+
+  void add_destroy_callback(Handle handle, std::function<void()> cb) {
+    this->meta_for_handle.at(handle)->destroy_callbacks.emplace_back(cb);
   }
 
 private:
@@ -172,6 +199,10 @@ Handle NewHandleWithData(const void* data, size_t size) {
 
 void DisposeHandle(Handle handle) {
   memory_manager.free_handle(handle);
+}
+
+void add_destroy_callback(Handle handle, std::function<void()> cb) {
+  memory_manager.add_destroy_callback(handle, cb);
 }
 
 void ReplaceHandle(Handle dest, Handle src) {
