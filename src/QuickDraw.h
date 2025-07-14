@@ -68,7 +68,10 @@ typedef struct {
 typedef PixPat *PixPatPtr, **PixPatHandle;
 
 typedef struct {
-  BitMap portBits;
+  // NOTE: This structure must only be constructed and destroyed in C++ code as
+  // part of a CCGrafPort. Multiple places in our implementation assume that
+  // every CGrafPort is actually a CCGrafPort.
+  BitMap portBits; // Unused in our implementation! See CCGrafPort instead
   Rect portRect;
   int16_t txFont;
   Style txFace;
@@ -79,7 +82,6 @@ typedef struct {
   PixMapHandle portPixMap;
   PixPatHandle pnPixPat;
   PixPatHandle bkPixPat;
-
   int32_t fgColor;
   int32_t bgColor;
   RGBColor rgbFgColor;
@@ -104,7 +106,7 @@ typedef CTabPtr* CTabHandle;
 typedef struct {
   uint16_t picSize;
   Rect picFrame;
-  Handle data;
+  uint8_t command_data[0];
 } Picture;
 typedef Picture *PicPtr, **PicHandle;
 
@@ -134,15 +136,14 @@ typedef CIcon *CIconPtr, **CIconHandle;
 typedef struct {
   CGrafPtr thePort;
   BitMap screenBits;
-
-  // The default port record. After InitGraf is called, `thePort` should point to
-  // this port.
-  CGrafPort defaultPort;
 } QuickDrawGlobals;
 
 // Global struct holding the current graphics port.
 // Moved from variables.h to avoid c++ keyword conflicts in prototype.h
 extern QuickDrawGlobals qd;
+
+void GetPortBounds(CGrafPtr port, Rect* rect);
+void ErasePortRect();
 
 Boolean PtInRect(Point pt, const Rect* r);
 // Note: Technically the argument to InitGraf is a void*, but we type it here
@@ -183,10 +184,11 @@ int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount);
 void DrawPicture(PicHandle myPicture, const Rect* dstRect);
 void LineTo(int16_t h, int16_t v);
 void FrameOval(const Rect* r);
-void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
+void CopyBits(const BitMap* srcBits, BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
     RgnHandle maskRgn);
-void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
+void CopyMask(const BitMap* srcBits, const BitMap* maskBits, BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
     const Rect* dstRect);
+void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn);
 void EraseRect(const Rect* r);
 
 CCrsrHandle GetCCursor(uint16_t crsrID);

@@ -1,6 +1,11 @@
 #include "QuickDraw.hpp"
 
 #include <SDL3/SDL_pixels.h>
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3/SDL_video.h>
+#include <SDL3_image/SDL_image.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
 #include <algorithm>
 #include <deque>
@@ -8,6 +13,7 @@
 #include <memory>
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
+#include <resource_file/BitmapFontRenderer.hh>
 #include <resource_file/IndexFormats/Formats.hh>
 #include <resource_file/QuickDrawFormats.hh>
 #include <resource_file/ResourceFile.hh>
@@ -17,20 +23,440 @@
 #include <stdexcept>
 #include <unordered_map>
 
+#include "Font.hpp"
 #include "MemoryManager.hpp"
 #include "ResourceManager.h"
 #include "StringConvert.hpp"
 #include "Types.hpp"
 #include "WindowManager.hpp"
 
-static phosg::PrefixedLogger qd_log("[QuickDraw] ");
-static std::unordered_set<int16_t> already_decoded{};
-static std::unordered_map<CGrafPtr, std::shared_ptr<GraphicsCanvas>> canvas_lookup{};
+static phosg::PrefixedLogger qd_log("[QuickDraw] ", phosg::LogLevel::L_DEBUG); // TODO: Set this back to L_INFO
+
+///////////////////////////////////////////////////////////////////////////////
+// CCGrafPort implementation
+
+struct DecodedPICTHeader {
+  be_uint16_t size; // 0
+  Rect bounds;
+  be_uint16_t version_opcode; // 0x0011
+  be_uint16_t version_arg; // 0x03FF
+  be_uint16_t data_opcode; // 0xFFFF
+  // Data follows here (RGBA8888)
+};
+
+static std::unordered_map<int16_t, TTF_Font*> tt_fonts_by_id;
+static std::unordered_map<int16_t, ResourceDASM::BitmapFontRenderer> bm_renderers_by_id;
+
+std::unordered_set<const CCGrafPort*> CCGrafPort::all_ports;
+
+CCGrafPort* CCGrafPort::as_port(void* ptr) {
+  auto* port_ptr = reinterpret_cast<CCGrafPort*>(ptr);
+  return all_ports.count(port_ptr) ? port_ptr : nullptr;
+}
+
+const CCGrafPort* CCGrafPort::as_port(const void* ptr) {
+  const auto* port_ptr = reinterpret_cast<const CCGrafPort*>(ptr);
+  return all_ports.count(port_ptr) ? port_ptr : nullptr;
+}
+
+CCGrafPort::CCGrafPort()
+    : log(std::format("[CCGrafPort:{:016X}] ", reinterpret_cast<intptr_t>(this))),
+      is_window(false) {
+  this->portBits = BitMap{};
+  this->portRect = {0, 0, 0, 0};
+  this->txFont = 0;
+  this->txFace = 0;
+  this->txMode = 0;
+  this->txSize = 12;
+  this->pnLoc = {0, 0};
+  this->pnSize = {1, 1};
+  this->portPixMap = nullptr;
+  this->pnPixPat = nullptr;
+  this->bkPixPat = nullptr;
+  this->fgColor = 0x00000000;
+  this->bgColor = 0xFFFFFFFF;
+  this->rgbFgColor = {0x0000, 0x0000, 0x0000};
+  this->rgbBgColor = {0xFFFF, 0xFFFF, 0xFFFF};
+  all_ports.emplace(this);
+  this->log.debug_f("Created");
+}
+
+CCGrafPort::CCGrafPort(const Rect& bounds, const CGrafPort* parent_port, bool is_window)
+    : CCGrafPort() {
+  if (parent_port) {
+    this->txFont = parent_port->txFont;
+    this->txFace = parent_port->txFace;
+    this->txMode = parent_port->txMode;
+    this->txSize = parent_port->txSize;
+    this->pnLoc = parent_port->pnLoc;
+    this->pnSize = parent_port->pnSize;
+    this->portPixMap = parent_port->portPixMap;
+    this->pnPixPat = parent_port->pnPixPat;
+    this->bkPixPat = parent_port->bkPixPat;
+    this->fgColor = parent_port->fgColor;
+    this->bgColor = parent_port->bgColor;
+    this->rgbFgColor = parent_port->rgbFgColor;
+    this->rgbBgColor = parent_port->rgbBgColor;
+  }
+  this->portRect = bounds;
+  this->is_window = is_window;
+  this->data.resize(this->portRect.right - this->portRect.left, this->portRect.bottom - this->portRect.top);
+  this->log.debug_f("Resized to {}x{} with origin ({}, {}) and is_window={}",
+      this->get_width(), this->get_height(), this->portRect.left, this->portRect.top, is_window ? "true" : "false");
+  // We don't have to add this to all_ports here because the default
+  // constructor already did that
+}
+
+CCGrafPort::~CCGrafPort() {
+  this->log.debug_f("Destroyed");
+  all_ports.erase(this);
+}
+
+void CCGrafPort::resize(size_t w, size_t h) {
+  this->portRect.right = this->portRect.left + w;
+  this->portRect.bottom = this->portRect.top + h;
+  this->data.resize(w, h);
+  this->log.debug_f("Resized to {}x{}", this->get_width(), this->get_height());
+}
+
+void CCGrafPort::clear_rect(const Rect* rect) {
+  // Clear the texture with black pixels
+  if (rect) {
+    this->data.write_rect(rect->left, rect->top, rect->right - rect->left, rect->bottom - rect->top, 0x000000FF);
+  } else {
+    this->data.clear(0x000000FF);
+  }
+}
+
+void CCGrafPort::draw_rgba8888_data(const void* pixels, int w, int h, const Rect& rect) {
+  // It's OK to const_cast pixels here because we only use the image as a source
+  auto src = phosg::ImageRGBA8888N::from_data_reference(const_cast<void*>(pixels), w, h);
+  ssize_t dw = rect.right - rect.left;
+  ssize_t dh = rect.bottom - rect.top;
+  if (w == dw && h == dh) {
+    this->data.copy_from_with_blend(src, rect.left, rect.top, w, h, 0, 0);
+  } else {
+    this->data.copy_from_with_resize(src, rect.left, rect.top, dw, dh, 0, 0, w, h);
+  }
+}
+
+void CCGrafPort::draw_decoded_pict_from_handle(PicHandle pict, const Rect& rect) {
+  // See GetPicture for a description of what's going on here.
+  auto r = read_from_handle(reinterpret_cast<Handle>(pict));
+  const auto& header = r.get<DecodedPICTHeader>();
+  if (header.version_opcode != 0x0011 || header.version_arg != 0x03FF || header.data_opcode != 0xFFFF) {
+    throw std::runtime_error("Attempted to render a non-decoded PICT");
+  }
+  int w = header.bounds.right - header.bounds.left;
+  int h = header.bounds.bottom - header.bounds.top;
+  if (r.remaining() != phosg::ImageRGBA8888N::data_size(w, h)) {
+    throw std::runtime_error(std::format("Decoded PICT data size is incorrect (expected 0x{:X}; received 0x{:X})", phosg::ImageRGBA8888N::data_size(w, h), r.remaining()));
+  }
+
+  this->draw_rgba8888_data(r.getv(r.remaining()), w, h, rect);
+}
+
+phosg::ImageRGBA8888N image_for_sdl_surface(SDL_Surface* surface) {
+  if (surface->format != SDL_PIXELFORMAT_ARGB8888) {
+    throw std::runtime_error(std::format("SDL surface must be 32-bit ARGB (instead, it is 0x{:08X})", static_cast<uint32_t>(surface->format)));
+  }
+  // TODO: Add support for row_bytes in phosg::Image so we can use
+  // Image::from_data_reference here instead of copying the data
+  phosg::ImageRGBA8888N ret(surface->w, surface->h);
+  for (size_t y = 0; y < surface->h; y++) {
+    const uint32_t* row_pixels = reinterpret_cast<const uint32_t*>(reinterpret_cast<const uint8_t*>(surface->pixels) + (y * surface->pitch));
+    for (size_t x = 0; x < surface->w; x++) {
+      ret.write(x, y, phosg::rgba8888_for_argb8888(row_pixels[x]));
+    }
+  }
+  return ret;
+}
+
+bool CCGrafPort::draw_text_ttf(TTF_Font* font, const std::string& processed_text, const Rect& rect) {
+  size_t w = rect.right - rect.left;
+  size_t h = rect.bottom - rect.top;
+  auto sdl_color = sdl_color_for_rgb_color(this->rgbFgColor);
+  auto text_surface = sdl_make_unique(TTF_RenderText_Blended_Wrapped(
+      font, processed_text.data(), processed_text.size(), sdl_color, w + 50));
+  if (!text_surface) {
+    this->log.error_f("Failed to create surface when rendering text: {}", SDL_GetError());
+    return false;
+  } else {
+    auto img = image_for_sdl_surface(text_surface.get());
+    data.copy_from_with_blend(img, rect.left, rect.top, w, h, 0, 0);
+    return true;
+  }
+}
+
+bool CCGrafPort::draw_text_bitmap(const ResourceDASM::BitmapFontRenderer& renderer, const std::string& text, const Rect& rect) {
+  uint32_t color32 = rgba8888_for_rgb_color(this->rgbFgColor);
+  std::string wrapped_text = renderer.wrap_text_to_pixel_width(text, rect.right - rect.left);
+  renderer.render_text(data, wrapped_text, rect.left, rect.top, rect.right, rect.bottom, color32);
+  return true;
+}
+
+bool CCGrafPort::draw_text(const std::string& text, const Rect& r) {
+  std::string processed_text = replace_param_text(text);
+
+  auto font = load_font(this->txFont);
+  bool success = false;
+
+  if (std::holds_alternative<TTF_Font*>(font)) {
+    auto tt_font = std::get<TTF_Font*>(font);
+    TTF_SetFontSize(tt_font, this->txSize);
+    set_font_style(tt_font, this->txFace);
+    success = this->draw_text_ttf(tt_font, processed_text, r);
+  } else if (std::holds_alternative<ResourceDASM::BitmapFontRenderer>(font)) {
+    auto bm_font = std::get<ResourceDASM::BitmapFontRenderer>(font);
+    success = this->draw_text_bitmap(bm_font, processed_text, r);
+  }
+
+  if (!success) {
+    this->log.error_f("No renderer is available for font {}; cannot render text \"{}\"", this->txFont, text);
+  }
+  return success;
+}
+
+static std::pair<size_t, size_t> pixel_dimensions_for_text(TTF_Font* tt_font, const std::string& text) {
+  std::unique_ptr<TTF_Text, void (*)(TTF_Text*)> t(TTF_CreateText(NULL, tt_font, text.c_str(), 0), TTF_DestroyText);
+  int w{0}, h{0};
+  TTF_GetTextSize(t.get(), &w, &h);
+  return std::make_pair(w, h);
+}
+
+void CCGrafPort::draw_text(const std::string& text) {
+  std::string processed_text = replace_param_text(text);
+
+  auto font = load_font(this->txFont);
+  int width = -1;
+  if (std::holds_alternative<TTF_Font*>(font)) {
+    qd_log.debug_f("draw_text+ttf(\"{}\") size={} face={}", processed_text, this->txSize, this->txFace);
+    auto tt_font = std::get<TTF_Font*>(font);
+    TTF_SetFontSize(tt_font, this->txSize);
+    set_font_style(tt_font, this->txFace);
+
+    // The pen location, passed in as the x and y parameters, is at the baseline of the text, to
+    // the left. So, we need to account for this in our display rect.
+    // Descent is a negative number, representing the pixels below the baseline the text may extend.
+    auto descent = TTF_GetFontDescent(tt_font);
+
+    auto [w, h] = pixel_dimensions_for_text(tt_font, processed_text);
+    Rect r{
+        static_cast<int16_t>(this->pnLoc.v - h - descent),
+        this->pnLoc.h,
+        static_cast<int16_t>(this->pnLoc.v - descent),
+        static_cast<int16_t>(this->pnLoc.h + w)};
+    width = this->draw_text_ttf(tt_font, processed_text, r) ? w : -1;
+
+  } else if (std::holds_alternative<ResourceDASM::BitmapFontRenderer>(font)) {
+    // Unlike the TTF case, BitmapFontRenderer takes the full text rectangle, and text is anchored
+    // to the top instead of the baseline. The renderer doesn't overwrite any pixels except those
+    // that are part of each glyph, so we can render directly to data here.
+    auto& bm_font = std::get<ResourceDASM::BitmapFontRenderer>(font);
+    auto [text_width, text_height] = bm_font.pixel_dimensions_for_text(processed_text);
+    bm_font.render_text(
+        this->data,
+        text,
+        this->pnLoc.h,
+        this->pnLoc.v,
+        this->pnLoc.h + text_width,
+        this->pnLoc.v + text_height,
+        rgba8888_for_rgb_color(this->rgbFgColor));
+    width = text_width;
+  }
+
+  if (width == -1) {
+    this->log.error_f("No renderer is available for font ID {}; cannot render text \"{}\"", this->txFont, text);
+  } else {
+    this->pnLoc.h += width;
+  }
+}
+
+int CCGrafPort::measure_text(const std::string& text) {
+  std::string processed_text = replace_param_text(text);
+
+  auto font = load_font(this->txFont);
+  int width = -1;
+  if (std::holds_alternative<TTF_Font*>(font)) {
+    auto tt_font = std::get<TTF_Font*>(font);
+    TTF_SetFontSize(tt_font, this->txSize);
+    set_font_style(tt_font, this->txFace);
+    return pixel_dimensions_for_text(tt_font, processed_text).first;
+  } else if (std::holds_alternative<ResourceDASM::BitmapFontRenderer>(font)) {
+    auto& bm_font = std::get<ResourceDASM::BitmapFontRenderer>(font);
+    return bm_font.pixel_dimensions_for_text(processed_text).first;
+  } else {
+    this->log.error_f("No renderer is available for font ID {}; cannot measure text \"{}\"", this->txFont, text);
+    return -1;
+  }
+}
+
+void CCGrafPort::draw_rect(const Rect& r) {
+  this->data.write_rect(r.left, r.top, r.right - r.left, r.bottom - r.top, rgba8888_for_rgb_color(this->rgbFgColor));
+}
+
+// Derived from https://en.wikipedia.org/wiki/Ellipse#In_Cartesian_coordinates and
+// https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
+void CCGrafPort::draw_oval(const Rect& r) {
+  uint32_t color = rgba8888_for_rgb_color(this->rgbFgColor);
+
+  // Compute semi-major and semi-minor axes, center coordinates, and focus
+  // distance from center
+  auto a = (r.right - r.left) / 2.0;
+  auto b = (r.bottom - r.top) / 2.0;
+  int x0{}, y0{}, x{};
+  int y = 0;
+  bool vertical{false};
+
+  if (a < b) {
+    std::swap(a, b);
+    x0 = r.right - b;
+    y0 = r.bottom - a;
+    x = b;
+    vertical = true;
+  } else {
+    x0 = r.right - a;
+    y0 = r.bottom - b;
+    x = a;
+  }
+
+  int c = sqrt(a * a - b * b);
+
+  // Calculate ellipse pixels in coordinates that are relative to the center,
+  // then translate to actual center when drawing. Start at (x, 0), first quadrant
+
+  // Foci
+  // if (vertical) {
+  //   this->data.write(x0, y0 + c, color);
+  //   this->data.write(x0, y0 - c, color);
+  // } else {
+  //   this->data.write(x0 + c, y0, color);
+  //   this->data.write(x0 - c, y0, color);
+  // }
+
+  int dx_f1{}, dx_f2{}, dy_f1{}, dy_f2{};
+  while (x > 0) {
+    // Mirror the pixel to quadrants 2, 3, and 4
+    this->data.write(x0 + x, y0 + y, color);
+    this->data.write(x0 + x, y0 - y, color);
+    this->data.write(x0 - x, y0 + y, color);
+    this->data.write(x0 - x, y0 - y, color);
+
+    // Search next point to draw, starting with y+1, then y+1 and x-1, then
+    // just x-1. The first one that is inside the bounds of the ellipse is our
+    // next pixel to draw
+    if (vertical) {
+      dx_f1 = x;
+      dx_f2 = x;
+      dy_f1 = y - c;
+      dy_f2 = y + c;
+    } else {
+      dx_f1 = x - c;
+      dx_f2 = x + c;
+      dy_f1 = y;
+      dy_f2 = y;
+    }
+
+    dy_f1++;
+    dy_f2++;
+
+    if (sqrt(dx_f1 * dx_f1 + dy_f1 * dy_f1) + sqrt((dx_f2 * dx_f2 + dy_f2 * dy_f2)) < 2 * a) {
+      y++;
+      continue;
+    }
+
+    dx_f1--;
+    dx_f2--;
+
+    if (sqrt(dx_f1 * dx_f1 + dy_f1 * dy_f1) + sqrt((dx_f2 * dx_f2 + dy_f2 * dy_f2)) < 2 * a) {
+      y++;
+      x--;
+      continue;
+    }
+
+    dy_f1--;
+    dy_f2--;
+
+    if (sqrt(dx_f1 * dx_f1 + dy_f1 * dy_f1) + sqrt((dx_f2 * dx_f2 + dy_f2 * dy_f2)) < 2 * a) {
+      x--;
+      continue;
+    }
+  }
+
+  // Draw one final pixel at (0, [a|b]) and (0, [-a|-b])
+  if (vertical) {
+    this->data.write(x0, y0 + a, color);
+    this->data.write(x0, y0 - a, color);
+  } else {
+    this->data.write(x0, y0 + b, color);
+    this->data.write(x0, y0 - b, color);
+  }
+}
+
+static phosg::ImageRGB888 image_for_ppat(PixPatHandle ppat) {
+  PixMapHandle pmap = (*ppat)->patMap;
+  Rect bounds = (*pmap)->bounds;
+  int w = bounds.right - bounds.left;
+  int h = bounds.bottom - bounds.top;
+  return phosg::ImageRGB888::from_data_reference(*(*ppat)->patData, w, h);
+}
+
+void CCGrafPort::draw_line(const Point& start, const Point& end) {
+  if (this->pnPixPat) {
+    const auto ppat = image_for_ppat(this->pnPixPat);
+    this->data.draw_line_custom(start.h, start.v, end.h, end.v, [this, &ppat](size_t x, size_t y) -> void {
+      this->data.write(x, y, ppat.read(x % ppat.get_width(), y % ppat.get_height()));
+    });
+  } else {
+    this->data.draw_line(start.h, start.v, end.h, end.v, rgba8888_for_rgb_color(this->rgbFgColor));
+  }
+}
+
+void CCGrafPort::draw_line_to(const Point& end) {
+  this->draw_line(this->pnLoc, end);
+  this->pnLoc = end;
+}
+
+void CCGrafPort::draw_background_ppat() {
+  auto ppat = image_for_ppat(this->bkPixPat);
+  for (size_t y = 0; y < this->data.get_height(); y += ppat.get_height()) {
+    for (size_t x = 0; x < this->data.get_width(); x += ppat.get_width()) {
+      this->data.copy_from(ppat, x, y, ppat.get_width(), ppat.get_height(), 0, 0);
+    }
+  }
+}
+
+void CCGrafPort::draw_background_ppat(const Rect& rect) {
+  PixMapHandle pmap = (*this->bkPixPat)->patMap;
+  Rect bounds = (*pmap)->bounds;
+  int w = bounds.right - bounds.left;
+  int h = bounds.bottom - bounds.top;
+  auto pattern = phosg::ImageRGB888::from_data_reference(*(*this->bkPixPat)->patData, w, h);
+
+  ssize_t rx = rect.left, ry = rect.top, rw = rect.right - rect.left, rh = rect.bottom - rect.top;
+  this->data.clamp_rect(rx, ry, rw, rh);
+  for (ssize_t y = ry; y < ry + rh; y++) {
+    for (ssize_t x = rx; x < rx + rw; x++) {
+      this->data.write(x, y, pattern.read(x % pattern.get_width(), y % pattern.get_height()));
+    }
+  }
+}
+
+void CCGrafPort::copy_from(const CCGrafPort& src, const Rect& src_rect, const Rect& dst_rect) {
+  int src_w = src_rect.right - src_rect.left;
+  int src_h = src_rect.bottom - src_rect.top;
+  int dst_w = dst_rect.right - dst_rect.left;
+  int dst_h = dst_rect.bottom - dst_rect.top;
+  this->data.copy_from_with_resize(src.data, dst_rect.left, dst_rect.top, dst_w, dst_h, src_rect.left, src_rect.top, src_w, src_h);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 
 // Originally declared in variables.h. It seems that `qd` was introduced by Myriad during the
 // port to PC in place of Classic Mac's global QuickDraw context. We can repurpose it here
 // for easier access in our code, while still exposing a C-compatible struct.
-QuickDrawGlobals qd{};
+QuickDrawGlobals qd;
+std::unique_ptr<CCGrafPort> default_port;
 
 Rect rect_from_reader(phosg::StringReader& data) {
   Rect r;
@@ -68,68 +494,6 @@ RGBColor color_const_to_rgb(int32_t color_const) {
   return RGBColor{};
 }
 
-void register_canvas(std::shared_ptr<GraphicsCanvas> canvas) {
-  canvas_lookup.insert({canvas->get_port(), canvas});
-}
-
-void deregister_canvas(std::shared_ptr<GraphicsCanvas> canvas) {
-  try {
-    canvas_lookup.erase(canvas->get_port());
-  } catch (std::out_of_range) {
-    qd_log.error_f("Tried to delete canvas with id {}, but it wasn't in lookup", reinterpret_cast<const void*>(canvas->get_port()));
-  }
-}
-
-void deregister_canvas(const CGrafPtr port) {
-  try {
-    canvas_lookup.erase(port);
-  } catch (std::out_of_range) {
-    qd_log.error_f("Tried to delete canvas with id {}, but it wasn't in lookup", reinterpret_cast<const void*>(port));
-  }
-}
-
-std::shared_ptr<GraphicsCanvas> lookup_canvas(CGrafPtr port) {
-  try {
-    return canvas_lookup.at(port);
-  } catch (std::out_of_range) {
-    throw std::runtime_error("Could not find canvas for given id");
-  }
-}
-
-std::shared_ptr<GraphicsCanvas> current_canvas() {
-  return lookup_canvas(qd.thePort);
-}
-
-void draw_rect(const Rect& dispRect) {
-  current_canvas()->draw_rect(dispRect);
-}
-
-void draw_rgba_picture(void* pixels, int w, int h, const Rect& rect) {
-  current_canvas()->draw_rgba_picture(pixels, w, h, rect);
-}
-
-void set_draw_color(const RGBColor& color) {
-  current_canvas()->set_draw_color(color);
-}
-
-void draw_line(const Point& start, const Point& end) {
-  current_canvas()->draw_line(start, end);
-}
-
-void draw_text(const std::string& text) {
-  auto canvas = current_canvas();
-
-  canvas->draw_text(text);
-}
-
-int measure_text(const std::string& text) {
-  return current_canvas()->measure_text(text);
-}
-
-void render_current_canvas(const SDL_FRect* rect) {
-  current_canvas()->render(rect);
-}
-
 PixPatHandle GetPixPat(uint16_t patID) {
   auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_ppat, patID);
   if (!data_handle) {
@@ -148,12 +512,6 @@ PixPatHandle GetPixPat(uint16_t patID) {
 
   ResourceDASM::ResourceFile::DecodedPattern pattern = ResourceDASM::ResourceFile::decode_ppat(
       *data_handle, GetHandleSize(data_handle));
-
-  // Our pattern drawing code expects ppat image data to be RGB24. We want to know if
-  // this doesn't turn out to be the case, perhaps in a scenario's resource fork data
-  if (pattern.pattern.get_has_alpha()) {
-    throw std::logic_error("Decoded ppat image has alpha channel");
-  }
 
   auto ret_handle = NewHandleTyped<PixPat>();
   auto& ret = **ret_handle;
@@ -187,43 +545,45 @@ PicHandle GetPicture(int16_t id) {
   // Otherwise, subsequent calls to DetachResource or ReleaseResource would fail to find it.
   //
   // By default, the GetResource call leaves the raw bytes of the resource in data_handle. To
-  // satisfy the above, we replace that with the fully decoded Picture resource.
+  // satisfy the above, we replace that with the fully decoded Picture resource. To indicate that
+  // the handle contains decoded data, we prepend a header claiming that it's PICT version 3
+  // (there were only PICT versions 1 and 2 used in QuickDraw).
   auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_PICT, id);
   if (!data_handle) {
     return nullptr;
   }
 
-  if (already_decoded.contains(id)) {
-    return reinterpret_cast<PicHandle>(data_handle);
+  {
+    auto r = read_from_handle(data_handle);
+    const auto& header = r.get<DecodedPICTHeader>();
+    if (header.version_opcode == 0x0011 && header.version_arg == 0x03FF && header.data_opcode == 0xFFFF) {
+      return reinterpret_cast<PicHandle>(data_handle);
+    }
   }
 
   auto p = ResourceDASM::ResourceFile::decode_PICT_only(*data_handle, GetHandleSize(data_handle));
-
   if (p.image.get_height() == 0 || p.image.get_width() == 0) {
     throw std::runtime_error(std::format("Failed to decode PICT {}", id));
   }
 
-  // Normalize all image data to have an alpha channel, for convenience
-  p.image.set_has_alpha(true);
+  // Generate the decoded PICT data stream
+  DecodedPICTHeader header;
+  header.size = 0; // This is common for Picture objects; it's ignored by QD
+  header.bounds.left = 0;
+  header.bounds.top = 0;
+  header.bounds.right = p.image.get_width();
+  header.bounds.bottom = p.image.get_height();
+  header.version_opcode = 0x0011;
+  header.version_arg = 0x03FF;
+  header.data_opcode = 0xFFFF;
 
-  // Have to copy the raw data out of the Image object, so that it doesn't get
-  // freed out from under us
-  auto ret = NewHandleTyped<Picture>();
-  (*ret)->picSize = 0; // This is common for Picture objects
-  (*ret)->picFrame.top = 0;
-  (*ret)->picFrame.left = 0;
-  (*ret)->picFrame.bottom = p.image.get_height();
-  (*ret)->picFrame.right = p.image.get_width();
-  (*ret)->data = NewHandleWithData(p.image.get_data(), p.image.get_data_size());
+  phosg::StringWriter w;
+  w.put<DecodedPICTHeader>(header);
+  w.write(p.image.get_data(), p.image.get_data_size());
 
   // Now, free the original data handle buffer with the raw bytes, and change the data_handle
   // to contain the new pointer to the decoded image.
-  ReplaceHandle(data_handle, reinterpret_cast<Handle>(ret));
-
-  already_decoded.emplace(id);
-  add_destroy_callback(data_handle, [id]() -> void {
-    already_decoded.erase(id);
-  });
+  replace_handle_data(data_handle, w.str().data(), w.str().size());
 
   return reinterpret_cast<PicHandle>(data_handle);
 }
@@ -255,8 +615,19 @@ void SetPort(CGrafPtr port) {
 // the implementation of the global qd object and have statically allocated
 // its members, there is no need for further initialization beyond updating
 // qd.thePort to point at the default port
-void InitGraf(QuickDrawGlobals* new_globals) {
-  qd.thePort = &qd.defaultPort;
+void InitGraf(QuickDrawGlobals*) {
+  if (!default_port) {
+    default_port = std::make_unique<CCGrafPort>();
+  }
+  qd.thePort = default_port.get();
+}
+
+CCGrafPort& current_port() {
+  auto* ret = CCGrafPort::as_port(qd.thePort);
+  if (!ret) {
+    throw std::logic_error("current port is not a CCGrafPort");
+  }
+  return *ret;
 }
 
 void TextFont(uint16_t font) {
@@ -309,17 +680,14 @@ OSErr DisposeCIcon(CIconHandle icon) {
   return noErr;
 }
 
-OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon) {
-  auto bounds = (*theIcon)->iconBMap.bounds;
+OSErr PlotCIcon(const Rect* r, CIconHandle icon) {
+  qd_log.debug_f("PlotCIcon({{x0={}, y0={}, x1={}, y1={}}}, {:p})", r->left, r->top, r->right, r->bottom, static_cast<void*>(icon));
+  auto bounds = (*icon)->iconBMap.bounds;
   int w = bounds.right - bounds.left;
   int h = bounds.bottom - bounds.top;
-  draw_rgba_picture(
-      *((*theIcon)->iconData),
-      w, h, *theRect);
-  render_current_canvas(NULL);
-
-  render_window(qd.thePort);
-
+  auto& port = current_port();
+  port.draw_rgba8888_data(*((*icon)->iconData), w, h, *r);
+  WindowManager::instance().recomposite_from_window(port);
   return noErr;
 }
 
@@ -362,32 +730,22 @@ PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld) {
   return NULL;
 }
 
-// Internally, we represent an offscreen GWorld as a windowless GraphicsCanvas, which by default
-// will use a software renderer and draw to an in-memory buffer rather than the GPU.
 QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,
     GDHandle aGDevice, GWorldFlags flags) {
-  auto portRecord = *qd.thePort;
-  portRecord.portRect = *boundsRect;
-  auto canvas = std::make_shared<GraphicsCanvas>(portRecord);
-  canvas->init();
-  register_canvas(canvas);
-
-  *offscreenGWorld = canvas->get_port();
-
+  *offscreenGWorld = new CCGrafPort(*boundsRect, qd.thePort);
   return 0;
 }
 
 void DisposeGWorld(GWorldPtr offscreenWorld) {
-  deregister_canvas(offscreenWorld);
+  delete reinterpret_cast<CCGrafPort*>(offscreenWorld);
 }
 
 void DrawString(ConstStr255Param s) {
   auto str = string_for_pstr<255>(s);
-
-  draw_text(str);
-  render_current_canvas(NULL);
-
-  render_window(qd.thePort);
+  qd_log.debug_f("DrawString(\"{}\")", str);
+  auto& port = current_port();
+  port.draw_text(str);
+  WindowManager::instance().recomposite_from_window(port);
 }
 
 int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount) {
@@ -395,55 +753,102 @@ int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount) {
   // strlen as the byteCount, so we can ignore those parameters and just measure
   // the full string.
   // Realmz also seems to only call this with cstrings, so we're good there as well.
-  return current_canvas()->measure_text(static_cast<const char*>(textBuf));
+  return current_port().measure_text(static_cast<const char*>(textBuf));
 }
 
-void DrawPicture(PicHandle myPicture, const Rect* dstRect) {
-  auto picFrame = (*myPicture)->picFrame;
-  int w = picFrame.right - picFrame.left;
-  int h = picFrame.bottom - picFrame.top;
+void DrawPicture(PicHandle pict, const Rect* r) {
+  qd_log.debug_f("DrawPicture({:p}, {{x0={}, y0={}, x1={}, y1={}}})", static_cast<void*>(pict), r->left, r->top, r->right, r->bottom);
 
-  draw_rgba_picture(*((*myPicture)->data), w, h, *dstRect);
-  render_current_canvas(NULL);
-  render_window(qd.thePort);
+  auto& port = current_port();
+  port.draw_decoded_pict_from_handle(pict, *r);
+  WindowManager::instance().recomposite_from_window(port);
 }
 
 void LineTo(int16_t h, int16_t v) {
-  CGrafPtr port = qd.thePort;
-
-  set_draw_color(port->rgbBgColor);
-  draw_line(port->pnLoc, {v, h});
-  port->pnLoc = {v, h};
-  render_current_canvas(NULL);
-  render_window(qd.thePort);
+  qd_log.debug_f("LineTo({}, {})", h, v);
+  auto& port = current_port();
+  port.draw_line_to(Point{.v = v, .h = h});
+  WindowManager::instance().recomposite_from_window(port);
 }
 
 void FrameOval(const Rect* r) {
-  CGrafPtr port = qd.thePort;
-
-  set_draw_color(port->rgbBgColor);
-  current_canvas()->draw_oval(*r);
-  render_current_canvas(NULL);
-  render_window(qd.thePort);
+  qd_log.debug_f("FrameOval({{x0={}, y0={}, x1={}, y1={}}})", r->left, r->top, r->right, r->bottom);
+  auto& port = current_port();
+  port.draw_oval(*r);
+  WindowManager::instance().recomposite_from_window(port);
 }
 
-void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
-    RgnHandle maskRgn) {
-  auto srcCanvas = lookup_canvas(const_cast<CGrafPtr>(reinterpret_cast<const CGrafPort*>(srcBits)));
-  auto dstCanvas = lookup_canvas(const_cast<CGrafPtr>(reinterpret_cast<const CGrafPort*>(dstBits)));
-
-  dstCanvas->copy_from(*srcCanvas, *srcRect, *dstRect);
-  dstCanvas->render(NULL);
-  render_window(dstCanvas->get_port());
+void CopyBits(const BitMap* src, BitMap* dst, const Rect* src_r, const Rect* dst_r, int16_t mode, RgnHandle maskRgn) {
+  qd_log.debug_f("CopyBits({:p}, {:p}, {{x0={}, y0={}, x1={}, y1={}}}, {{x0={}, y0={}, x1={}, y1={}}}, {:04X}, {:p})", static_cast<const void*>(src), static_cast<void*>(dst), src_r->left, src_r->top, src_r->right, src_r->bottom, dst_r->left, dst_r->top, dst_r->right, dst_r->bottom, mode, static_cast<void*>(maskRgn));
+  auto* src_port = CCGrafPort::as_port(src);
+  auto* dst_port = CCGrafPort::as_port(dst);
+  if (!src_port) {
+    throw std::runtime_error("CopyBits called with a src that isn't a CCGrafPort");
+  }
+  if (!dst_port) {
+    throw std::runtime_error("CopyBits called with a dst that isn't a CCGrafPort");
+  }
+  dst_port->copy_from(*src_port, *src_r, *dst_r);
+  WindowManager::instance().recomposite_from_window(*dst_port);
 }
 
-void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
+void CopyMask(const BitMap* srcBits, const BitMap* maskBits, BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
     const Rect* dstRect) {
+  // TODO
+}
+
+void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn) {
+  // Note: Realmz only calls ScrollRect with updateRgn = nullptr, so we ignore it
+
+  Rect src_rect = *r;
+  Rect dst_rect = *r;
+  if (dh > 0) {
+    src_rect.right -= dh;
+    dst_rect.left += dh;
+  } else {
+    src_rect.left -= dh;
+    dst_rect.right += dh;
+  }
+  if (dv > 0) {
+    src_rect.bottom -= dv;
+    dst_rect.top += dv;
+  } else {
+    src_rect.top -= dv;
+    dst_rect.bottom += dv;
+  }
+
+  auto port = CCGrafPort::as_port(qd.thePort);
+  if (!port) {
+    throw std::logic_error("qd.thePort is not a CCGrafPort");
+  }
+  port->copy_from(*port, src_rect, dst_rect);
 }
 
 void EraseRect(const Rect* r) {
-  current_canvas()->clear_rect(*r);
-  render_window(qd.thePort);
+  qd_log.debug_f("EraseRect({{x0={}, y0={}, x1={}, y1={}}})", r->left, r->top, r->right, r->bottom);
+  auto& port = current_port();
+  if (port.bkPixPat) {
+    port.draw_background_ppat(*r);
+  } else {
+    port.clear_rect(r);
+  }
+  WindowManager::instance().recomposite_from_window(port);
+}
+
+void GetPortBounds(CGrafPtr port, Rect* rect) {
+  auto* cc_port = CCGrafPort::as_port(port);
+  if (!cc_port) {
+    throw std::runtime_error("GetPortBounds called with a port that isn't a CCGrafPort");
+  }
+  *rect = cc_port->portRect;
+}
+
+void ErasePortRect() {
+  auto* cc_port = CCGrafPort::as_port(qd.thePort);
+  if (!cc_port) {
+    throw std::runtime_error("GetPortBounds called with a port that isn't a CCGrafPort");
+  }
+  EraseRect(&cc_port->portRect);
 }
 
 // Cursor functions
@@ -471,8 +876,8 @@ CCrsrHandle GetCCursor(uint16_t resource_id) {
   cursor.sdl_surface = sdl_make_unique(SDL_CreateSurfaceFrom(
       cursor.decoded->image.get_width(),
       cursor.decoded->image.get_height(),
-      SDL_PIXELFORMAT_RGBA32,
-      const_cast<void*>(cursor.decoded->image.get_data()),
+      SDL_PIXELFORMAT_RGBA8888,
+      const_cast<uint32_t*>(cursor.decoded->image.get_data()),
       4 * cursor.decoded->image.get_width()));
 
   cursor.sdl_cursor = sdl_make_unique(SDL_CreateColorCursor(

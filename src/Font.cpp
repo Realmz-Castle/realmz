@@ -49,7 +49,7 @@ Font load_font(int16_t font_id) {
   }
 }
 
-void set_font_face(TTF_Font* font, int16_t face) {
+void set_font_style(TTF_Font* font, int16_t face) {
   TTF_FontStyleFlags styles{TTF_STYLE_NORMAL};
 
   if (face == bold) {

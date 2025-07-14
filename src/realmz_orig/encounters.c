@@ -265,7 +265,7 @@ update2:
   }
 }
 
-/**************** encounter **	simple *****************************/
+/**************** encounter ** simple *****************************/
 short encounter(short id, short mode) {
   FILE* fp = NULL;
   DialogRef win;

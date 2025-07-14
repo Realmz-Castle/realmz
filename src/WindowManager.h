@@ -55,14 +55,6 @@ typedef struct {
   int height;
 } DisplayProperties;
 
-typedef struct {
-  CGrafPort port;
-  int16_t windowKind;
-  Boolean visible;
-  Boolean goAwayFlag;
-  StringHandle titleHandle;
-  uint32_t refCon;
-} CWindowRecord;
 typedef CGrafPtr CWindowPtr;
 typedef CWindowPtr WindowPtr, DialogPtr, WindowRef;
 
@@ -72,7 +64,6 @@ void WindowManager_Init(void);
 WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPtr behind);
 void WindowManager_DrawDialog(WindowPtr theWindow);
 void WindowManager_DisposeWindow(WindowPtr theWindow);
-DisplayProperties WindowManager_GetPrimaryDisplayProperties(void);
 void GetDialogItem(DialogPtr theDialog, int16_t itemNo, int16_t* itemType, Handle* item, Rect* box);
 void GetDialogItemText(Handle item, Str255 text);
 void SetDialogItemText(Handle item, ConstStr255Param text);

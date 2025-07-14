@@ -766,7 +766,7 @@ backup:
           item.iconid = temp;
 
           // Myriad : this don't work because you can't assume than tempselection is computed
-          //			 GetIndString(myString,getselection(item.itemid)+tempidflag,item.itemid-tempselection+1);
+          // GetIndString(myString,getselection(item.itemid)+tempidflag,item.itemid-tempselection+1);
           GetIndString(myString, getselection(item.itemid) + tempidflag, item.itemid - getselection(item.itemid) + 1);
           PtoCstr(myString);
           MyrDrawCString((Ptr)myString);

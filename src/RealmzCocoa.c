@@ -27,18 +27,6 @@ static inline void cpyRect(const Rect* src, Rect* dst) {
   dst->right = src->right;
 }
 
-// It appears that the GetPortBounds and ErasePortRect functions, which are not
-// part of the Classic Mac system APIs, are only used to erase the entire screen.
-// Since we'll be replacing this sort of imperative style with more modern, declarative
-// windowing systems, it should be safe to make these no-ops.
-void GetPortBounds(CGrafPtr port, Rect* rect) {
-  // no-op
-}
-
-void ErasePortRect(void) {
-  // no-op
-}
-
 void GetSoundVol(short* x) {
   uint32_t v;
   GetDefaultOutputVolume(&v);
@@ -66,11 +54,10 @@ GDHandle GetGDevice(void) {
 }
 
 GDHandle GetMainDevice(void) {
-  DisplayProperties dp = WindowManager_GetPrimaryDisplayProperties();
   gDevice.gdRect.top = 0;
   gDevice.gdRect.left = 0;
-  gDevice.gdRect.right = dp.width;
-  gDevice.gdRect.bottom = dp.height;
+  gDevice.gdRect.right = 800;
+  gDevice.gdRect.bottom = 600;
 
   gdPixMap.bounds = gDevice.gdRect;
   gdPixMap.pixelSize = 32;
@@ -112,9 +99,6 @@ void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex) {
 }
 
 void PenMode(int16_t mode) {
-}
-
-void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn) {
 }
 
 void SelectDialogItemText(DialogPtr theDialog, int16_t itemNo, int16_t strtSel, int16_t endSel) {

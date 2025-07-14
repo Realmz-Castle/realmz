@@ -1,5 +1,4 @@
-#ifndef FileManager_hpp
-#define FileManager_hpp
+#pragma once
 
 /**
  * This file contains extra function definitions that are only usable in C++.
@@ -17,5 +16,3 @@
 
 std::string host_filename_for_mac_filename(const std::string& mac_path, bool implicitly_local);
 std::string host_filename_for_FSSpec(const FSSpec* fsp);
-
-#endif // FileManager_hpp

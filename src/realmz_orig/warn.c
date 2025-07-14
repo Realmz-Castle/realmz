@@ -58,9 +58,17 @@ void warn(short string) {
   ForeColor(blackColor);
   BackColor(whiteColor);
 
-  // GetQDGlobalsScreenBits(&src);
-  src = GetPortBitMapForCopyBits(GetQDGlobalsThePort());
-  CopyBits(src, dst, &itemRect, &blit, 0, NIL);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(fuzziqersoftware): Realmz tries to avoid redrawing the entire
+   * screen by just copying out the part of the screen that the message
+   * window would overlap. However, our virtual windowing system maintains
+   * window contents for obscured windows, so this is unnecessary in our
+   * implementation.
+   */
+  // // GetQDGlobalsScreenBits(&src);
+  // src = GetPortBitMapForCopyBits(GetQDGlobalsThePort());
+  // CopyBits(src, dst, &itemRect, &blit, 0, NIL);
+  /* *** END CHANGES *** */
 
   GetIndString(myString, 3, abs(string));
   ParamText(myString, (StringPtr) "", (StringPtr) "", (StringPtr) "");
@@ -99,8 +107,16 @@ void warn(short string) {
     BackColor(whiteColor);
   }
 
-  src = GetPortBitMapForCopyBits(GetQDGlobalsThePort());
-  CopyBits(dst, src, &blit, &itemRect, 0, NIL);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(fuzziqersoftware): Realmz tries to avoid redrawing the entire
+   * screen by just copying out the part of the screen that the message
+   * window would overlap. However, our virtual windowing system maintains
+   * window contents for obscured windows, so this is unnecessary in our
+   * implementation.
+   */
+  // src = GetPortBitMapForCopyBits(GetQDGlobalsThePort());
+  // CopyBits(dst, src, &blit, &itemRect, 0, NIL);
+  /* *** END CHANGES *** */
 
   if (oldport) // Myriad : current port can be null
   {

@@ -10,6 +10,8 @@ inline Handle NewHandleWithData(const std::string& data) {
   return NewHandleWithData(data.data(), data.size());
 }
 
+void replace_handle_data(Handle handle, const void* data, size_t size);
+
 inline std::string string_for_handle(Handle handle) {
   return std::string(reinterpret_cast<const char*>(*handle), GetHandleSize(handle));
 }

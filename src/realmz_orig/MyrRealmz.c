@@ -21,7 +21,7 @@ Copy a part of a port to another port
 void MyrCopyScreen(CGrafPtr portSource, CGrafPtr portDest, Rect* rectSource, Rect* rectDest, short mode) {
 
 // if(mode==transparent)
-//	AcamErreur("Transparent");
+//   AcamErreur("Transparent");
 #ifdef PC
   if (qd.thePort != portDest) {
     rgnClip = NewRgn();
@@ -195,10 +195,10 @@ FILE* MyrFopen(char* nomMac, char* type) {
 
   f = fopen(CvtPathMacToPc(nomMac, nom), type);
   if (f == NULL) {
-    //	char path[512];
-    //	SaisitChemin(NULL,path,NULL);
-    //	sprintf(chaine,(StringPtr)"Myriad fopen : '%s%s' not found %d",path,nom,errno);
-    //	AcamErreur(chaine);
+    // char path[512];
+    // SaisitChemin(NULL,path,NULL);
+    // sprintf(chaine,(StringPtr)"Myriad fopen : '%s%s' not found %d",path,nom,errno);
+    // AcamErreur(chaine);
   }
 #else
 
@@ -224,7 +224,7 @@ short MyrOpenResFile(char* nomMac) {
   id = OpenResFile(nom);
   if (id < 0) {
     sprintf(chaine, (StringPtr) "Myriad OpenResFile : %s not found", nom);
-    //	AcamErreur(chaine);
+    // AcamErreur(chaine);
   }
 #else
   // id=FSpOpenResFile(&fsp, fsRdWrShPerm);

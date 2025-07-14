@@ -47,10 +47,18 @@ void flashmessage(Str255 strc, short x, short y, short duration, short toplay) /
     sound(toplay);
 
   if (!putup) {
-    BitMap* src = GetPortBitMapForCopyBits(GetQDGlobalsThePort());
-    // GetQDGlobalsScreenBits(&src);
-    BitMap* dst = GetPortBitMapForCopyBits(gbuff2);
-    CopyBits(src, dst, &itemRect, &blit, 0, NIL);
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(fuzziqersoftware): Realmz tries to avoid redrawing the entire
+     * screen by just copying out the part of the screen that the message
+     * window would overlap. However, our virtual windowing system maintains
+     * window contents for obscured windows, so this is unnecessary in our
+     * implementation.
+     */
+    // BitMap* src = GetPortBitMapForCopyBits(GetQDGlobalsThePort());
+    // // GetQDGlobalsScreenBits(&src);
+    // BitMap* dst = GetPortBitMapForCopyBits(gbuff2);
+    // CopyBits(src, dst, &itemRect, &blit, 0, NIL);
+    /* *** END CHANGES *** */
 
     ParamText((StringPtr) "", (StringPtr)string, (StringPtr) "", (StringPtr) "");
 
@@ -112,10 +120,14 @@ out:
   if (background != NIL)
     SetPortDialogPort(background);
 
-  {
-    BitMap* src = GetPortBitMapForCopyBits(gbuff2);
-    BitMap* dst = GetPortBitMapForCopyBits(GetQDGlobalsThePort());
-    // GetQDGlobalsScreenBits(&dst);
-    CopyBits(src, dst, &blit, &itemRect, 0, NIL);
-  }
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * See the corresponding comment in the `if (!putup)` block above.
+   */
+  // {
+  //   BitMap* src = GetPortBitMapForCopyBits(gbuff2);
+  //   BitMap* dst = GetPortBitMapForCopyBits(GetQDGlobalsThePort());
+  //   // GetQDGlobalsScreenBits(&dst);
+  //   CopyBits(src, dst, &blit, &itemRect, 0, NIL);
+  // }
+  /* *** END CHANGES *** */
 }

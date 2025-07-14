@@ -692,11 +692,11 @@ short seeshop(short mode) {
           break;
 
         case (diskEvt):
-          if (HiWord(gTheEvent.message) != noErr) /* if MountVol had err	*/
-          { /* then initialize disk	*/
-            SysBeep(NIL); /* beep			*/
-            SetPt(&point, 30, 40); /* position		*/
-            DIBadMount(point, gTheEvent.message); /* initialize	*/
+          if (HiWord(gTheEvent.message) != noErr) /* if MountVol had err */
+          { /* then initialize disk */
+            SysBeep(NIL); /* beep */
+            SetPt(&point, 30, 40); /* position */
+            DIBadMount(point, gTheEvent.message); /* initialize */
           }
           break;
 

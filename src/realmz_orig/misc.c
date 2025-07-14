@@ -1416,11 +1416,11 @@ void out(void) {
   ForeColor(blackColor);
   BackColor(whiteColor);
 
-  {
-    BitMap* src = GetPortBitMapForCopyBits(gbuff);
-    BitMap* dst = GetPortBitMapForCopyBits(GetWindowPort(screen));
-    CopyBits(src, dst, &lookrect, &blitbox, 0, NIL);
-  }
+  // {
+  //   BitMap* src = GetPortBitMapForCopyBits(gbuff);
+  //   BitMap* dst = GetPortBitMapForCopyBits(GetWindowPort(screen));
+  //   CopyBits(src, dst, &lookrect, &blitbox, 0, NIL);
+  // }
 
   RGBBackColor(&greycolor);
 }
@@ -2038,11 +2038,11 @@ over:
           break;
 
         case (diskEvt):
-          if (HiWord(gTheEvent.message) != noErr) /* if MountVol had err	*/
-          { /* then initialize disk	*/
-            SysBeep(NIL); /* beep			*/
-            SetPt(&point, 30, 40); /* position		*/
-            DIBadMount(point, gTheEvent.message); /* initialize	*/
+          if (HiWord(gTheEvent.message) != noErr) /* if MountVol had err */
+          { /* then initialize disk */
+            SysBeep(NIL); /* beep */
+            SetPt(&point, 30, 40); /* position */
+            DIBadMount(point, gTheEvent.message); /* initialize */
           }
           break;
 

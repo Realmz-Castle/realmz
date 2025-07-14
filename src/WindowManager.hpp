@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "GraphicsCanvas.hpp"
+#include "QuickDraw.hpp"
 #include "SDLHelpers.hpp"
 
 class WindowManager;
@@ -17,64 +17,86 @@ class DialogItem;
 class Window : public std::enable_shared_from_this<Window> {
 private:
   std::string title;
-  Rect bounds;
-  int w;
-  int h;
-  CWindowRecord cWindowRecord;
-  sdl_window_shared sdl_window;
-  sdl_window_shared base_window;
-  std::shared_ptr<GraphicsCanvas> canvas;
+  CCGrafPort port;
+  int16_t window_kind;
+  bool visible;
   bool is_dialog_flag;
   std::vector<std::shared_ptr<DialogItem>> dialog_items; // All items (the below 3 vectors are disjoint subsets of this)
   std::vector<std::shared_ptr<DialogItem>> static_items;
   std::vector<std::shared_ptr<DialogItem>> control_items;
   std::vector<std::shared_ptr<DialogItem>> text_items;
   std::shared_ptr<DialogItem> focused_item;
-  bool text_editing_active;
+  std::shared_ptr<Window> window_below;
+  std::shared_ptr<Window> window_above;
+
+  Window(
+      const std::string& title,
+      const Rect& bounds,
+      const CCGrafPort& parent_port,
+      int16_t window_kind,
+      bool visible,
+      bool is_dialog,
+      std::vector<std::shared_ptr<DialogItem>>&& dialog_items);
 
 public:
-  Window();
-  Window(
-      std::string title,
+  static std::shared_ptr<Window> make_shared(
+      const std::string& title,
       const Rect& bounds,
-      CWindowRecord record,
+      const CCGrafPort& parent_port,
+      int16_t window_kind,
+      bool visible,
       bool is_dialog,
-      std::vector<std::shared_ptr<DialogItem>>&& dialog_items,
-      sdl_window_shared base_window);
-  ~Window();
-  void init();
-  void init_text_editing(SDL_Rect r);
+      std::vector<std::shared_ptr<DialogItem>>&& dialog_items);
+  ~Window() = default;
+
+  inline const Rect& bounds() const {
+    return this->port.portRect;
+  }
+  inline Rect& bounds() {
+    return this->port.portRect;
+  }
+  inline size_t get_width() {
+    return this->port.portRect.right - this->port.portRect.left;
+  }
+  inline size_t get_height() {
+    return this->port.portRect.bottom - this->port.portRect.top;
+  }
+
   void add_dialog_item(std::shared_ptr<DialogItem> item);
   std::shared_ptr<DialogItem> get_focused_item();
-  CGrafPtr get_port();
+  CCGrafPort& get_port();
   void set_focused_item(std::shared_ptr<DialogItem> item);
   void handle_text_input(const std::string& text, std::shared_ptr<DialogItem> item);
   void delete_char(std::shared_ptr<DialogItem> item);
-  void render(bool renderDialogItems = true);
+  void erase_and_render();
   void move(int hGlobal, int vGlobal);
   void resize(uint16_t w, uint16_t h);
   void show();
-  void bring_to_front();
-  SDL_WindowID sdl_window_id() const;
   const std::vector<std::shared_ptr<DialogItem>>& get_dialog_items() const;
   std::shared_ptr<DialogItem> dialog_item_for_position(const Point& pt, bool enabled_only);
   inline bool is_dialog() const;
   TEHandle add_text_edit(const Rect& dest_rect, const Rect& view_rect);
   void remove_text_edit(std::shared_ptr<DialogItem> item);
+
+  friend class WindowManager;
 };
 
 class WindowManager {
 private:
   std::unordered_map<DialogItemHandle, std::shared_ptr<DialogItem>> dialog_items_by_handle;
-  std::unordered_map<WindowPtr, std::shared_ptr<Window>> record_to_window;
-  std::unordered_map<SDL_WindowID, std::shared_ptr<Window>> sdl_window_id_to_window;
-  std::list<std::shared_ptr<Window>> window_list;
-  sdl_window_shared base_window;
+  std::unordered_map<WindowPtr, std::shared_ptr<Window>> port_to_window;
+  std::shared_ptr<Window> top_window;
+  std::shared_ptr<Window> bottom_window;
+  sdl_window_shared sdl_window;
+  phosg::ImageRGBA8888N sdl_window_data;
+  bool text_editing_active;
+
+  WindowManager();
 
 public:
-  WindowManager();
+  static WindowManager& instance();
   ~WindowManager();
-  void init();
+  void create_sdl_window();
   WindowPtr create_window(
       const std::string& title,
       const Rect& bounds,
@@ -84,13 +106,23 @@ public:
       uint32_t ref_con,
       bool is_dialog,
       std::vector<std::shared_ptr<DialogItem>>&& dialog_items);
-  void destroy_window(WindowPtr record);
-  std::shared_ptr<Window> window_for_record(WindowPtr record);
-  std::shared_ptr<Window> window_for_sdl_window_id(SDL_WindowID window_id);
+  void destroy_window(WindowPtr port);
+  std::shared_ptr<Window> window_for_port(WindowPtr port);
   std::shared_ptr<DialogItem> dialog_item_for_handle(DialogItemHandle handle);
   std::shared_ptr<Window> front_window();
+  void link_window_at_front(std::shared_ptr<Window> window);
+  void unlink_window(std::shared_ptr<Window> window);
   void bring_to_front(std::shared_ptr<Window> window);
-};
+  std::shared_ptr<Window> window_for_point(ssize_t x, ssize_t y);
 
-// Triggers a refresh of the Window object associated with the provided port record.
-void render_window(CGrafPtr record);
+  void on_dialog_item_focus_changed();
+
+  void recomposite(std::shared_ptr<Window> updated_window);
+
+  // Recomposites the window stack, starting with the given window. Windows below
+  // the given window are not recomposited. Updates the SDL window with the
+  // rendered result.
+  void recomposite_from_window(CCGrafPort& updated_port);
+  void recomposite_from_window(std::shared_ptr<Window> updated_window);
+  void recomposite_all();
+};

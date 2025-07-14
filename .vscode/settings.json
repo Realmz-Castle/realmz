@@ -102,6 +102,9 @@
     "prototypes.h": "c",
     "files.h": "c",
     "structs.h": "c",
-    "format": "cpp"
+    "format": "cpp",
+    "*.inc": "cpp",
+    "span": "cpp",
+    "realmzcocoa.h": "c"
   }
 }

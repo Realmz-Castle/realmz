@@ -1,5 +1,4 @@
-#ifndef Types_CC_hpp
-#define Types_CC_hpp
+#pragma once
 
 /**
  * This file defines types only used in C++. C++ source files should include
@@ -38,5 +37,3 @@ template <bool BE>
 using S32T = typename std::conditional<BE, be_int32_t, le_int32_t>::type;
 template <bool BE>
 using F32T = typename std::conditional<BE, be_float, le_float>::type;
-
-#endif // Types_CC_hpp

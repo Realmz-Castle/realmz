@@ -182,7 +182,6 @@ set(SOURCES
     src/realmz_orig/wear.c
     src/macos/MenuController.mm
     src/RealmzCocoa.c
-    src/GraphicsCanvas.cpp
     src/EventManager.cpp
     src/FileManager.cpp
     src/Font.cpp
