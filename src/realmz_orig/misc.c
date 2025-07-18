@@ -1416,20 +1416,11 @@ void out(void) {
   ForeColor(blackColor);
   BackColor(whiteColor);
 
-  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-   * NOTE(fuzziqersoftware): I believe this logic is responsible for a bug that
-   * causes the playfield to be incorrectly copied over the character stats
-   * when certain windows are closed. This logic appears to have been used to
-   * restore the playfield graphics when a window had been rendered on top of
-   * it and the obscuring window is destroyed. Our window manager retains
-   * window contents when obscured by other windows, so we don't need this.
-   */
-  // {
-  //   BitMap* src = GetPortBitMapForCopyBits(gbuff);
-  //   BitMap* dst = GetPortBitMapForCopyBits(GetWindowPort(screen));
-  //   CopyBits(src, dst, &lookrect, &blitbox, 0, NIL);
-  // }
-  /* *** END CHANGES *** */
+  {
+    BitMap* src = GetPortBitMapForCopyBits(gbuff);
+    BitMap* dst = GetPortBitMapForCopyBits(GetWindowPort(screen));
+    CopyBits(src, dst, &lookrect, &blitbox, 0, NIL);
+  }
 
   RGBBackColor(&greycolor);
 }
