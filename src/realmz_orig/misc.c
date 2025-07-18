@@ -1908,7 +1908,7 @@ void updatemain(short center, short who) {
      * since drawing calls on modern platforms are significantly faster, we can afford to simply
      * re-render the character panel rather than rely on saved state.
      */
-    needupdate = true;
+    needupdate = 1;
     /* *** END CHANGES *** */
     if ((!who) || (needupdate))
       shortupdate(0);
