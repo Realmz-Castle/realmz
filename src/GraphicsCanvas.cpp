@@ -573,7 +573,12 @@ void GraphicsCanvas::copy_from(GraphicsCanvas& src, const Rect& srcRect, const R
     // Here we have to start a draw operation on the source canvas. This temporarily sets the render
     // target to the texture buffer, which we can then read from.
     auto src_renderer = src.start_draw();
-    auto src_surface = sdl_make_unique(SDL_RenderReadPixels(src_renderer, &sr));
+    SDL_Surface* src_surface_raw;
+    if (!(src_surface_raw = SDL_RenderReadPixels(src_renderer, &sr))) {
+      canvas_log.error_f("Could not read pixels for copy_from: {}", SDL_GetError());
+      return;
+    }
+    auto src_surface = sdl_make_unique(src_surface_raw);
     if (!SDL_BlitSurfaceScaled(src_surface.get(), &sr, s.get(), NULL, SDL_SCALEMODE_LINEAR)) {
       canvas_log.error_f("Could not blit surface scaled: {}", SDL_GetError());
       return;
