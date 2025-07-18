@@ -57,7 +57,7 @@ public:
   void draw_line_to(const Point& end); // pnLoc is start, and is updated to end after this call
   void draw_background_ppat();
   void draw_background_ppat(const Rect& rect); // EraseRect
-  void copy_from(const CCGrafPort& src, const Rect& srcRect, const Rect& dstRect);
+  void copy_from(const CCGrafPort& src, const Rect& srcRect, const Rect& dstRect, int16_t mode);
 
 protected:
   bool draw_text_ttf(TTF_Font* font, const std::string& processed_text, const Rect& rect);

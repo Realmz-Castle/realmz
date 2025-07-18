@@ -442,12 +442,46 @@ void CCGrafPort::draw_background_ppat(const Rect& rect) {
   }
 }
 
-void CCGrafPort::copy_from(const CCGrafPort& src, const Rect& src_rect, const Rect& dst_rect) {
+void CCGrafPort::copy_from(const CCGrafPort& src, const Rect& src_rect, const Rect& dst_rect, int16_t mode) {
   int src_w = src_rect.right - src_rect.left;
   int src_h = src_rect.bottom - src_rect.top;
   int dst_w = dst_rect.right - dst_rect.left;
   int dst_h = dst_rect.bottom - dst_rect.top;
-  this->data.copy_from_with_resize(src.data, dst_rect.left, dst_rect.top, dst_w, dst_h, src_rect.left, src_rect.top, src_w, src_h);
+
+  // TODO: Implement the rest of these if they become necessary. See Inside
+  // Macintosh: QuickDraw, 3-115
+  switch (mode) {
+    case 0x00: // srcCopy
+      this->data.copy_from_with_resize(
+          src.data, dst_rect.left, dst_rect.top, dst_w, dst_h, src_rect.left, src_rect.top, src_w, src_h);
+      break;
+    case 0x24: { // transparent
+      if (src_w != dst_w || src_h != dst_h) {
+        throw std::runtime_error("Resizing during CopyBits is only supported with the srcCopy transfer mode");
+      }
+      uint32_t mask_color = rgba8888_for_rgb_color(this->rgbBgColor);
+      this->data.copy_from_with_source_color_mask(
+          src.data, dst_rect.left, dst_rect.top, dst_w, dst_h, src_rect.left, src_rect.top, mask_color);
+      break;
+    }
+    case 0x01: // srcOr
+    case 0x02: // srcXor
+    case 0x03: // srcBic
+    case 0x04: // notSrcCopy
+    case 0x05: // notSrcOr
+    case 0x06: // notSrcXor
+    case 0x07: // notSrcBic
+    case 0x20: // blend
+    case 0x21: // addPin
+    case 0x22: // addOver
+    case 0x23: // subPin
+    case 0x25: // addMax
+    case 0x26: // subOver
+    case 0x27: // adMin
+      throw std::runtime_error("Unimplemented CopyBits transfer mode");
+    default:
+      throw std::runtime_error("Unknown CopyBits transfer mode");
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -789,7 +823,8 @@ void CopyBits(const BitMap* src, BitMap* dst, const Rect* src_r, const Rect* dst
   if (!dst_port) {
     throw std::runtime_error("CopyBits called with a dst that isn't a CCGrafPort");
   }
-  dst_port->copy_from(*src_port, *src_r, *dst_r);
+
+  dst_port->copy_from(*src_port, *src_r, *dst_r, mode);
   WindowManager::instance().recomposite_from_window(*dst_port);
 }
 
@@ -825,7 +860,7 @@ void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn) {
 
   if ((src_rect.top < src_rect.bottom) && (src_rect.left < src_rect.right) &&
       (dst_rect.top < dst_rect.bottom) && (dst_rect.left < dst_rect.right)) {
-    port->copy_from(*port, src_rect, dst_rect);
+    port->copy_from(*port, src_rect, dst_rect, 0);
   }
 }
 
