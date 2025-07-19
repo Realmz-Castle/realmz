@@ -301,9 +301,9 @@ void CCGrafPort::draw_rect(const Rect& r) {
 
 // Derived from https://en.wikipedia.org/wiki/Ellipse#In_Cartesian_coordinates and
 // https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
-void CCGrafPort::draw_oval(const Rect& r) {
-  uint32_t color = rgba8888_for_rgb_color(this->rgbFgColor);
-
+template <typename FnT>
+  requires(std::is_invocable_r_v<void, FnT, size_t, size_t>)
+void draw_oval_custom(const Rect& r, FnT&& write) {
   // Compute semi-major and semi-minor axes, center coordinates, and focus
   // distance from center
   auto a = (r.right - r.left) / 2.0;
@@ -341,10 +341,10 @@ void CCGrafPort::draw_oval(const Rect& r) {
   int dx_f1{}, dx_f2{}, dy_f1{}, dy_f2{};
   while (x > 0) {
     // Mirror the pixel to quadrants 2, 3, and 4
-    this->data.write(x0 + x, y0 + y, color);
-    this->data.write(x0 + x, y0 - y, color);
-    this->data.write(x0 - x, y0 + y, color);
-    this->data.write(x0 - x, y0 - y, color);
+    write(x0 + x, y0 + y);
+    write(x0 + x, y0 - y);
+    write(x0 - x, y0 + y);
+    write(x0 - x, y0 - y);
 
     // Search next point to draw, starting with y+1, then y+1 and x-1, then
     // just x-1. The first one that is inside the bounds of the ellipse is our
@@ -389,15 +389,15 @@ void CCGrafPort::draw_oval(const Rect& r) {
 
   // Draw one final pixel at (0, [a|b]) and (0, [-a|-b])
   if (vertical) {
-    this->data.write(x0, y0 + a, color);
-    this->data.write(x0, y0 - a, color);
+    write(x0, y0 + a);
+    write(x0, y0 - a);
   } else {
-    this->data.write(x0, y0 + b, color);
-    this->data.write(x0, y0 - b, color);
+    write(x0, y0 + b);
+    write(x0, y0 - b);
   }
 }
 
-static phosg::ImageRGB888 image_for_ppat(PixPatHandle ppat) {
+static phosg::ImageRGB888 reference_image_for_ppat(PixPatHandle ppat) {
   PixMapHandle pmap = (*ppat)->patMap;
   Rect bounds = (*pmap)->bounds;
   int w = bounds.right - bounds.left;
@@ -405,14 +405,52 @@ static phosg::ImageRGB888 image_for_ppat(PixPatHandle ppat) {
   return phosg::ImageRGB888::from_data_reference(*(*ppat)->patData, w, h);
 }
 
+void CCGrafPort::draw_oval(const Rect& r) {
+  switch (this->pnMode) {
+    case 0x00: { // srcCopy
+      uint32_t color = rgba8888_for_rgb_color(this->rgbFgColor);
+      draw_oval_custom(r, [&](size_t x, size_t y) -> void {
+        this->data.write(x, y, color);
+      });
+      break;
+    }
+    case 0x02: // srcXor
+      draw_oval_custom(r, [&](size_t x, size_t y) -> void {
+        this->data.write(x, y, phosg::invert(this->data.read(x, y)));
+      });
+      break;
+    case 0x08: { // patCopy
+      if (!this->pnPixPat) {
+        throw std::logic_error("Cannot draw with patCopy mode unless PenPixPat was previously set");
+      }
+      const auto ppat = reference_image_for_ppat(this->pnPixPat);
+      draw_oval_custom(r, [&](size_t x, size_t y) -> void {
+        this->data.write(x, y, ppat.read(x % ppat.get_width(), y % ppat.get_height()));
+      });
+      break;
+    }
+    default:
+      throw std::runtime_error("Unimplemented draw_oval transfer mode");
+  }
+}
+
 void CCGrafPort::draw_line(const Point& start, const Point& end) {
-  if (this->pnPixPat) {
-    const auto ppat = image_for_ppat(this->pnPixPat);
-    this->data.draw_line_custom(start.h, start.v, end.h, end.v, [this, &ppat](size_t x, size_t y) -> void {
-      this->data.write(x, y, ppat.read(x % ppat.get_width(), y % ppat.get_height()));
-    });
-  } else {
-    this->data.draw_line(start.h, start.v, end.h, end.v, rgba8888_for_rgb_color(this->rgbFgColor));
+  switch (this->pnMode) {
+    case 0x00: // srcCopy
+      this->data.draw_line(start.h, start.v, end.h, end.v, rgba8888_for_rgb_color(this->rgbFgColor));
+      break;
+    case 0x08: { // patCopy
+      if (!this->pnPixPat) {
+        throw std::logic_error("Cannot draw with patCopy mode unless PenPixPat was previously set");
+      }
+      const auto ppat = reference_image_for_ppat(this->pnPixPat);
+      this->data.draw_line_custom(start.h, start.v, end.h, end.v, [this, &ppat](size_t x, size_t y) -> void {
+        this->data.write(x, y, ppat.read(x % ppat.get_width(), y % ppat.get_height()));
+      });
+      break;
+    }
+    default:
+      throw std::runtime_error("Unimplemented draw_line transfer mode");
   }
 }
 
@@ -422,7 +460,7 @@ void CCGrafPort::draw_line_to(const Point& end) {
 }
 
 void CCGrafPort::draw_background_ppat() {
-  auto ppat = image_for_ppat(this->bkPixPat);
+  auto ppat = reference_image_for_ppat(this->bkPixPat);
   for (size_t y = 0; y < this->data.get_height(); y += ppat.get_height()) {
     for (size_t x = 0; x < this->data.get_width(); x += ppat.get_width()) {
       this->data.copy_from(ppat, x, y, ppat.get_width(), ppat.get_height(), 0, 0);
@@ -784,10 +822,15 @@ void InsetRect(Rect* r, int16_t dh, int16_t dv) {
 
 void PenPixPat(PixPatHandle ppat) {
   qd.thePort->pnPixPat = ppat;
+  qd.thePort->pnMode = 8; // patCopy
 }
 
 void PenSize(int16_t width, int16_t height) {
   qd.thePort->pnSize = {height, width};
+}
+
+void PenMode(int16_t mode) {
+  qd.thePort->pnMode = mode;
 }
 
 // The gdh return parameter, a graphics device handle, is only stored temporarily
@@ -848,8 +891,9 @@ void LineTo(int16_t h, int16_t v) {
 }
 
 void FrameOval(const Rect* r) {
-  qd_log.debug_f("FrameOval({{x0={}, y0={}, x1={}, y1={}}})", r->left, r->top, r->right, r->bottom);
   auto& port = current_port();
+  qd_log.debug_f("FrameOval({{x0={}, y0={}, x1={}, y1={}}}) mode={:04X} fg={:08X}",
+      r->left, r->top, r->right, r->bottom, port.pnMode, rgba8888_for_rgb_color(port.rgbFgColor));
   port.draw_oval(*r);
   WindowManager::instance().recomposite_from_window(port);
 }

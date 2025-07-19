@@ -79,6 +79,7 @@ typedef struct {
   int16_t txSize;
   Point pnLoc;
   Point pnSize;
+  int16_t pnMode;
   PixMapHandle portPixMap;
   PixPatHandle pnPixPat;
   PixPatHandle bkPixPat;
@@ -173,6 +174,7 @@ void MoveTo(int16_t h, int16_t v);
 void InsetRect(Rect* r, int16_t dh, int16_t dv);
 void PenPixPat(PixPatHandle ppat);
 void PenSize(int16_t width, int16_t height);
+void PenMode(int16_t mode);
 void GetGWorld(CGrafPtr* port, GDHandle* gdh);
 PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld);
 QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,

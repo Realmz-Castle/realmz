@@ -98,9 +98,6 @@ void HiliteMenu(int16_t menuID) {
 void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex) {
 }
 
-void PenMode(int16_t mode) {
-}
-
 void SelectDialogItemText(DialogPtr theDialog, int16_t itemNo, int16_t strtSel, int16_t endSel) {
 }
 

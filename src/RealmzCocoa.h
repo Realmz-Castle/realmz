@@ -198,7 +198,6 @@ void BeginUpdate(WindowPtr theWindow);
 void EndUpdate(WindowPtr theWindow);
 void SetPt(Point* pt, int16_t h, int16_t v);
 int16_t DIBadMount(Point where, int32_t evtMessage);
-void PenMode(int16_t mode);
 void GlobalToLocal(Point* pt);
 void LocalToGlobal(Point* pt);
 
