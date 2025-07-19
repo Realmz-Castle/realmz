@@ -128,12 +128,20 @@ void CCGrafPort::clear_rect(const Rect* rect) {
   }
 }
 
+void CCGrafPort::draw_ga11_data(const void* pixels, int sw, int sh, const Rect& rect) {
+  // It's OK to const_cast pixels here because we only use the image as a source
+  auto src = phosg::ImageGA11::from_data_reference(const_cast<void*>(pixels), sw, sh);
+  ssize_t dw = rect.right - rect.left;
+  ssize_t dh = rect.bottom - rect.top;
+  this->data.copy_from_with_blend(src, rect.left, rect.top, dw, dh, 0, 0, sw, sh, phosg::ResizeMode::NEAREST_NEIGHBOR);
+}
+
 void CCGrafPort::draw_rgba8888_data(const void* pixels, int sw, int sh, const Rect& rect) {
   // It's OK to const_cast pixels here because we only use the image as a source
   auto src = phosg::ImageRGBA8888N::from_data_reference(const_cast<void*>(pixels), sw, sh);
   ssize_t dw = rect.right - rect.left;
   ssize_t dh = rect.bottom - rect.top;
-  this->data.copy_from_with_blend(src, rect.left, rect.top, dw, dh, 0, 0, sw, sh);
+  this->data.copy_from_with_blend(src, rect.left, rect.top, dw, dh, 0, 0, sw, sh, phosg::ResizeMode::NEAREST_NEIGHBOR);
 }
 
 void CCGrafPort::draw_decoded_pict_from_handle(PicHandle pict, const Rect& rect) {
@@ -446,20 +454,44 @@ void CCGrafPort::copy_from(const CCGrafPort& src, const Rect& src_rect, const Re
 
   // TODO: Implement the rest of these if they become necessary. See Inside
   // Macintosh: QuickDraw, 3-115
+  if ((mode != 0x00) && ((src_w != dst_w) || (src_h != dst_h))) {
+    throw std::runtime_error("Resizing during CopyBits is only supported with the srcCopy transfer mode");
+  }
   switch (mode) {
     case 0x00: // srcCopy
-      this->data.copy_from(src.data, dst_rect.left, dst_rect.top, dst_w, dst_h, src_rect.left, src_rect.top, src_w, src_h);
+      this->data.copy_from(src.data, dst_rect.left, dst_rect.top, dst_w, dst_h, src_rect.left, src_rect.top, src_w, src_h, phosg::ResizeMode::NEAREST_NEIGHBOR);
       break;
-    case 0x24: { // transparent
-      if (src_w != dst_w || src_h != dst_h) {
-        throw std::runtime_error("Resizing during CopyBits is only supported with the srcCopy transfer mode");
-      }
-      uint32_t mask_color = rgba8888_for_rgb_color(this->rgbBgColor);
-      this->data.copy_from_with_source_color_mask(
-          src.data, dst_rect.left, dst_rect.top, dst_w, dst_h, src_rect.left, src_rect.top, mask_color);
+    case 0x01: { // srcOr
+      uint32_t fg_color = rgba8888_for_rgb_color(this->rgbFgColor);
+      this->data.copy_from_with_custom(
+          src.data, dst_rect.left, dst_rect.top, dst_w, dst_h, src_rect.left, src_rect.top,
+          [fg_color](uint32_t dst_c, uint32_t src_c) -> uint32_t {
+            if (src_c == 0x000000FF) {
+              return fg_color;
+            } else if (src_c == 0xFFFFFFFF) {
+              return dst_c;
+            } else {
+              // Inside Macintosh: QuickDraw, page 4-33, says "Apply weighted portions of foreground color" if the
+              // source pixel isn't white or black. We take this to mean that the destination pixel should be linearly
+              // interpolated (in each channel) between its existing color and the foreground color, based on the
+              // value in each channel of the source pixel.
+              uint8_t sr = phosg::get_r(src_c);
+              uint8_t sg = phosg::get_g(src_c);
+              uint8_t sb = phosg::get_b(src_c);
+              return phosg::rgba8888(
+                  (sr * phosg::get_r(dst_c) + (0xFF - sr) * phosg::get_r(fg_color)) / 0xFF,
+                  (sg * phosg::get_g(dst_c) + (0xFF - sg) * phosg::get_g(fg_color)) / 0xFF,
+                  (sb * phosg::get_b(dst_c) + (0xFF - sb) * phosg::get_b(fg_color)) / 0xFF,
+                  0xFF);
+            }
+          });
       break;
     }
-    case 0x01: // srcOr
+    case 0x24: // transparent
+      this->data.copy_from_with_source_color_mask(
+          src.data, dst_rect.left, dst_rect.top, dst_w, dst_h, src_rect.left, src_rect.top,
+          rgba8888_for_rgb_color(this->rgbBgColor));
+      break;
     case 0x02: // srcXor
     case 0x03: // srcBic
     case 0x04: // notSrcCopy
@@ -693,12 +725,15 @@ CIconHandle GetCIcon(uint16_t iconID) {
   auto decoded_cicn = ResourceDASM::ResourceFile::decode_cicn(*data_handle, GetHandleSize(data_handle));
 
   CIconHandle h = NewHandleTyped<CIcon>();
-  (*h)->iconBMap.bounds = Rect{
+  (*h)->iconData = NewHandleWithData(decoded_cicn.image.get_data(), decoded_cicn.image.get_data_size());
+  (*h)->bitmapData = NewHandleWithData(decoded_cicn.bitmap.get_data(), decoded_cicn.bitmap.get_data_size());
+  (*h)->iconPMap.bounds = Rect{
       0,
       0,
       static_cast<int16_t>(decoded_cicn.image.get_height()),
       static_cast<int16_t>(decoded_cicn.image.get_width())};
-  (*h)->iconData = NewHandleWithData(decoded_cicn.image.get_data(), decoded_cicn.image.get_data_size());
+  (*h)->iconPMap.pixelSize = 32;
+  (*h)->iconBMap.bounds = (*h)->iconPMap.bounds;
   return h;
 }
 
@@ -712,11 +747,22 @@ OSErr DisposeCIcon(CIconHandle icon) {
 
 OSErr PlotCIcon(const Rect* r, CIconHandle icon) {
   qd_log.debug_f("PlotCIcon({{x0={}, y0={}, x1={}, y1={}}}, {:p})", r->left, r->top, r->right, r->bottom, static_cast<void*>(icon));
-  auto bounds = (*icon)->iconBMap.bounds;
+  auto bounds = (*icon)->iconPMap.bounds;
   int w = bounds.right - bounds.left;
   int h = bounds.bottom - bounds.top;
   auto& port = current_port();
   port.draw_rgba8888_data(*((*icon)->iconData), w, h, *r);
+  WindowManager::instance().recomposite_from_window(port);
+  return noErr;
+}
+
+OSErr PlotCIconBitmap(const Rect* r, CIconHandle icon) {
+  qd_log.debug_f("PlotCIconBitmap({{x0={}, y0={}, x1={}, y1={}}}, {:p})", r->left, r->top, r->right, r->bottom, static_cast<void*>(icon));
+  auto bounds = (*icon)->iconBMap.bounds;
+  int w = bounds.right - bounds.left;
+  int h = bounds.bottom - bounds.top;
+  auto& port = current_port();
+  port.draw_ga11_data(*((*icon)->bitmapData), w, h, *r);
   WindowManager::instance().recomposite_from_window(port);
   return noErr;
 }

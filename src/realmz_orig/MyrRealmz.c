@@ -100,7 +100,20 @@ void MyrCopyIconMask(CIconHandle icon, CGrafPtr portDest, Rect* rectDest) {
   } else
 #endif
     BitMap* dst = GetPortBitMapForCopyBits(portDest);
-  CopyBits(&(**(icon)).iconBMap, dst, &(**(iconhand)).iconPMap.bounds, rectDest, 0, 0L);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(fuzziqersoftware): The original code uses CopyBits here, but we only
+   * support CopyBits between two CCGrafPorts, not with arbitrary BitMaps or
+   * PixMaps. This appears to be the only place where Realmz calls CopyBits
+   * with a BitMap, so we replace it with a similar call that does the thing
+   * the original code intends.
+   */
+  // CopyBits(&(**(icon)).iconBMap, dst, &(**(iconhand)).iconPMap.bounds, rectDest, 0, 0L);
+  GrafPtr orig_port;
+  GetPort(&orig_port);
+  SetPort(portDest);
+  PlotCIconBitmap(rectDest, icon);
+  SetPort(orig_port);
+  /* *** END CHANGES *** */
 }
 
 /***********************************************************************

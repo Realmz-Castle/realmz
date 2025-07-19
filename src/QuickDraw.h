@@ -31,8 +31,8 @@ typedef struct {
 } RGBColor;
 
 typedef struct {
-  Ptr baseAddr;
-  int16_t rowBytes;
+  // Note: The original structure has more than this, but only this field is
+  // necessary in our implementation since we don't support monochrome drawing
   Rect bounds;
 } BitMap;
 
@@ -126,10 +126,9 @@ typedef Handle TEHandle;
 
 typedef struct {
   PixMap iconPMap;
-  BitMap iconMask;
   BitMap iconBMap;
-  Handle iconData;
-  int16_t iconMaskData;
+  Handle iconData; // ImageRGBA8888N::DataT (uint32_t)
+  Handle bitmapData; // ImageGA11::DataT (uint8_t/4)
 } CIcon;
 typedef CIcon *CIconPtr, **CIconHandle;
 
@@ -168,6 +167,7 @@ void RGBForeColor(const RGBColor* color);
 CIconHandle GetCIcon(uint16_t iconID);
 OSErr DisposeCIcon(CIconHandle handle);
 OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon);
+OSErr PlotCIconBitmap(const Rect* theRect, CIconHandle theIcon); // Extension (draws monochrome bitmap instead of color icon)
 void BackPixPat(PixPatHandle ppat);
 void MoveTo(int16_t h, int16_t v);
 void InsetRect(Rect* r, int16_t dh, int16_t dv);
