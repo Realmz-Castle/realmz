@@ -426,8 +426,10 @@ public:
 
   void erase_background_in_port(CCGrafPort& port) const {
     if (port.bkPixPat) {
+      wm_log.debug_f("Window::erase_background_in_port({:016X}) ppat", reinterpret_cast<intptr_t>(&port));
       port.draw_background_ppat(this->rect);
     } else {
+      wm_log.debug_f("Window::erase_background_in_port({:016X}) black", reinterpret_cast<intptr_t>(&port));
       port.clear_rect(&this->rect);
     }
   }
@@ -750,12 +752,12 @@ void Window::delete_char(std::shared_ptr<DialogItem> item) {
 }
 
 void Window::erase_and_render() {
-  wm_log.debug_f("Window::erase_and_render()");
-
   // Clear the backbuffer before drawing frame
   if (this->port.bkPixPat) {
+    wm_log.debug_f("Window::erase_and_render({:016X}) ppat", reinterpret_cast<intptr_t>(&this->port));
     this->port.draw_background_ppat();
   } else {
+    wm_log.debug_f("Window::erase_and_render({:016X}) black", reinterpret_cast<intptr_t>(&this->port));
     this->port.clear_rect(nullptr);
   }
 
@@ -1298,11 +1300,14 @@ void SetDialogItemText(DialogItemHandle item_handle, ConstStr255Param text) {
   auto str = string_for_pstr<256>(text);
   wm_log.debug_f("SetDialogItemText({}, \"{}\")", item->str(), str);
 
+  bool was_empty = item->get_text().empty();
   item->set_text(str);
 
   auto window = item->owner_window.lock();
   if (window) {
-    item->erase_background_in_port(window->get_port());
+    if (!was_empty) {
+      item->erase_background_in_port(window->get_port());
+    }
     item->render_in_port(window->get_port());
     WindowManager::instance().recomposite_from_window(window);
   } else {

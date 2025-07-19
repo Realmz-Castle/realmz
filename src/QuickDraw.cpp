@@ -60,7 +60,7 @@ const CCGrafPort* CCGrafPort::as_port(const void* ptr) {
 }
 
 CCGrafPort::CCGrafPort()
-    : log(std::format("[CCGrafPort:{:016X}] ", reinterpret_cast<intptr_t>(this))),
+    : log(std::format("[CCGrafPort:{:016X}] ", reinterpret_cast<intptr_t>(this)), qd_log.min_level),
       is_window(false) {
   this->portBits = BitMap{};
   this->portRect = {0, 0, 0, 0};
@@ -206,11 +206,16 @@ bool CCGrafPort::draw_text(const std::string& text, const Rect& r) {
   bool success = false;
 
   if (std::holds_alternative<TTF_Font*>(font)) {
+    this->log.debug_f("draw_text(\"{}\", {{x1={}, y1={}, x2={}, y2={}}}) font={} (TTF) size={} style={}",
+        processed_text, r.left, r.top, r.right, r.bottom, this->txFont, this->txSize, this->txFace);
     auto tt_font = std::get<TTF_Font*>(font);
     TTF_SetFontSize(tt_font, this->txSize);
     set_font_style(tt_font, this->txFace);
     success = this->draw_text_ttf(tt_font, processed_text, r);
+
   } else if (std::holds_alternative<ResourceDASM::BitmapFontRenderer>(font)) {
+    this->log.debug_f("draw_text(\"{}\", {{x1={}, y1={}, x2={}, y2={}}}) font={} (bitmap) size={} style={}",
+        processed_text, r.left, r.top, r.right, r.bottom, this->txFont, this->txSize, this->txFace);
     auto bm_font = std::get<ResourceDASM::BitmapFontRenderer>(font);
     success = this->draw_text_bitmap(bm_font, processed_text, r);
   }
@@ -234,7 +239,8 @@ void CCGrafPort::draw_text(const std::string& text) {
   auto font = load_font(this->txFont);
   int width = -1;
   if (std::holds_alternative<TTF_Font*>(font)) {
-    qd_log.debug_f("draw_text+ttf(\"{}\") size={} face={}", processed_text, this->txSize, this->txFace);
+    this->log.debug_f("draw_text(\"{}\") font={} (TTF) size={} style={}",
+        processed_text, this->txFont, this->txSize, this->txFace);
     auto tt_font = std::get<TTF_Font*>(font);
     TTF_SetFontSize(tt_font, this->txSize);
     set_font_style(tt_font, this->txFace);
@@ -253,6 +259,9 @@ void CCGrafPort::draw_text(const std::string& text) {
     width = this->draw_text_ttf(tt_font, processed_text, r) ? w : -1;
 
   } else if (std::holds_alternative<ResourceDASM::BitmapFontRenderer>(font)) {
+    this->log.debug_f("draw_text(\"{}\") font={} (bitmap) size={} style={}",
+        processed_text, this->txFont, this->txSize, this->txFace);
+
     // Unlike the TTF case, BitmapFontRenderer takes the full text rectangle, and text is anchored
     // to the top instead of the baseline. The renderer doesn't overwrite any pixels except those
     // that are part of each glyph, so we can render directly to data here.
@@ -695,7 +704,6 @@ void ForeColor(int32_t color) {
 void BackColor(int32_t color) {
   qd.thePort->bgColor = color;
   qd.thePort->rgbBgColor = color_const_to_rgb(color);
-  qd.thePort->bkPixPat = nullptr;
 }
 
 void GetBackColor(RGBColor* color) {
