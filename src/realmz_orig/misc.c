@@ -1900,6 +1900,16 @@ void updatemain(short center, short who) {
 
     TextFont(font);
 
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(danapplegate): The in() and out() functions appear to be a buffering system for saving
+     * the current character panel state to gbuff, then restoring it. However, in several places
+     * where in() is called, gbuff is then overwritten with data from the look screen. Since this
+     * appears to have been merely a performance optimization for the Classic Mac environment, and
+     * since drawing calls on modern platforms are significantly faster, we can afford to simply
+     * re-render the character panel rather than rely on saved state.
+     */
+    needupdate = 1;
+    /* *** END CHANGES *** */
     if ((!who) || (needupdate))
       shortupdate(0);
     else {
