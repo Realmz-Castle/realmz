@@ -923,9 +923,46 @@ void CopyBits(const BitMap* src, BitMap* dst, const Rect* src_r, const Rect* dst
   WindowManager::instance().recomposite_from_window(*dst_port);
 }
 
-void CopyMask(const BitMap* srcBits, const BitMap* maskBits, BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
-    const Rect* dstRect) {
-  // TODO
+void CopyMask(const BitMap* src, const BitMap* mask, BitMap* dst, const Rect* src_r, const Rect* mask_r, const Rect* dst_r) {
+  qd_log.debug_f("CopyMask({:p}, {:p}, {:p}, {{x0={}, y0={}, x1={}, y1={}}}, {{x0={}, y0={}, x1={}, y1={}}}, {{x0={}, y0={}, x1={}, y1={}}})",
+      static_cast<const void*>(src), static_cast<const void*>(mask), static_cast<void*>(dst),
+      src_r->left, src_r->top, src_r->right, src_r->bottom,
+      mask_r->left, mask_r->top, mask_r->right, mask_r->bottom,
+      dst_r->left, dst_r->top, dst_r->right, dst_r->bottom);
+
+  auto* src_port = CCGrafPort::as_port(src);
+  auto* mask_port = CCGrafPort::as_port(mask);
+  auto* dst_port = CCGrafPort::as_port(dst);
+  if (!src_port) {
+    throw std::runtime_error("CopyMask called with a src that isn't a CCGrafPort");
+  }
+  if (!mask_port) {
+    throw std::runtime_error("CopyMask called with a mask that isn't a CCGrafPort");
+  }
+  if (!dst_port) {
+    throw std::runtime_error("CopyMask called with a dst that isn't a CCGrafPort");
+  }
+
+  // According to IM: QuickDraw 3-119, mask_r must be the same size as src_r, but Realmz violates this condition.
+  // Empirically it seems that the right thing to do is to ignore the size of mask_r and just use its origin, so we do
+  // that here. src_r and dst_r still must be the same size though (this is not a requirement in IM: QuickDraw, but
+  // Realmz always calls this with the same src_r and dst_r, and we choose to be lazy).
+  ssize_t src_w = src_r->right - src_r->left;
+  ssize_t src_h = src_r->bottom - src_r->top;
+  ssize_t dst_w = dst_r->right - dst_r->left;
+  ssize_t dst_h = dst_r->bottom - dst_r->top;
+  if (src_w != dst_w || src_h != dst_h) {
+    throw std::runtime_error(std::format("CopyMask dest size ({}x{}) does not match source size ({}x{})", dst_w, dst_h, src_w, src_h));
+  }
+
+  for (size_t y = 0; y < dst_h; y++) {
+    for (size_t x = 0; x < dst_w; x++) {
+      if (mask_port->data.check(mask_r->left + x, mask_r->top + y) &&
+          mask_port->data.read(mask_r->left + x, mask_r->top + y) == 0x000000FF) {
+        dst_port->data.write(dst_r->left + x, dst_r->top + y, src_port->data.read(src_r->left + x, src_r->top + y));
+      }
+    }
+  }
 }
 
 void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn) {
@@ -1067,5 +1104,12 @@ void ShowCursor(void) {
   cursor_hide_level--;
   if (cursor_hide_level == 0) {
     SDL_ShowCursor();
+  }
+}
+
+void DebugSavePortContents(const CGrafPort* port, const char* filename) {
+  auto* cc_port = CCGrafPort::as_port(port);
+  if (port) {
+    phosg::save_file(filename, cc_port->data.serialize(phosg::ImageFormat::WINDOWS_BITMAP));
   }
 }

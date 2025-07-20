@@ -200,6 +200,8 @@ void ObscureCursor(void);
 void HideCursor(void);
 void ShowCursor(void);
 
+void DebugSavePortContents(const CGrafPort* port, const char* filename);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus
