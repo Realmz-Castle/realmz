@@ -209,7 +209,6 @@ void LocalToGlobal(Point* pt);
 int16_t OpenDeskAcc(ConstStr255Param deskAccName);
 void SetItemMark(MenuHandle theMenu, int16_t item, int16_t markChar);
 void SelectWindow(WindowPtr theWindow);
-int16_t CountMItems(MenuHandle theMenu);
 void PaintRect(const Rect* r);
 Boolean SectRect(const Rect* src1, const Rect* src2, Rect* dstRect);
 int32_t DeltaPoint(Point ptA, Point ptB);

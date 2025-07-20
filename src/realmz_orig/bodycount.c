@@ -262,18 +262,19 @@ void updatenpcmenu(void) {
     SetMenuItemText(gNPC, t, (StringPtr)monstername);
     DisableItem(gNPC, t);
     SetItemIcon(gNPC, t, 0);
-    if (t >= heldover) {
-      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-       * NOTE(danapplegate): This looks to have been a bug. t is a 1-based counting
-       * variable, and is used correctly in the above Menu Manager system
-       * calls. In Pascal convention, these used 1-based indices. However, here, it results
-       * in a buffer overflow when attempting to access one past the last item of holdover.
-       * Below, it appears the other accesses to holdover correctly use t-1.
-       */
-      // holdover[t].name = 0; // Fantasoft v7.1   Clean out any junk that does not belong.
-      holdover[t - 1].name = 0; // Fantasoft v7.1   Clean out any junk that does not belong.
-      /* *** END CHANGES *** */
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(danapplegate): This looks to have been a bug. In this loop, t is used both correctly
+     * as a 1-based index for the menu calls above, and incorrectly as a 0-based index for
+     * direct access into the holdover monster array. This causes a buffer overflow as t reaches
+     * 20 and tries to access one beyond the end of the holdover array of size 20. This probably
+     * caused memory corruption in Realmz originally, but here, address sanitizer catches the
+     * error.
+     */
+    // if (t >= heldover) {
+    if (t >= heldover && t < 20) {
+      holdover[t].name = 0; // Fantasoft v7.1   Clean out any junk that does not belong.
     }
+    /* *** END CHANGES *** */
   }
 
   for (t = 1; t <= heldover; t++) {

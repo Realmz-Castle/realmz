@@ -163,10 +163,6 @@ Size MaxMem(Size* grow) {
   return 0;
 }
 
-int16_t CountMItems(MenuHandle theMenu) {
-  return 0;
-}
-
 void OffsetRect(Rect* r, uint16_t dh, uint16_t dv) {
   r->left += dh;
   r->right += dh;

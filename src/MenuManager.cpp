@@ -216,3 +216,8 @@ void AppendMenu(MenuHandle menu, ConstStr255Param data) {
 int32_t PopUpMenuSelect(MenuHandle menu, int16_t top, int16_t left, int16_t popUpItem) {
   return 0;
 }
+
+int16_t CountMItems(MenuHandle theMenu) {
+  auto m = mm.get_menu(theMenu);
+  return m->items.size();
+}
