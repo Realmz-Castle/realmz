@@ -72,23 +72,11 @@ GDHandle GetMainDevice(void) {
 void BeginUpdate(WindowPtr theWindow) {
 }
 
-void SetPt(Point* pt, int16_t h, int16_t v) {
-}
-
 int16_t DIBadMount(Point where, int32_t evtMessage) {
   return 0;
 }
 
 int32_t MenuKey(int16_t ch) {
-  return 0;
-}
-
-int16_t FindWindow(Point thePoint, WindowPtr* theWindow) {
-  if (thePoint.v < 0 && thePoint.h < 0) {
-    return inMenuBar;
-  } else if (thePoint.v >= 0 && thePoint.h >= 0) {
-    return inContent;
-  }
   return 0;
 }
 
@@ -154,13 +142,6 @@ OSErr SetDefaultOutputVolume(uint32_t level) {
 
 OSErr SetDepth(GDHandle aDevice, uint16_t depth, uint16_t whichFlags, uint16_t flags) {
   return 0;
-}
-
-void SetRect(Rect* r, uint16_t left, uint16_t top, uint16_t right, uint16_t bottom) {
-  r->left = left;
-  r->top = top,
-  r->right = right;
-  r->bottom = bottom;
 }
 
 OSErr StartFading(GammaRef* returnedInitialState) {

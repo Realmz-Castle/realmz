@@ -669,7 +669,8 @@ Window::Window(
     bool visible,
     bool is_dialog,
     std::vector<std::shared_ptr<DialogItem>>&& dialog_items)
-    : title{title},
+    : log(std::format("[Window:{}] ", this->ref())),
+      title{title},
       port{bounds, &parent_port, true},
       window_kind{window_kind},
       visible(visible),
@@ -723,7 +724,7 @@ void Window::add_dialog_item(std::shared_ptr<DialogItem> item) {
   item->owner_window = this->weak_from_this();
 
   // TODO: Should we draw just this item, or re-render the entire window?
-  wm_log.debug_f("Window::add_dialog_item({})", item->str());
+  this->log.debug_f("Window::add_dialog_item({})", item->str());
   item->render_in_port(this->port);
   WindowManager::instance().recomposite_from_window(this->shared_from_this());
 }
@@ -741,13 +742,13 @@ void Window::set_focused_item(std::shared_ptr<DialogItem> item) {
 }
 
 void Window::handle_text_input(const std::string& text, std::shared_ptr<DialogItem> item) {
-  wm_log.debug_f("Window::handle_text_input(\"{}\", {})", text, item->str());
+  this->log.debug_f("Window::handle_text_input(\"{}\", {})", text, item->str());
   item->append_text(text);
   WindowManager::instance().recomposite_from_window(this->port);
 }
 
 void Window::delete_char(std::shared_ptr<DialogItem> item) {
-  wm_log.debug_f("Window::delete_char({})", item->str());
+  this->log.debug_f("Window::delete_char({})", item->str());
   item->delete_char();
   WindowManager::instance().recomposite_from_window(this->port);
 }
@@ -755,10 +756,10 @@ void Window::delete_char(std::shared_ptr<DialogItem> item) {
 void Window::erase_and_render() {
   // Clear the backbuffer before drawing frame
   if (this->port.bkPixPat) {
-    wm_log.debug_f("Window::erase_and_render({:016X}) ppat", reinterpret_cast<intptr_t>(&this->port));
+    this->log.debug_f("Window::erase_and_render({:016X}) ppat", reinterpret_cast<intptr_t>(&this->port));
     this->port.draw_background_ppat();
   } else {
-    wm_log.debug_f("Window::erase_and_render({:016X}) black", reinterpret_cast<intptr_t>(&this->port));
+    this->log.debug_f("Window::erase_and_render({:016X}) black", reinterpret_cast<intptr_t>(&this->port));
     this->port.clear_rect(nullptr);
   }
 
@@ -782,7 +783,7 @@ void Window::erase_and_render() {
 }
 
 void Window::move(int x, int y) {
-  wm_log.debug_f("Window::move({}, {})", x, y);
+  this->log.debug_f("Window::move({}, {})", x, y);
   auto& bounds = this->bounds();
   ssize_t x_delta = x - bounds.left;
   ssize_t y_delta = y - bounds.top;
@@ -796,7 +797,7 @@ void Window::move(int x, int y) {
 }
 
 void Window::resize(uint16_t w, uint16_t h) {
-  wm_log.debug_f("Window::resize({}, {})", w, h);
+  this->log.debug_f("Window::resize({}, {})", w, h);
 
   bool shrank_either_dimension = (this->get_width() > w) || (this->get_height() > h);
   this->port.resize(w, h);
@@ -811,7 +812,7 @@ void Window::resize(uint16_t w, uint16_t h) {
 }
 
 void Window::show() {
-  wm_log.debug_f("Window::show()");
+  this->log.debug_f("Window::show()");
   if (!this->visible) {
     this->visible = true;
     for (auto di : dialog_items) {
@@ -1793,6 +1794,18 @@ void GetControlTitle(ControlHandle handle, Str255 title) {
 WindowPtr FrontWindow() {
   auto window = WindowManager::instance().front_window();
   return window ? &window->get_port() : nullptr;
+}
+
+int16_t FindWindow(Point p, WindowPtr* wp) {
+  auto w = WindowManager::instance().window_for_point(p.h, p.v);
+  *wp = w ? &w->get_port() : nullptr;
+
+  if (p.v < 0 && p.h < 0) {
+    return inMenuBar;
+  } else if (p.v >= 0 && p.h >= 0) {
+    return inContent;
+  }
+  return 0;
 }
 
 void BringToFront(WindowPtr w) {

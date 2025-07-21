@@ -581,6 +581,18 @@ Boolean PtInRect(Point pt, const Rect* r) {
   return (pt.v >= r->top) && (pt.h >= r->left) && (pt.v < r->bottom) && (pt.h < r->right);
 }
 
+void SetRect(Rect* r, int16_t left, int16_t top, int16_t right, int16_t bottom) {
+  r->left = left;
+  r->top = top,
+  r->right = right;
+  r->bottom = bottom;
+}
+
+void SetPt(Point* pt, int16_t h, int16_t v) {
+  pt->h = h;
+  pt->v = v;
+}
+
 RGBColor color_const_to_rgb(int32_t color_const) {
   switch (color_const) {
     case whiteColor:

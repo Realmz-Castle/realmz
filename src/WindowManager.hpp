@@ -16,6 +16,7 @@ class DialogItem;
 
 class Window : public std::enable_shared_from_this<Window> {
 private:
+  phosg::PrefixedLogger log;
   std::string title;
   CCGrafPort port;
   int16_t window_kind;

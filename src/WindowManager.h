@@ -78,12 +78,9 @@ void ShowWindow(WindowPtr theWindow);
 Boolean IsDialogEvent(const EventRecord* ev);
 Boolean DialogSelect(const EventRecord* ev, DialogPtr* dlg, short* item_hit);
 void SystemClick(const EventRecord* ev, WindowPtr window);
-
-Boolean IsDialogEvent(const EventRecord* ev);
-Boolean DialogSelect(const EventRecord* ev, DialogPtr* dlg, short* item_hit);
-void SystemClick(const EventRecord* ev, WindowPtr window);
 void DisposeWindow(WindowPtr theWindow);
 WindowPtr FrontWindow();
+int16_t FindWindow(Point p, WindowPtr* w);
 void BringToFront(WindowPtr w);
 void SelectWindow(WindowPtr w);
 void NumToString(int32_t num, Str255 str);

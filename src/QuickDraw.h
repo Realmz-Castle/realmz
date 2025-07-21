@@ -146,6 +146,10 @@ void GetPortBounds(CGrafPtr port, Rect* rect);
 void ErasePortRect();
 
 Boolean PtInRect(Point pt, const Rect* r);
+
+void SetRect(Rect* r, int16_t left, int16_t top, int16_t right, int16_t bottom);
+void SetPt(Point* pt, int16_t h, int16_t v);
+
 // Note: Technically the argument to InitGraf is a void*, but we type it here
 // for better safety.
 void InitGraf(QuickDrawGlobals* globalPtr);
