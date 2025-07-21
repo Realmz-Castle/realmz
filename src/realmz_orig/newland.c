@@ -2346,7 +2346,13 @@ startover:
         picture = GetPicture(id);
         if (picture) {
           itemRect = (**picture).picFrame;
-          rintel2moto(&itemRect);
+          /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+           * NOTE(fuzziqersoftware): GetPicture decodes the PICT internally and
+           * writes a header with picFrame in native byte order, so we don't
+           * need to byteswap the rect here using rintel2moto.
+           */
+          // rintel2moto(&itemRect);
+          /* *** END CHANGES *** */
           OffsetRect(&itemRect, -itemRect.left, -itemRect.top);
           if ((itemRect.bottom < (320 + downshift)) || (itemRect.right < (320 + leftshift))) {
             itemRect.top = ((320 + downshift) - itemRect.bottom) / 2;
