@@ -106,7 +106,13 @@ retry:
 
     SetGWorld(gthePixels, NIL);
     aire = ((**picture).picFrame);
-    rintel2moto(&aire);
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(fuzziqersoftware): GetPicture decodes the PICT internally and
+     * writes a header with picFrame in native byte order, so we don't need to
+     * byteswap the rect here using rintel2moto.
+     */
+    // rintel2moto(&aire);
+    /* *** END CHANGES *** */
     DrawPicture(picture, &aire);
     SetGWorld(savedPort, savedDevice); /********* reset drawing port to what it was before ****/
   } else {
