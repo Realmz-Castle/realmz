@@ -69,7 +69,7 @@ typedef struct {
   uint16_t modifiers;
 
   // The following fields are not part of the original Classic Mac OS API
-  uint32_t sdl_window_id;
+  void* window_port; // CCGrafPort pointer used to identify the window in C++
   char text[32];
 } EventRecord;
 

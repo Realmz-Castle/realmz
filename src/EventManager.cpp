@@ -7,6 +7,7 @@
 #include <phosg/Strings.hh>
 
 #include "Types.hpp"
+#include "WindowManager.hpp"
 
 static phosg::PrefixedLogger em_log("[EventManager] ");
 
@@ -303,7 +304,12 @@ public:
   inline const Point& get_mouse_loc() const {
     return this->mouse_loc;
   }
-  inline bool is_mouse_button_down() const {
+  inline bool is_mouse_button_down() {
+    // There is at least one place where Realmz busy-loops calling Button
+    // (which returns true if the mouse button is down) but does not process
+    // events between those calls. In our implementation, we must process
+    // events to detect any state change in the mouse button, so we do so here
+    this->enqueue_pending_events(0);
     return !(this->modifier_flags & EVMOD_MOUSE_BUTTON_UP);
   }
   bool any_mouse_events_pending() const {
@@ -338,17 +344,33 @@ protected:
     };
   }
 
-  void enqueue_event(uint16_t what, uint32_t message, SDL_WindowID sdl_window_id, const char* text) {
+  void enqueue_event(uint16_t what, uint32_t message, void* window_port, const char* text) {
     auto& ev = this->event_queue.emplace_back();
     ev.what = what;
     ev.message = message;
     ev.when = TickCount();
-    ev.where = this->mouse_loc;
+    auto* port = CCGrafPort::as_port(window_port);
+    if (port) {
+      ev.where = Point{
+          .h = static_cast<int16_t>(this->mouse_loc.h - port->portRect.left),
+          .v = static_cast<int16_t>(this->mouse_loc.v - port->portRect.top),
+      };
+    } else {
+      ev.where = this->mouse_loc;
+    }
     ev.modifiers = this->modifier_flags;
-    ev.sdl_window_id = sdl_window_id;
+    ev.window_port = window_port;
     if (text && strlen(text)) {
       strcpy(ev.text, text);
     }
+
+#ifdef REALMZ_DEBUG
+    // Debugging features: the backslash key switches all windows to partially-transparent to debug compositing issues;
+    // this makes rendering much slower since it recomposites and alpha-blends all windows every time
+    if ((ev.what == keyDown) && ((ev.message & 0xFF) == static_cast<uint8_t>('\\'))) {
+      WindowManager::instance().on_debug_signal();
+    }
+#endif
   }
 
   void enqueue_sdl_event(const SDL_Event& e) {
@@ -374,7 +396,9 @@ protected:
 
         uint32_t message = mac_message_for_sdl_key_code(e.key.key, this->modifier_flags);
         if (message != 0) {
-          this->enqueue_event((e.type == SDL_EVENT_KEY_DOWN) ? keyDown : keyUp, message, e.key.windowID, "");
+          // TODO: Do keyboard events always go to the front window, or is
+          // there some notion of keyboard focus in Classic Mac OS?
+          this->enqueue_event((e.type == SDL_EVENT_KEY_DOWN) ? keyDown : keyUp, message, FrontWindow(), "");
         } else {
           em_log.warning_f("Unknown key pressed: key=0x{:X} scancode=0x{:X}",
               static_cast<size_t>(e.key.key), static_cast<size_t>(e.key.scancode));
@@ -397,7 +421,8 @@ protected:
           this->mouse_loc.h = e.button.x;
           this->mouse_loc.v = e.button.y;
           this->set_modifier_value(EVMOD_MOUSE_BUTTON_UP, (e.type == SDL_EVENT_MOUSE_BUTTON_UP));
-          this->enqueue_event((e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) ? mouseDown : mouseUp, 0, e.button.windowID, "");
+          auto window = WindowManager::instance().window_for_point(this->mouse_loc.h, this->mouse_loc.v);
+          this->enqueue_event((e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) ? mouseDown : mouseUp, 0, window ? &window->get_port() : nullptr, "");
         }
         break;
       case SDL_EVENT_TEXT_EDITING:
@@ -407,7 +432,9 @@ protected:
 
         // We can use the otherwise unused app4Evt to signal a text input event, the handling of which
         // would originally have been intercepted and processed by TextEdit.
-        this->enqueue_event(app4Evt, 0, e.text.windowID, e.text.text);
+        // TODO: Do keyboard events always go to the front window, or is
+        // there some notion of keyboard focus in Classic Mac OS?
+        this->enqueue_event(app4Evt, 0, FrontWindow(), e.text.text);
         break;
       default:
         em_log.info_f("Unhandled SDL event type 0x{:X}", e.type);

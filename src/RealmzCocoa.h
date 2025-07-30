@@ -160,14 +160,11 @@ OSErr GetDefaultOutputVolume(uint32_t* level);
 void GetSoundVol(short* x);
 OSErr SetDefaultOutputVolume(uint32_t level);
 #define SetSoundVol SetDefaultOutputVolume
-WindowPtr FrontWindow(void);
 void TextFont(uint16_t font);
 int32_t MenuKey(int16_t ch);
 void HiliteMenu(int16_t menuID);
-int16_t FindWindow(Point thePoint, WindowPtr* theWindow);
 void TextSize(uint16_t size);
 GDHandle GetGDevice(void);
-void SetRect(Rect* r, uint16_t left, uint16_t top, uint16_t right, uint16_t bottom);
 Boolean LockPixels(PixMapHandle pm);
 void UnlockPixels(PixMapHandle pm);
 PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld);
@@ -193,13 +190,10 @@ OSErr StartFading(GammaRef* returnedInitialState);
 void StopFading(GammaRef initialState, Boolean restore);
 OSErr FadeToBlack(UInt16 numSteps, FadeType typeOfFade);
 OSErr FadeToGamma(GammaRef to, UInt16 numSteps, FadeType typeOfFade);
-Handle Get1Resource(ResType theType, int16_t theID);
 void BeginUpdate(WindowPtr theWindow);
 void EndUpdate(WindowPtr theWindow);
 void SetPt(Point* pt, int16_t h, int16_t v);
 int16_t DIBadMount(Point where, int32_t evtMessage);
-void PenMode(int16_t mode);
-void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn);
 void GlobalToLocal(Point* pt);
 void LocalToGlobal(Point* pt);
 
@@ -208,7 +202,6 @@ void LocalToGlobal(Point* pt);
 #define BitAnd(x, y) (x & y)
 int16_t OpenDeskAcc(ConstStr255Param deskAccName);
 void SetItemMark(MenuHandle theMenu, int16_t item, int16_t markChar);
-void SelectWindow(WindowPtr theWindow);
 void PaintRect(const Rect* r);
 Boolean SectRect(const Rect* src1, const Rect* src2, Rect* dstRect);
 int32_t DeltaPoint(Point ptA, Point ptB);

@@ -27,18 +27,6 @@ static inline void cpyRect(const Rect* src, Rect* dst) {
   dst->right = src->right;
 }
 
-// It appears that the GetPortBounds and ErasePortRect functions, which are not
-// part of the Classic Mac system APIs, are only used to erase the entire screen.
-// Since we'll be replacing this sort of imperative style with more modern, declarative
-// windowing systems, it should be safe to make these no-ops.
-void GetPortBounds(CGrafPtr port, Rect* rect) {
-  // no-op
-}
-
-void ErasePortRect(void) {
-  // no-op
-}
-
 void GetSoundVol(short* x) {
   uint32_t v;
   GetDefaultOutputVolume(&v);
@@ -66,11 +54,10 @@ GDHandle GetGDevice(void) {
 }
 
 GDHandle GetMainDevice(void) {
-  DisplayProperties dp = WindowManager_GetPrimaryDisplayProperties();
   gDevice.gdRect.top = 0;
   gDevice.gdRect.left = 0;
-  gDevice.gdRect.right = dp.width;
-  gDevice.gdRect.bottom = dp.height;
+  gDevice.gdRect.right = 800;
+  gDevice.gdRect.bottom = 600;
 
   gdPixMap.bounds = gDevice.gdRect;
   gdPixMap.pixelSize = 32;
@@ -85,9 +72,6 @@ GDHandle GetMainDevice(void) {
 void BeginUpdate(WindowPtr theWindow) {
 }
 
-void SetPt(Point* pt, int16_t h, int16_t v) {
-}
-
 int16_t DIBadMount(Point where, int32_t evtMessage) {
   return 0;
 }
@@ -96,25 +80,10 @@ int32_t MenuKey(int16_t ch) {
   return 0;
 }
 
-int16_t FindWindow(Point thePoint, WindowPtr* theWindow) {
-  if (thePoint.v < 0 && thePoint.h < 0) {
-    return inMenuBar;
-  } else if (thePoint.v >= 0 && thePoint.h >= 0) {
-    return inContent;
-  }
-  return 0;
-}
-
 void HiliteMenu(int16_t menuID) {
 }
 
 void SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconIndex) {
-}
-
-void PenMode(int16_t mode) {
-}
-
-void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn) {
 }
 
 void SelectDialogItemText(DialogPtr theDialog, int16_t itemNo, int16_t strtSel, int16_t endSel) {
@@ -149,9 +118,6 @@ int16_t OpenDeskAcc(ConstStr255Param deskAccName) {
 void SetItemMark(MenuHandle theMenu, int16_t item, int16_t markChar) {
 }
 
-void SelectWindow(WindowPtr theWindow) {
-}
-
 void EndUpdate(WindowPtr theWindow) {
 }
 
@@ -176,13 +142,6 @@ OSErr SetDefaultOutputVolume(uint32_t level) {
 
 OSErr SetDepth(GDHandle aDevice, uint16_t depth, uint16_t whichFlags, uint16_t flags) {
   return 0;
-}
-
-void SetRect(Rect* r, uint16_t left, uint16_t top, uint16_t right, uint16_t bottom) {
-  r->left = left;
-  r->top = top,
-  r->right = right;
-  r->bottom = bottom;
 }
 
 OSErr StartFading(GammaRef* returnedInitialState) {

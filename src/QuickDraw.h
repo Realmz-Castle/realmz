@@ -31,8 +31,8 @@ typedef struct {
 } RGBColor;
 
 typedef struct {
-  Ptr baseAddr;
-  int16_t rowBytes;
+  // Note: The original structure has more than this, but only this field is
+  // necessary in our implementation since we don't support monochrome drawing
   Rect bounds;
 } BitMap;
 
@@ -68,7 +68,10 @@ typedef struct {
 typedef PixPat *PixPatPtr, **PixPatHandle;
 
 typedef struct {
-  BitMap portBits;
+  // NOTE: This structure must only be constructed and destroyed in C++ code as
+  // part of a CCGrafPort. Multiple places in our implementation assume that
+  // every CGrafPort is actually a CCGrafPort.
+  BitMap portBits; // Unused in our implementation! See CCGrafPort instead
   Rect portRect;
   int16_t txFont;
   Style txFace;
@@ -76,10 +79,10 @@ typedef struct {
   int16_t txSize;
   Point pnLoc;
   Point pnSize;
+  int16_t pnMode;
   PixMapHandle portPixMap;
   PixPatHandle pnPixPat;
   PixPatHandle bkPixPat;
-
   int32_t fgColor;
   int32_t bgColor;
   RGBColor rgbFgColor;
@@ -104,7 +107,7 @@ typedef CTabPtr* CTabHandle;
 typedef struct {
   uint16_t picSize;
   Rect picFrame;
-  Handle data;
+  uint8_t command_data[0];
 } Picture;
 typedef Picture *PicPtr, **PicHandle;
 
@@ -124,27 +127,29 @@ typedef Handle TEHandle;
 
 typedef struct {
   PixMap iconPMap;
-  BitMap iconMask;
   BitMap iconBMap;
-  Handle iconData;
-  int16_t iconMaskData;
+  Handle iconData; // ImageRGBA8888N::DataT (uint32_t)
+  Handle bitmapData; // ImageGA11::DataT (uint8_t/4)
 } CIcon;
 typedef CIcon *CIconPtr, **CIconHandle;
 
 typedef struct {
   CGrafPtr thePort;
   BitMap screenBits;
-
-  // The default port record. After InitGraf is called, `thePort` should point to
-  // this port.
-  CGrafPort defaultPort;
 } QuickDrawGlobals;
 
 // Global struct holding the current graphics port.
 // Moved from variables.h to avoid c++ keyword conflicts in prototype.h
 extern QuickDrawGlobals qd;
 
+void GetPortBounds(CGrafPtr port, Rect* rect);
+void ErasePortRect();
+
 Boolean PtInRect(Point pt, const Rect* r);
+
+void SetRect(Rect* r, int16_t left, int16_t top, int16_t right, int16_t bottom);
+void SetPt(Point* pt, int16_t h, int16_t v);
+
 // Note: Technically the argument to InitGraf is a void*, but we type it here
 // for better safety.
 void InitGraf(QuickDrawGlobals* globalPtr);
@@ -167,11 +172,13 @@ void RGBForeColor(const RGBColor* color);
 CIconHandle GetCIcon(uint16_t iconID);
 OSErr DisposeCIcon(CIconHandle handle);
 OSErr PlotCIcon(const Rect* theRect, CIconHandle theIcon);
+OSErr PlotCIconBitmap(const Rect* theRect, CIconHandle theIcon); // Extension (draws monochrome bitmap instead of color icon)
 void BackPixPat(PixPatHandle ppat);
 void MoveTo(int16_t h, int16_t v);
 void InsetRect(Rect* r, int16_t dh, int16_t dv);
 void PenPixPat(PixPatHandle ppat);
 void PenSize(int16_t width, int16_t height);
+void PenMode(int16_t mode);
 void GetGWorld(CGrafPtr* port, GDHandle* gdh);
 PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld);
 QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,
@@ -183,10 +190,11 @@ int16_t TextWidth(const void* textBuf, int16_t firstByte, int16_t byteCount);
 void DrawPicture(PicHandle myPicture, const Rect* dstRect);
 void LineTo(int16_t h, int16_t v);
 void FrameOval(const Rect* r);
-void CopyBits(const BitMap* srcBits, const BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
+void CopyBits(const BitMap* srcBits, BitMap* dstBits, const Rect* srcRect, const Rect* dstRect, int16_t mode,
     RgnHandle maskRgn);
-void CopyMask(const BitMap* srcBits, const BitMap* maskBits, const BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
+void CopyMask(const BitMap* srcBits, const BitMap* maskBits, BitMap* dstBits, const Rect* srcRect, const Rect* maskRect,
     const Rect* dstRect);
+void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn);
 void EraseRect(const Rect* r);
 
 CCrsrHandle GetCCursor(uint16_t crsrID);
@@ -195,6 +203,8 @@ void DisposeCCursor(CCrsrHandle cCrsr);
 void ObscureCursor(void);
 void HideCursor(void);
 void ShowCursor(void);
+
+void DebugSavePortContents(const CGrafPort* port, const char* filename);
 
 #ifdef __cplusplus
 } // extern "C"

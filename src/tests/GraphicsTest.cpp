@@ -13,15 +13,12 @@
 // Big wind
 #define WIND_RES_ID 128
 
-static WindowManager wm;
-static phosg::PrefixedLogger wm_log("[WindowManager] ");
-
-constexpr RGBColor blue{0, 0, 255};
-constexpr RGBColor white{255, 255, 255};
+constexpr RGBColor blue{0, 0, 0xFFFF};
+constexpr RGBColor white{0xFFFF, 0xFFFF, 0xFFFF};
 
 int main() {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
-    wm_log.error_f("Couldn't initialize video driver: {}", SDL_GetError());
+    phosg::log_error_f("Couldn't initialize video driver: {}", SDL_GetError());
     return 1;
   }
 
@@ -29,7 +26,9 @@ int main() {
   // parameters when creating new windows.
   InitGraf(&qd);
 
-  wm.init();
+  auto& wm = WindowManager::instance();
+
+  wm.create_sdl_window();
 
   auto bounds = Rect{0, 0, WINDOW_HEIGHT, WINDOW_WIDTH};
 
@@ -42,36 +41,35 @@ int main() {
       0,
       false,
       {});
-  auto window = wm.window_for_record(wp);
+  auto window = wm.window_for_port(wp);
 
-  auto canvas = lookup_canvas(window->get_port());
+  auto& port = window->get_port();
 
-  canvas->set_draw_color(white);
-
-  canvas->draw_rect(Rect{20, 20, 120, 170});
+  port.rgbFgColor = white;
+  port.draw_rect(Rect{20, 20, 120, 170});
 
   // Circle
   Rect bounding_box{140, 20, 240, 120};
-  canvas->set_draw_color(blue);
-  canvas->draw_rect(bounding_box);
-  canvas->set_draw_color(white);
-  canvas->draw_oval(bounding_box);
+  port.rgbFgColor = blue;
+  port.draw_rect(bounding_box);
+  port.rgbFgColor = white;
+  port.draw_oval(bounding_box);
 
   // Horizontal ellipse
   bounding_box = Rect{260, 20, 300, 120};
-  canvas->set_draw_color(blue);
-  canvas->draw_rect(bounding_box);
-  canvas->set_draw_color(white);
-  canvas->draw_oval(bounding_box);
+  port.rgbFgColor = blue;
+  port.draw_rect(bounding_box);
+  port.rgbFgColor = white;
+  port.draw_oval(bounding_box);
 
   // Vertical ellipse
   bounding_box = Rect{320, 20, 420, 60};
-  canvas->set_draw_color(blue);
-  canvas->draw_rect(bounding_box);
-  canvas->set_draw_color(white);
-  canvas->draw_oval(bounding_box);
+  port.rgbFgColor = blue;
+  port.draw_rect(bounding_box);
+  port.rgbFgColor = white;
+  port.draw_oval(bounding_box);
 
-  window->render();
+  wm.recomposite(window);
 
   for (;;)
     ;

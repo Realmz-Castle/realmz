@@ -1,40 +1,96 @@
-#ifndef QuickDraw_hpp
-#define QuickDraw_hpp
+#pragma once
 
 #include "QuickDraw.h"
 
-#include <memory>
-
 #include <SDL3/SDL_pixels.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
-#include "GraphicsCanvas.hpp"
+#include <memory>
+#include <phosg/Image.hh>
 #include <phosg/Strings.hh>
+#include <resource_file/BitmapFontRenderer.hh>
+
+struct CCGrafPort : public CGrafPort {
+public:
+  // NOTE: All data members in this struct must be public, so the struct will
+  // be standard layout and therefore compatible with C code. This restriction
+  // does not apply to non-virtual member functions, however, since they don't
+  // affect the memory layout, but we don't have any private functions anyway.
+  phosg::PrefixedLogger log;
+  phosg::ImageRGBA8888N data;
+  bool is_window;
+
+  static std::unordered_set<const CCGrafPort*> all_ports;
+  static CCGrafPort* as_port(void* ptr); // Returns null if ptr is not a CCGrafPort
+  static const CCGrafPort* as_port(const void* ptr); // Returns null if ptr is not a CCGrafPort
+
+  CCGrafPort();
+  explicit CCGrafPort(const Rect& bounds, const CGrafPort* parent_port = nullptr, bool is_window = false);
+  ~CCGrafPort();
+
+  CCGrafPort(const CCGrafPort&) = delete;
+  CCGrafPort(CCGrafPort&&) = delete;
+  CCGrafPort& operator=(const CCGrafPort&) = delete;
+  CCGrafPort& operator=(CCGrafPort&&) = delete;
+
+  inline size_t get_width() const {
+    return this->data.get_width();
+  }
+  inline size_t get_height() const {
+    return this->data.get_height();
+  }
+
+  void resize(size_t w, size_t h);
+
+  void clear_rect(const Rect* rect); // rect = nullptr means clear the entire canvas
+  void draw_ga11_data(const void* pixels, int w, int h, const Rect& rect);
+  void draw_rgba8888_data(const void* pixels, int w, int h, const Rect& rect);
+  void draw_decoded_pict_from_handle(PicHandle pict, const Rect& rect);
+  bool draw_text(const std::string& text, const Rect& dispRect);
+  // Draws the specified text when the display bounds are unknown. Updates the port's pen location
+  // after the draw to be immediately to the right of the drawn text.
+  void draw_text(const std::string& text);
+  // Returns the rendered width of the given text, in pixels
+  int measure_text(const std::string& text);
+  void draw_rect(const Rect& dispRect);
+  void draw_oval(const Rect& dispRect);
+  void draw_line(const Point& start, const Point& end); // Does not affect pnLoc
+  void draw_line_to(const Point& end); // pnLoc is start, and is updated to end after this call
+  void draw_background_ppat();
+  void draw_background_ppat(const Rect& rect); // EraseRect
+  void copy_from(const CCGrafPort& src, const Rect& srcRect, const Rect& dstRect, int16_t mode);
+
+  inline std::string ref() const {
+    return std::format("P-{:016X}", reinterpret_cast<intptr_t>(this));
+  }
+
+protected:
+  bool draw_text_ttf(TTF_Font* font, const std::string& processed_text, const Rect& rect);
+  bool draw_text_bitmap(const ResourceDASM::BitmapFontRenderer& renderer, const std::string& text, const Rect& rect);
+};
+
+CCGrafPort& get_default_port();
 
 Rect rect_from_reader(phosg::StringReader& data);
 
-uint32_t rgba8888_for_rgb_color(const RGBColor& color);
-SDL_Color sdl_color_for_rgb_color(const RGBColor& color);
+inline uint32_t rgba8888_for_rgb_color(const RGBColor& color) {
+  return (
+      (((color.red / 0x0101) & 0xFF) << 24) |
+      (((color.green / 0x0101) & 0xFF) << 16) |
+      (((color.blue / 0x0101) & 0xFF) << 8) |
+      0xFF);
+}
+inline SDL_Color sdl_color_for_rgb_color(const RGBColor& color) {
+  return SDL_Color{
+      static_cast<uint8_t>(color.red / 0x0101),
+      static_cast<uint8_t>(color.green / 0x0101),
+      static_cast<uint8_t>(color.blue / 0x0101),
+      0xFF};
+}
 
 uint32_t GetBackColorRGBA8888();
 uint32_t GetForeColorRGBA8888();
 SDL_Color GetBackColorSDL();
 SDL_Color GetForeColorSDL();
 
-// Adds a canvas to the global lookup, so that they can be accessed directly via
-// a CGrafPtr.
-void register_canvas(std::shared_ptr<GraphicsCanvas> canvas);
-void deregister_canvas(std::shared_ptr<GraphicsCanvas> canvas);
-std::shared_ptr<GraphicsCanvas> lookup_canvas(CGrafPtr port);
-
-// Drawing functions which operate on the current port, defined globally as qd.thePort
-// and associated with a GraphicsCanvas which performs the draw calls via SDL.
-void draw_rect(const Rect& dispRect);
-void draw_rgba_picture(void* pixels, int w, int h, const Rect& rect);
-void set_draw_color(const RGBColor& color);
-void draw_line(const Point& start, const Point& end);
-// Draws the specified text at the current pen location and with the current
-// font characteristics stored in the window's port
-void draw_text(const std::string& text);
-void render_current_canvas(const SDL_FRect* rect);
-
-#endif // QuickDraw_hpp
+CCGrafPort& current_port();

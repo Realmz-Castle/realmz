@@ -25,6 +25,11 @@ find_package(SDL3 REQUIRED)
 find_package(SDL3_ttf REQUIRED)
 find_package(SDL3_image REQUIRED)
 
+# Debug flag - REALMZ_DEBUG is defined if the build type is Debug or RelWithDebInfo
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    add_compile_definitions(REALMZ_DEBUG)
+endif()
+
 # Executable definition
 set(REALMZ_EXECUTABLE_SRC src/realmz_orig/main.c)
 set(SOURCES
@@ -182,7 +187,6 @@ set(SOURCES
     src/realmz_orig/wear.c
     src/macos/MenuController.mm
     src/RealmzCocoa.c
-    src/GraphicsCanvas.cpp
     src/EventManager.cpp
     src/FileManager.cpp
     src/Font.cpp

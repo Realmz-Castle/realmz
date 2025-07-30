@@ -165,6 +165,18 @@ public:
     this->meta_for_handle.erase(src_meta_it);
   }
 
+  void replace_handle_data(Handle handle, const void* data, size_t size) {
+    auto& meta = this->meta_for_handle.at(handle);
+    // We don't use realloc() here in case the passed-in data pointer is within the existing handle's data
+    void* new_data = malloc(size);
+    memcpy(new_data, data, size);
+    if (meta->data) {
+      free(meta->data);
+    }
+    meta->data = new_data;
+    meta->size = size;
+  }
+
   void add_destroy_callback(Handle handle, std::function<void()> cb) {
     this->meta_for_handle.at(handle)->destroy_callbacks.emplace_back(cb);
   }
@@ -207,6 +219,10 @@ void add_destroy_callback(Handle handle, std::function<void()> cb) {
 
 void ReplaceHandle(Handle dest, Handle src) {
   memory_manager.replace_handle(dest, src);
+}
+
+void replace_handle_data(Handle handle, const void* data, size_t size) {
+  memory_manager.replace_handle_data(handle, data, size);
 }
 
 Size GetHandleSize(Handle handle) {

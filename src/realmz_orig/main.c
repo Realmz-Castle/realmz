@@ -2080,7 +2080,7 @@ short regscen(void) {
   if (tempvalue < 0)
     tempvalue *= -1;
 
-    // Fantasoft v7.0 BEGIN
+  // Fantasoft v7.0 BEGIN
 #ifdef PC
 //
 #else
@@ -2220,7 +2220,7 @@ short regscen_pc(void) {
     RegistrationCode += 18;
 
     // Part 5: Compare RegistrationCode with that entered by user to see if it is valid.
-    //    	   RegistrationCode should = what the user types in for valid registration
+    //         RegistrationCode should = what the user types in for valid registration
 
     flashmessage((StringPtr) "Now enter your registration number as it appears on your registration form for this scenario.", 30, 40, -1, 0);
 
@@ -2374,7 +2374,7 @@ short regscen_pc_custom(void) {
   }
 
   // Part 5: Compare RegistrationCode with that entered by user to see if it is valid.
-  //    	   RegistrationCode should = what the user types in for valid registration
+  //         RegistrationCode should = what the user types in for valid registration
 
   flashmessage((StringPtr) "Now enter your registration number as it appears on your registration form for this scenario.", 30, 40, -1, 0);
 
@@ -2534,5 +2534,3 @@ void quickinfo(int who, int itemnumber, int itemid, int where) {
   RGBBackColor(&back);
   RGBForeColor(&fore);
 }
-
-TODO; // Find all tab chars and get rid of them

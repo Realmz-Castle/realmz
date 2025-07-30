@@ -21,7 +21,7 @@ Copy a part of a port to another port
 void MyrCopyScreen(CGrafPtr portSource, CGrafPtr portDest, Rect* rectSource, Rect* rectDest, short mode) {
 
 // if(mode==transparent)
-//	AcamErreur("Transparent");
+//   AcamErreur("Transparent");
 #ifdef PC
   if (qd.thePort != portDest) {
     rgnClip = NewRgn();
@@ -100,7 +100,20 @@ void MyrCopyIconMask(CIconHandle icon, CGrafPtr portDest, Rect* rectDest) {
   } else
 #endif
     BitMap* dst = GetPortBitMapForCopyBits(portDest);
-  CopyBits(&(**(icon)).iconBMap, dst, &(**(iconhand)).iconPMap.bounds, rectDest, 0, 0L);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(fuzziqersoftware): The original code uses CopyBits here, but we only
+   * support CopyBits between two CCGrafPorts, not with arbitrary BitMaps or
+   * PixMaps. This appears to be the only place where Realmz calls CopyBits
+   * with a BitMap, so we replace it with a similar call that does the thing
+   * the original code intends.
+   */
+  // CopyBits(&(**(icon)).iconBMap, dst, &(**(iconhand)).iconPMap.bounds, rectDest, 0, 0L);
+  GrafPtr orig_port;
+  GetPort(&orig_port);
+  SetPort(portDest);
+  PlotCIconBitmap(rectDest, icon);
+  SetPort(orig_port);
+  /* *** END CHANGES *** */
 }
 
 /***********************************************************************
@@ -195,10 +208,10 @@ FILE* MyrFopen(char* nomMac, char* type) {
 
   f = fopen(CvtPathMacToPc(nomMac, nom), type);
   if (f == NULL) {
-    //	char path[512];
-    //	SaisitChemin(NULL,path,NULL);
-    //	sprintf(chaine,(StringPtr)"Myriad fopen : '%s%s' not found %d",path,nom,errno);
-    //	AcamErreur(chaine);
+    // char path[512];
+    // SaisitChemin(NULL,path,NULL);
+    // sprintf(chaine,(StringPtr)"Myriad fopen : '%s%s' not found %d",path,nom,errno);
+    // AcamErreur(chaine);
   }
 #else
 
@@ -224,7 +237,7 @@ short MyrOpenResFile(char* nomMac) {
   id = OpenResFile(nom);
   if (id < 0) {
     sprintf(chaine, (StringPtr) "Myriad OpenResFile : %s not found", nom);
-    //	AcamErreur(chaine);
+    // AcamErreur(chaine);
   }
 #else
   // id=FSpOpenResFile(&fsp, fsRdWrShPerm);

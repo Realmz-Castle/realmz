@@ -1,20 +1,20 @@
 /********************************************************************************
 
-    PROJECT:	clut_fade.�
+    PROJECT:    clut_fade.�
 
-    FILE:		fade.h
+    FILE:       fade.h
 
-    PURPOSE:	constants, type definitions and prototypes
+    PURPOSE:    constants, type definitions and prototypes
 
-    ??/??/93	1.0 written by N. Jonas Englund
-    07/26/94	Changes by Mark Womack to allow fading all monitors, only the
+    ??/??/93    1.0 written by N. Jonas Englund
+    07/26/94    Changes by Mark Womack to allow fading all monitors, only the
                             main monitor, or all monitors except the main monitor.
-    10/21/94	Changes by Mark Womack to make pascal friendly, fix < 256 color
+    10/21/94    Changes by Mark Womack to make pascal friendly, fix < 256 color
                             crasher, cleaned up to make more readable.
-    10/24/94	Integrated fade_to_clut function written by Macneil Shonle.
+    10/24/94    Integrated fade_to_clut function written by Macneil Shonle.
                             Added copy_gdevice_clut function to make it easier to save
                             and restore device clut's.
-    04/22/96	Fixed bug found by David Padilla. Fade routines changed the ctSeed
+    04/22/96    Fixed bug found by David Padilla. Fade routines changed the ctSeed
                             value of color tables, which slows subsequent calls to CopyBits.
                             Now restore or set the ctSeed value back to original value.
 
