@@ -18,7 +18,6 @@ constexpr size_t OUTPUT_SAMPLE_RATE = 48000;
 class SoundManager {
 public:
   SoundManager() = default;
-
   ~SoundManager() {
     if (this->device_id > 0) {
       SDL_CloseAudioDevice(this->device_id);
@@ -80,6 +79,12 @@ public:
 
     if (SDL_PutAudioStreamData(sdlAudioStream, sound->data.data(), sound->data.size()) < 0) {
       sm_log.warning_f("Could not put audio stream data: {}", SDL_GetError());
+    }
+  }
+
+  void delete_unplayed_audio(SDL_AudioStream* sdlAudioStream) {
+    if (!SDL_ClearAudioStream(sdlAudioStream)) {
+      sm_log.warning_f("Could not delete audio stream data: {}", SDL_GetError());
     }
   }
 
@@ -182,6 +187,12 @@ OSErr SndNewChannel(SndChannelPtr* chan, uint16_t synth, int32_t init, void* use
 }
 
 OSErr SndDoImmediate(SndChannelPtr chan, const SndCommand* cmd) {
+  // Realmz frequently calls this with quietCmd and flushCmd. In our
+  // implementation, it seems we can ignore flushCmd, but quietCmd should
+  // delete all unplayed audio in the given stream.
+  if (cmd->cmd == quietCmd) {
+    sm.delete_unplayed_audio(chan->sdlAudioStream);
+  }
   return 0;
 }
 
