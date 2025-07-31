@@ -84,6 +84,18 @@ public:
   }
 
   void remove(int16_t menu_id) {
+    auto menu_handle = this->menu_id_to_handle.find(menu_id)->second;
+    auto menu = this->handle_to_menu.find(menu_handle)->second;
+
+    this->handle_to_menu.erase(menu_handle);
+    this->menu_id_to_handle.erase(menu_id);
+    for (auto m = this->res_id_to_menu.begin(); m != this->res_id_to_menu.end(); m++) {
+      if ((*m).second->menu_id == menu_id) {
+        this->res_id_to_menu.erase(m);
+        break;
+      }
+    }
+
     auto& menu_list = this->cur_menu_list->submenus;
     for (auto m = menu_list.begin(); m != menu_list.end(); m++) {
       if ((*m)->menu_id == menu_id) {
