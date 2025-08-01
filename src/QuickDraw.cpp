@@ -206,6 +206,9 @@ bool CCGrafPort::draw_text_bitmap(const ResourceDASM::BitmapFontRenderer& render
 
 bool CCGrafPort::draw_text(const std::string& text, const Rect& r) {
   std::string processed_text = replace_param_text(text);
+  if (processed_text.empty()) {
+    return true;
+  }
 
   auto font = load_font(this->txFont);
   bool success = false;
