@@ -48,6 +48,14 @@ void partyloss(short mode) {
 
     look = NIL;
     gWindow = NIL;
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(fuzziqersoftware): The original code doesn't set screen to NIL
+     * here, so if the player dies or ends a game, then starts a new one, the
+     * game will try to delete a window again that was already deleted (see
+     * mainscreeninit in misc.c).
+     */
+    screen = NIL;
+    /* *** END CHANGES *** */
   }
   for (t = 0; t < 60; t++)
     que[t].duration = que[t].phase = 0;
