@@ -425,6 +425,7 @@ static phosg::ImageRGB888 reference_image_for_ppat(PixPatHandle ppat) {
 }
 
 void CCGrafPort::draw_oval(const Rect& r) {
+  // TODO: We should respect the pen size here
   switch (this->pnMode) {
     case 0x00: { // srcCopy
       uint32_t color = rgba8888_for_rgb_color(this->rgbFgColor);
@@ -454,9 +455,15 @@ void CCGrafPort::draw_oval(const Rect& r) {
 }
 
 void CCGrafPort::draw_line(const Point& start, const Point& end) {
+  // TODO: We should respect the pen size here
   switch (this->pnMode) {
     case 0x00: // srcCopy
       this->data.draw_line(start.h, start.v, end.h, end.v, rgba8888_for_rgb_color(this->rgbFgColor));
+      break;
+    case 0x02: // srcXor
+      this->data.draw_line_custom(start.h, start.v, end.h, end.v, [this](size_t x, size_t y) -> void {
+        this->data.write(x, y, phosg::invert(this->data.read(x, y)));
+      });
       break;
     case 0x08: { // patCopy
       if (!this->pnPixPat) {
