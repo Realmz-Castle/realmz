@@ -262,18 +262,22 @@ public:
   }
 
   std::shared_ptr<Resource> get_resource(int32_t type, int16_t id) {
-    if (type == ResourceDASM::RESOURCE_TYPE_snd && id == 0) {
-      // TODO: Apparently, snd 0 should be provided by the system resource fork. In fact,
-      // snd resources 0-8191 are reserved (Sound 2-154), but Realmz seems to use many of
-      // these.
-      return nullptr;
-    }
     for (size_t z = this->search_start_index; z < this->files.size(); z++) {
       auto res = this->files[z]->get_resource(type, id);
       if (res != nullptr) {
         return res;
       }
     }
+
+    if (type == ResourceDASM::RESOURCE_TYPE_snd) {
+      // TODO: Some action points seem to specify invalid sound resources by id, such as
+      // 0 (which should be the system beep, but which we haven't implemented), or AP 6/46
+      // in Bywater, which sets sound_or_lose_xap=XAP-1. For now, we can just skip playing
+      // the sound, but it might be worth investigating how to add system sounds or whether
+      // this sound_or_lose_xap signals some additional behavior that we haven't implemented.
+      return nullptr;
+    }
+
     std::string type_str = ResourceDASM::string_for_resource_type(type);
     rm_log.info_f("{}:{} not found in any open resource file", type_str, id);
     this->print_chain();
