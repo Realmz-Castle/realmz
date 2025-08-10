@@ -998,7 +998,8 @@ void CopyMask(const BitMap* src, const BitMap* mask, BitMap* dst, const Rect* sr
 }
 
 void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn) {
-  // Note: Realmz only calls ScrollRect with updateRgn = nullptr, so we ignore it
+  // Note: Realmz only calls ScrollRect with updateRgn = nullptr, so we ignore
+  // it.
 
   Rect src_rect = *r;
   Rect dst_rect = *r;
@@ -1022,9 +1023,25 @@ void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn) {
     throw std::logic_error("qd.thePort is not a CCGrafPort");
   }
 
-  if ((src_rect.top < src_rect.bottom) && (src_rect.left < src_rect.right) &&
-      (dst_rect.top < dst_rect.bottom) && (dst_rect.left < dst_rect.right)) {
-    port->copy_from(*port, src_rect, dst_rect, 0);
+  ssize_t w = dst_rect.right - dst_rect.left;
+  ssize_t h = dst_rect.bottom - dst_rect.top;
+  if (w != (src_rect.right - src_rect.left) || h != (src_rect.bottom - src_rect.top)) {
+    throw std::logic_error("src_rect and dst_rect are not the same size in ScrollRect");
+  } else if (w > 0 && h > 0) {
+    // If the content is being moved down, we need to iterate in the opposite
+    // order so we don't overwrite content that hasn't been moved yet (and then
+    // duplicate it when we read it). Technically we should handle this along
+    // the horizontal dimension too, but Realmz only calls ScrollRect with dh=0
+    // and therefore I'm lazy.
+    if (dv > 0) {
+      for (ssize_t y = h - 1; y >= 0; y--) {
+        for (ssize_t x = 0; x < w; x++) {
+          port->data.write(dst_rect.left + x, dst_rect.top + y, port->data.read(src_rect.left + x, src_rect.top + y));
+        }
+      }
+    } else {
+      port->copy_from(*port, src_rect, dst_rect, 0);
+    }
   }
 }
 
