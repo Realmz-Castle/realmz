@@ -1070,7 +1070,7 @@ void WindowManager::on_dialog_item_focus_changed() {
 }
 
 void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
-  if (updated_window && !updated_window->visible) {
+  if (!this->recomposite_enabled || (updated_window && !updated_window->visible)) {
     return;
   }
 
@@ -1141,6 +1141,16 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
       SDL_RenderPresent(renderer);
       SDL_SyncWindow(this->sdl_window.get());
     }
+  }
+}
+
+void WindowManager::set_enable_recomposite(bool enable) {
+  if (enable == this->recomposite_enabled) {
+    return;
+  }
+  this->recomposite_enabled = enable;
+  if (this->recomposite_enabled) {
+    this->recomposite_all();
   }
 }
 
@@ -1849,6 +1859,10 @@ void SelectWindow(WindowPtr w) {
 
 void DisposeWindow(WindowPtr w) {
   WindowManager_DisposeWindow(w);
+}
+
+void WindowManager_SetEnableRecomposite(int enable) {
+  WindowManager::instance().set_enable_recomposite(enable);
 }
 
 TEHandle TENew(const Rect* destRect, const Rect* viewRect) {

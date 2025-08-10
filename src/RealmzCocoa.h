@@ -153,7 +153,6 @@ RgnHandle NewRgn(void);
 void RectRgn(RgnHandle rgn, const Rect* r);
 int32_t DragGrayRgn(RgnHandle theRgn, Point startPt, const Rect* boundsRect, const Rect* slopRect,
     int16_t axis, Ptr actionProc);
-void SystemTask(void);
 void ExitToShell(void);
 OSErr SetDepth(GDHandle aDevice, uint16_t depth, uint16_t whichFlags, uint16_t flags);
 OSErr GetDefaultOutputVolume(uint32_t* level);

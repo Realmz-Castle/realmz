@@ -459,6 +459,15 @@ uint32_t GetDblTime(void) {
   return 20;
 }
 
+void SystemTask(void) {
+  // Realmz uses GetNextEvent in hot loops in several places, but it also calls
+  // SystemTask in those loops. There's nothing for SystemTask to do on modern
+  // systems since we now have preemptive multitasking, but we can use this
+  // function to make the hot loops a bit less hot by sleeping for a CPU time
+  // slice or two.
+  SDL_Delay(10);
+}
+
 void FlushEvents(int16_t which_mask, uint16_t stop_mask) {
   // Realmz only calls this with which_mask = everyEvent and stop_mask = 0, so
   // we don't bother to implement filtering.

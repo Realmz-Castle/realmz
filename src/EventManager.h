@@ -77,6 +77,7 @@ uint8_t mac_vk_from_message(uint32_t message);
 
 uint32_t TickCount(void);
 uint32_t GetDblTime(void);
+void SystemTask(void);
 // GetCaretTime (IM1-260) not used by Realmz
 
 Boolean GetNextEvent(int16_t mask, EventRecord* ev); // IM1-257

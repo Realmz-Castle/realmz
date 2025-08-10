@@ -148,9 +148,6 @@ void StopFading(GammaRef initialState, Boolean restore) {
 void SysBeep(uint16_t duration) {
 }
 
-void SystemTask(void) {
-}
-
 void UnlockPixels(PixMapHandle pm) {
 }
 
