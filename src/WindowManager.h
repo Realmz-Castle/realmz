@@ -122,6 +122,9 @@ void TEUpdate(const Rect* rUpdate, TEHandle hTE);
 void TEDelete(TEHandle hTE);
 void TEDispose(TEHandle hTE);
 
+// Extensions for our implementation (not part of the original API)
+void WindowManager_SetEnableRecomposite(int enable);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus
