@@ -25,7 +25,7 @@ public:
   static const CCGrafPort* as_port(const void* ptr); // Returns null if ptr is not a CCGrafPort
 
   CCGrafPort();
-  explicit CCGrafPort(const Rect& bounds, const CGrafPort* parent_port = nullptr, bool is_window = false);
+  explicit CCGrafPort(const Rect& bounds, bool is_window = false);
   ~CCGrafPort();
 
   CCGrafPort(const CCGrafPort&) = delete;
@@ -71,7 +71,7 @@ public:
 
   void resize(size_t w, size_t h);
 
-  void clear_rect(const Rect* rect); // rect = nullptr means clear the entire canvas
+  void erase_rect(const Rect& rect);
   void draw_ga11_data(const void* pixels, int w, int h, const Rect& rect);
   void draw_rgba8888_data(const void* pixels, int w, int h, const Rect& rect);
   void draw_decoded_pict_from_handle(PicHandle pict, const Rect& rect);

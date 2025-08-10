@@ -33,20 +33,20 @@ private:
   Window(
       const std::string& title,
       const Rect& bounds,
-      const CCGrafPort& parent_port,
       int16_t window_kind,
       bool visible,
       bool is_dialog,
+      const RGBColor& background_color,
       std::vector<std::shared_ptr<DialogItem>>&& dialog_items);
 
 public:
   static std::shared_ptr<Window> make_shared(
       const std::string& title,
       const Rect& bounds,
-      const CCGrafPort& parent_port,
       int16_t window_kind,
       bool visible,
       bool is_dialog,
+      const RGBColor& background_color,
       std::vector<std::shared_ptr<DialogItem>>&& dialog_items);
   ~Window() = default;
 
@@ -114,6 +114,7 @@ public:
       int16_t proc_id,
       uint32_t ref_con,
       bool is_dialog,
+      const RGBColor& background_color,
       std::vector<std::shared_ptr<DialogItem>>&& dialog_items);
   void destroy_window(WindowPtr port);
   std::shared_ptr<Window> window_for_port(WindowPtr port);

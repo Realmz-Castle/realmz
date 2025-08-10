@@ -430,16 +430,6 @@ public:
         text_str.c_str());
   }
 
-  void erase_background_in_port(CCGrafPort& port) const {
-    if (port.bkPixPat) {
-      wm_log.debug_f("Window::erase_background_in_port({:016X}) ppat", reinterpret_cast<intptr_t>(&port));
-      port.draw_background_ppat(this->rect);
-    } else {
-      wm_log.debug_f("Window::erase_background_in_port({:016X}) black", reinterpret_cast<intptr_t>(&port));
-      port.clear_rect(&this->rect);
-    }
-  }
-
   void render_in_port(CCGrafPort& port) const {
     switch (type) {
       case ResourceFile::DecodedDialogItem::Type::PICTURE: {
@@ -498,11 +488,7 @@ public:
           bg_rect.top = top_left.v + 1;
           bg_rect.right = bottom_right.h - 1;
           bg_rect.bottom = bottom_right.v - 1;
-          if (port.bkPixPat) {
-            port.draw_background_ppat(bg_rect);
-          } else {
-            port.clear_rect(&bg_rect);
-          }
+          port.erase_rect(bg_rect);
         }
         int16_t h = get_height();
         int16_t w = get_width();
@@ -682,19 +668,21 @@ std::shared_ptr<Control> Control::from_dialog_item(const DialogItem& item) {
 Window::Window(
     const std::string& title,
     const Rect& bounds,
-    const CCGrafPort& parent_port,
     int16_t window_kind,
     bool visible,
     bool is_dialog,
+    const RGBColor& background_color,
     std::vector<std::shared_ptr<DialogItem>>&& dialog_items)
     : log(std::format("[Window:{}] ", this->ref())),
       title{title},
-      port{bounds, &parent_port, true},
+      port{bounds, true},
       window_kind{window_kind},
       visible(visible),
       is_dialog_flag{is_dialog},
       dialog_items{std::move(dialog_items)},
       focused_item{nullptr} {
+  port.rgbBgColor = background_color;
+
   // All windows created by Realmz should be borderless, except the first one
   bool is_borderless = ((this->window_kind == dBoxProc) ||
       (this->window_kind == plainDBox) ||
@@ -722,12 +710,13 @@ Window::Window(
 std::shared_ptr<Window> Window::make_shared(
     const std::string& title,
     const Rect& bounds,
-    const CCGrafPort& parent_port,
     int16_t window_kind,
     bool visible,
     bool is_dialog,
+    const RGBColor& background_color,
     std::vector<std::shared_ptr<DialogItem>>&& dialog_items) {
-  std::shared_ptr<Window> ret(new Window(title, bounds, parent_port, window_kind, visible, is_dialog, std::move(dialog_items)));
+  std::shared_ptr<Window> ret(new Window(
+      title, bounds, window_kind, visible, is_dialog, background_color, std::move(dialog_items)));
   // This can't happen in the actual constructor because weak_from_this()
   // doesn't work until the Window is assigned to a shared_ptr
   for (auto& di : ret->dialog_items) {
@@ -772,13 +761,8 @@ void Window::delete_char(std::shared_ptr<DialogItem> item) {
 
 void Window::erase_and_render() {
   // Clear the backbuffer before drawing frame
-  if (this->port.bkPixPat) {
-    this->log.debug_f("Window::erase_and_render({:016X}) ppat", reinterpret_cast<intptr_t>(&this->port));
-    this->port.draw_background_ppat();
-  } else {
-    this->log.debug_f("Window::erase_and_render({:016X}) black", reinterpret_cast<intptr_t>(&this->port));
-    this->port.clear_rect(nullptr);
-  }
+  this->log.debug_f("Window::erase_and_render({:016X})", reinterpret_cast<intptr_t>(&this->port));
+  this->port.erase_rect(this->port.to_local_space(this->port.portRect));
 
   // The DrawDialog procedure draws the entire contents of the specified dialog box. The
   // DrawDialog procedure draws all dialog items, calls the Control Manager procedure
@@ -907,10 +891,11 @@ WindowPtr WindowManager::create_window(
     int16_t proc_id,
     uint32_t ref_con,
     bool is_dialog,
+    const RGBColor& background_color,
     std::vector<std::shared_ptr<DialogItem>>&& dialog_items) {
   wm_log.debug_f("WindowManager::create_window(\"{}\", {{x0={}, y0={}, x1={}, y1={}}}, ...)", title, bounds.left, bounds.top, bounds.right, bounds.bottom);
 
-  auto window = Window::make_shared(title, bounds, current_port(), proc_id, visible, is_dialog, std::move(dialog_items));
+  auto window = Window::make_shared(title, bounds, proc_id, visible, is_dialog, background_color, std::move(dialog_items));
   port_to_window.emplace(&window->get_port(), window);
 
   // Maintain a shared lookup across all windows of their dialog items, by handle,
@@ -1358,6 +1343,19 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
     ref_con = wind.ref_con;
   }
 
+  // If there's a corresponding dctb or wctb, use it to initialize the port's background color. It seems none of the other fields are relevant: they're used for drawing the window frame, but Realmz only uses borderless windows.
+  RGBColor background_color = {0xFFFF, 0xFFFF, 0xFFFF};
+  try {
+    auto clut_data = GetResource(is_dialog ? ResourceDASM::RESOURCE_TYPE_dctb : ResourceDASM::RESOURCE_TYPE_wctb, res_id);
+    if (clut_data) {
+      auto clut = ResourceDASM::ResourceFile::decode_dctb(*clut_data, GetHandleSize(clut_data));
+      background_color.red = clut.at(0).c.r;
+      background_color.green = clut.at(0).c.g;
+      background_color.blue = clut.at(0).c.b;
+    }
+  } catch (const std::out_of_range&) {
+  }
+
   return WindowManager::instance().create_window(
       title,
       bounds,
@@ -1366,6 +1364,7 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
       proc_id,
       ref_con,
       is_dialog,
+      background_color,
       std::move(dialog_items));
 }
 
@@ -1415,7 +1414,7 @@ void SetDialogItemText(DialogItemHandle item_handle, ConstStr255Param text) {
   auto window = item->owner_window.lock();
   if (window) {
     if (!was_empty) {
-      item->erase_background_in_port(window->get_port());
+      window->get_port().erase_rect(item->rect);
     }
     item->render_in_port(window->get_port());
     WindowManager::instance().recomposite_from_window(window);

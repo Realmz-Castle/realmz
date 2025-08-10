@@ -87,23 +87,7 @@ CCGrafPort::CCGrafPort()
   this->log.debug_f("Created");
 }
 
-CCGrafPort::CCGrafPort(const Rect& bounds, const CGrafPort* parent_port, bool is_window)
-    : CCGrafPort() {
-  if (parent_port) {
-    this->txFont = parent_port->txFont;
-    this->txFace = parent_port->txFace;
-    this->txMode = parent_port->txMode;
-    this->txSize = parent_port->txSize;
-    this->pnLoc = parent_port->pnLoc;
-    this->pnSize = parent_port->pnSize;
-    this->portPixMap = parent_port->portPixMap;
-    this->pnPixPat = parent_port->pnPixPat;
-    this->bkPixPat = parent_port->bkPixPat;
-    this->fgColor = parent_port->fgColor;
-    this->bgColor = parent_port->bgColor;
-    this->rgbFgColor = parent_port->rgbFgColor;
-    this->rgbBgColor = parent_port->rgbBgColor;
-  }
+CCGrafPort::CCGrafPort(const Rect& bounds, bool is_window) : CCGrafPort() {
   this->portRect = bounds;
   this->is_window = is_window;
   this->data.resize(this->portRect.right - this->portRect.left, this->portRect.bottom - this->portRect.top);
@@ -125,12 +109,12 @@ void CCGrafPort::resize(size_t w, size_t h) {
   this->log.debug_f("Resized to {}x{}", this->get_width(), this->get_height());
 }
 
-void CCGrafPort::clear_rect(const Rect* rect) {
-  // Clear the texture with black pixels
-  if (rect) {
-    this->data.write_rect(rect->left, rect->top, rect->right - rect->left, rect->bottom - rect->top, 0x000000FF);
+void CCGrafPort::erase_rect(const Rect& r) {
+  if (this->bkPixPat) {
+    this->draw_background_ppat(r);
   } else {
-    this->data.clear(0x000000FF);
+    uint32_t color = rgba8888_for_rgb_color(this->rgbBgColor);
+    this->data.write_rect(r.left, r.top, r.right - r.left, r.bottom - r.top, color);
   }
 }
 
@@ -893,7 +877,7 @@ PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld) {
 
 QDErr NewGWorld(GWorldPtr* offscreenGWorld, int16_t pixelDepth, const Rect* boundsRect, CTabHandle cTable,
     GDHandle aGDevice, GWorldFlags flags) {
-  *offscreenGWorld = new CCGrafPort(*boundsRect, qd.thePort);
+  *offscreenGWorld = new CCGrafPort(*boundsRect, false);
   return 0;
 }
 
@@ -1048,11 +1032,7 @@ void ScrollRect(const Rect* r, int16_t dh, int16_t dv, RgnHandle updateRgn) {
 void EraseRect(const Rect* r) {
   auto& port = current_port();
   port.log.debug_f("EraseRect({{x0={}, y0={}, x1={}, y1={}}})", r->left, r->top, r->right, r->bottom);
-  if (port.bkPixPat) {
-    port.draw_background_ppat(*r);
-  } else {
-    port.clear_rect(r);
-  }
+  port.erase_rect(*r);
   WindowManager::instance().recomposite_from_window(port);
 }
 

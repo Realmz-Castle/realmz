@@ -32,6 +32,7 @@ int main() {
 
   auto bounds = Rect{0, 0, WINDOW_HEIGHT, WINDOW_WIDTH};
 
+  RGBColor background_color = {0x0000, 0x0000, 0x0000};
   auto wp = wm.create_window(
       "GraphicsTest",
       bounds,
@@ -40,6 +41,7 @@ int main() {
       0,
       0,
       false,
+      background_color,
       {});
   auto window = wm.window_for_port(wp);
 
