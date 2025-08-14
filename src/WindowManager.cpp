@@ -287,7 +287,6 @@ public:
   }
 
 private:
-  bool dirty;
   std::string text;
 
 public:
@@ -302,7 +301,6 @@ public:
         type{def.type},
         resource_id{def.resource_id},
         enabled{def.enabled},
-        dirty{true},
         text{def.text} {
     this->rect.left = def.bounds.x1;
     this->rect.right = def.bounds.x2;
@@ -320,7 +318,6 @@ public:
         rect{control->bounds},
         enabled{true},
         control{control},
-        dirty{true},
         text{control->title} {
     switch (control->type) {
       case ControlType::BUTTON:
@@ -349,7 +346,6 @@ public:
   DialogItem(DialogItemType type, const Rect& disp_rect, const Rect& view_rect)
       : opaque_handle{generate_opaque_handle()},
         type{type},
-        dirty{true},
         text{""},
         enabled{true},
         rect{disp_rect} {
@@ -414,7 +410,7 @@ public:
     auto text_str = phosg::format_data_string(this->text);
     auto control_str = this->control ? this->control->str() : "NULL";
     return std::format(
-        "DialogItem(ditl_resource_id={}, item_id={}, type={}, resource_id={}, rect=Rect(left={}, top={}, right={}, bottom={}), enabled={}, control={}, handle={}, dirty={}, text={})",
+        "DialogItem(ditl_resource_id={}, item_id={}, type={}, resource_id={}, rect=Rect(left={}, top={}, right={}, bottom={}), enabled={}, control={}, handle={}, text={})",
         this->ditl_resource_id,
         this->item_id,
         type_strs.at(this->type),
@@ -426,11 +422,13 @@ public:
         this->enabled ? "true" : "false",
         control_str.c_str(),
         this->opaque_handle,
-        this->dirty ? "true" : "false",
         text_str.c_str());
   }
 
-  void render_in_port(CCGrafPort& port) const {
+  void render_in_port(CCGrafPort& port, bool erase_background) const {
+    if (erase_background) {
+      port.erase_rect(this->rect);
+    }
     switch (type) {
       case ResourceFile::DecodedDialogItem::Type::PICTURE: {
         auto pict_handle = GetPicture(resource_id);
@@ -533,46 +531,36 @@ public:
     return text;
   }
 
-  inline void set_dirty_flag() {
-    dirty = true;
-  }
-
   void set_text(const std::string& new_text) {
     text = new_text;
     if (control) {
       control->title = text;
     }
-    dirty = true;
   }
   void set_text(std::string&& new_text) {
     text = std::move(new_text);
     if (control) {
       control->title = text;
     }
-    dirty = true;
   }
 
   void append_text(const std::string& new_text) {
     text += new_text;
-    dirty = true;
   }
 
   void delete_char() {
     if (text.size()) {
       text.pop_back();
-      dirty = true;
     }
   }
 
-  bool set_control_visible(bool visible) {
+  void set_control_visible(bool visible) {
     if (this->control && (this->control->visible != visible)) {
       this->control->visible = visible;
-      this->dirty = true;
     }
-    return this->dirty;
   }
 
-  bool move_control(short horizontal, short vertical) {
+  void move_control(short horizontal, short vertical) {
     if (this->control) {
       Rect& bounds = this->control->bounds;
       int32_t width = bounds.right - bounds.left;
@@ -582,48 +570,38 @@ public:
       bounds.right = bounds.left + width;
       bounds.bottom = bounds.top + height;
       this->rect = bounds;
-      this->dirty = true;
     }
-    return this->dirty;
   }
 
-  bool resize_control(short w, short h) {
+  void resize_control(short w, short h) {
     if (this->control) {
       Rect& bounds = this->control->bounds;
       bounds.right = bounds.left + w;
       bounds.bottom = bounds.top + h;
       this->rect = bounds;
-      this->dirty = true;
     }
-    return this->dirty;
   }
 
-  bool set_control_value(short value) {
+  void set_control_value(short value) {
     if (this->control && (this->control->value != value)) {
       this->control->value = value;
-      this->dirty = true;
     }
-    return this->dirty;
   }
 
-  bool set_control_minimum(short min) {
+  void set_control_minimum(short min) {
     if (this->control && (this->control->min != min)) {
       this->control->min = min;
       this->control->max = std::max<int16_t>(this->control->max, this->control->min);
       this->control->value = std::max<int16_t>(this->control->min, this->control->value);
-      this->dirty = true;
     }
-    return this->dirty;
   }
 
-  bool set_control_maximum(short max) {
+  void set_control_maximum(short max) {
     if (this->control && (this->control->max != max)) {
       this->control->max = max;
       this->control->min = std::min<int16_t>(this->control->max, this->control->min);
       this->control->value = std::min<int16_t>(this->control->max, this->control->value);
-      this->dirty = true;
     }
-    return this->dirty;
   }
 };
 
@@ -731,7 +709,7 @@ void Window::add_dialog_item(std::shared_ptr<DialogItem> item) {
   item->owner_window = this->weak_from_this();
 
   this->log.debug_f("Window::add_dialog_item({})", item->str());
-  item->render_in_port(this->port);
+  item->render_in_port(this->port, false);
   WindowManager::instance().recomposite_from_window(this->shared_from_this());
 }
 
@@ -750,12 +728,14 @@ void Window::set_focused_item(std::shared_ptr<DialogItem> item) {
 void Window::handle_text_input(const std::string& text, std::shared_ptr<DialogItem> item) {
   this->log.debug_f("Window::handle_text_input(\"{}\", {})", text, item->str());
   item->append_text(text);
+  item->render_in_port(this->port, true);
   WindowManager::instance().recomposite_from_window(this->port);
 }
 
 void Window::delete_char(std::shared_ptr<DialogItem> item) {
   this->log.debug_f("Window::delete_char({})", item->str());
   item->delete_char();
+  item->render_in_port(this->port, true);
   WindowManager::instance().recomposite_from_window(this->port);
 }
 
@@ -771,13 +751,13 @@ void Window::erase_and_render() {
   // DrawDialog procedure also calls the application-defined items’ draw procedures if
   // the items’ rectangles are within the update region.
   for (auto item : this->static_items) {
-    item->render_in_port(this->port);
+    item->render_in_port(this->port, false);
   }
   for (auto item : this->control_items) {
-    item->render_in_port(this->port);
+    item->render_in_port(this->port, false);
   }
   for (auto item : this->text_items) {
-    item->render_in_port(this->port);
+    item->render_in_port(this->port, false);
   }
 
   WindowManager::instance().recomposite_from_window(this->port);
@@ -816,9 +796,6 @@ void Window::show() {
   this->log.debug_f("Window::show()");
   if (!this->visible) {
     this->visible = true;
-    for (auto di : dialog_items) {
-      di->set_dirty_flag();
-    }
     this->erase_and_render();
     WindowManager::instance().recomposite_from_window(this->port);
   }
@@ -1416,7 +1393,7 @@ void SetDialogItemText(DialogItemHandle item_handle, ConstStr255Param text) {
     if (!was_empty) {
       window->get_port().erase_rect(item->rect);
     }
-    item->render_in_port(window->get_port());
+    item->render_in_port(window->get_port(), true);
     WindowManager::instance().recomposite_from_window(window);
   } else {
     wm_log.warning_f("SetDialogItemText({}, \"{}\") cannot re-render window because owner_window is not set", item->str(), str);
@@ -1676,7 +1653,7 @@ ControlHandle NewControl(
 static void render_window_for_item(std::shared_ptr<DialogItem> item) {
   auto window = item->owner_window.lock();
   if (window) {
-    item->render_in_port(window->get_port());
+    item->render_in_port(window->get_port(), false);
     WindowManager::instance().recomposite_from_window(window);
   }
 }
@@ -1684,9 +1661,8 @@ static void render_window_for_item(std::shared_ptr<DialogItem> item) {
 static void set_control_visible(ControlHandle handle, bool visible) {
   wm_log.debug_f("set_control_visible({}, {})", reinterpret_cast<void*>(handle), visible);
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
-  if (item->set_control_visible(visible)) {
-    render_window_for_item(item);
-  }
+  item->set_control_visible(visible);
+  render_window_for_item(item);
 }
 
 void ShowControl(ControlHandle handle) {
@@ -1715,29 +1691,24 @@ void GetControlBounds(ControlHandle handle, Rect* rect) {
 void MoveControl(ControlHandle handle, short h, short v) {
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
   wm_log.debug_f("MoveControl({}, {}, {})", item->str(), h, v);
-  if (item->move_control(h, v)) {
-    render_window_for_item(item);
-  }
+  item->move_control(h, v);
+  render_window_for_item(item);
 }
 
 void SizeControl(ControlHandle handle, short w, short h) {
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
   wm_log.debug_f("SizeControl({}, {}, {})", item->str(), w, h);
-  if (item->resize_control(w, h)) {
-    render_window_for_item(item);
-  }
+  item->resize_control(w, h);
+  render_window_for_item(item);
 }
 
 void DrawControls(WindowPtr port) {
-
-  // TODO: Does this suffice? Do we need to also set the dirty flag for all
-  // controls or something like that?
   auto window = WindowManager::instance().window_for_port(port);
   wm_log.debug_f("DrawControls({})", window->ref());
   // TODO: Should we draw all items, or only controls?
   for (const auto& item : window->get_dialog_items()) {
     if (item->control) {
-      item->render_in_port(window->get_port());
+      item->render_in_port(window->get_port(), false);
     }
   }
   WindowManager::instance().recomposite_from_window(window);
@@ -1797,25 +1768,22 @@ short GetControlMaximum(ControlHandle handle) {
 void SetControlValue(ControlHandle handle, short value) {
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
   wm_log.debug_f("SetControlValue({}, {})", item->str(), value);
-  if (item->set_control_value(value)) {
-    render_window_for_item(item);
-  }
+  item->set_control_value(value);
+  render_window_for_item(item);
 }
 
 void SetControlMinimum(ControlHandle handle, short min) {
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
   wm_log.debug_f("SetControlMinimum({}, {})", item->str(), min);
-  if (item->set_control_minimum(min)) {
-    render_window_for_item(item);
-  }
+  item->set_control_minimum(min);
+  render_window_for_item(item);
 }
 
 void SetControlMaximum(ControlHandle handle, short max) {
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
   wm_log.debug_f("SetControlMaximum({}, {})", item->str(), max);
-  if (item->set_control_maximum(max)) {
-    render_window_for_item(item);
-  }
+  item->set_control_maximum(max);
+  render_window_for_item(item);
 }
 
 void GetControlTitle(ControlHandle handle, Str255 title) {
@@ -1882,9 +1850,8 @@ void TESetSelect(int32_t selStart, int32_t selEnd, TEHandle hTE) {
 void TEUpdate(const Rect* r, TEHandle hTE) {
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(hTE));
   wm_log.debug_f("TEUpdate({{x0={}, y0={}, x1={}, y1={}}}, {})", r->left, r->top, r->right, r->bottom, reinterpret_cast<void*>(hTE));
-  item->set_dirty_flag(); // Force re-render of DialogItem
   auto window = item->owner_window.lock();
-  item->render_in_port(window->get_port());
+  item->render_in_port(window->get_port(), true);
   WindowManager::instance().recomposite_from_window(window);
 }
 
