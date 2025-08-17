@@ -151,20 +151,6 @@ void SysBeep(uint16_t duration) {
 void UnlockPixels(PixMapHandle pm) {
 }
 
-void PaintRect(const Rect* r) {
-}
-
-Boolean SectRect(const Rect* src1, const Rect* src2, Rect* dstRect) {
-  return FALSE;
-}
-
-int32_t DeltaPoint(Point ptA, Point ptB) {
-  return 0;
-}
-
-void FrameRect(const Rect* r) {
-}
-
 void GetItemMark(MenuHandle theMenu, int16_t item, int16_t* markChar) {
 }
 

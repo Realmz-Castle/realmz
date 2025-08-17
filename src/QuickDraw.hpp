@@ -72,6 +72,8 @@ public:
   void resize(size_t w, size_t h);
 
   void erase_rect(const Rect& rect);
+  void fill_rect(const Rect& rect);
+  void draw_rect_outline(const Rect& rect);
   void draw_ga11_data(const void* pixels, int w, int h, const Rect& rect);
   void draw_rgba8888_data(const void* pixels, int w, int h, const Rect& rect);
   void draw_decoded_pict_from_handle(PicHandle pict, const Rect& rect);

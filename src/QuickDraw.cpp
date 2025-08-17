@@ -118,6 +118,19 @@ void CCGrafPort::erase_rect(const Rect& r) {
   }
 }
 
+void CCGrafPort::fill_rect(const Rect& r) {
+  uint32_t color = rgba8888_for_rgb_color(this->rgbFgColor);
+  this->data.write_rect(r.left, r.top, r.right - r.left, r.bottom - r.top, color);
+}
+
+void CCGrafPort::draw_rect_outline(const Rect& r) {
+  uint32_t color = rgba8888_for_rgb_color(this->rgbFgColor);
+  this->data.draw_horizontal_line(r.left, r.right - 1, r.top, 0, color);
+  this->data.draw_horizontal_line(r.left, r.right - 1, r.bottom - 1, 0, color);
+  this->data.draw_vertical_line(r.left, r.top, r.bottom - 1, 0, color);
+  this->data.draw_vertical_line(r.right - 1, r.top, r.bottom - 1, 0, color);
+}
+
 void CCGrafPort::draw_ga11_data(const void* pixels, int sw, int sh, const Rect& rect) {
   // It's OK to const_cast pixels here because we only use the image as a source
   auto src = phosg::ImageGA11::from_data_reference(const_cast<void*>(pixels), sw, sh);
@@ -1034,6 +1047,50 @@ void EraseRect(const Rect* r) {
   port.log.debug_f("EraseRect({{x0={}, y0={}, x1={}, y1={}}})", r->left, r->top, r->right, r->bottom);
   port.erase_rect(*r);
   WindowManager::instance().recomposite_from_window(port);
+}
+
+void PaintRect(const Rect* r) {
+  auto& port = current_port();
+  port.log.debug_f("PaintRect({{x0={}, y0={}, x1={}, y1={}}})", r->left, r->top, r->right, r->bottom);
+  port.fill_rect(*r);
+  WindowManager::instance().recomposite_from_window(port);
+}
+
+void FrameRect(const Rect* r) {
+  auto& port = current_port();
+  port.log.debug_f("FrameRect({{x0={}, y0={}, x1={}, y1={}}})", r->left, r->top, r->right, r->bottom);
+  port.draw_rect_outline(*r);
+  WindowManager::instance().recomposite_from_window(port);
+}
+
+Boolean SectRect(const Rect* a, const Rect* b, Rect* dest) {
+  Rect res = {
+      std::max<int16_t>(a->top, b->top),
+      std::max<int16_t>(a->left, b->left),
+      std::min<int16_t>(a->bottom, b->bottom),
+      std::min<int16_t>(a->right, b->right),
+  };
+  if (res.top >= res.bottom || res.left >= res.right) {
+    dest->top = 0;
+    dest->left = 0;
+    dest->bottom = 0;
+    dest->right = 0;
+    return false;
+  } else {
+    *dest = res;
+    return true;
+  }
+}
+
+int32_t DeltaPoint(Point a, Point b) {
+  // Inside Macintosh I-475:
+  // DeltaPoint subtracts the coordinates of b from the coordinates of a. The
+  // high-order word of the result is the difference of the vertical
+  // coordinates and the low-order word is the difference of the horizontal
+  // coordinates.
+  int32_t dv = a.v - b.v;
+  int32_t dh = a.h - b.h;
+  return ((dv << 16) & 0xFFFF0000) | (dh & 0x0000FFFF);
 }
 
 void GetPortBounds(CGrafPtr port, Rect* rect) {
