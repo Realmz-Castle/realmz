@@ -24,6 +24,7 @@ void init_fonts() {
   font_filename = host_filename_for_mac_filename(":Geneva.ttf", true);
   auto geneva_font = TTF_OpenFont(font_filename.c_str(), 16);
   tt_fonts_by_id[GENEVA_FONT_ID] = geneva_font;
+  tt_fonts_by_id[ALTERNATIVE_GENEVA_FONT_ID] = geneva_font;
   tt_fonts_by_id[REALMZ_GENEVA_FONT_ID] = geneva_font;
   font_filename = host_filename_for_mac_filename(":Chicago.ttf", true);
   tt_fonts_by_id[CHICAGO_FONT_ID] = TTF_OpenFont(font_filename.c_str(), 16);
