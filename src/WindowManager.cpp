@@ -856,7 +856,7 @@ void WindowManager::create_sdl_window() {
   if (!SDL_CreateRenderer(this->sdl_window.get(), nullptr)) {
     throw std::runtime_error(std::format("Could not create window renderer: {}", SDL_GetError()));
   }
-  this->sdl_window_data.resize(w, h);
+  this->screen_port.resize(w, h);
   this->recomposite_all();
 }
 
@@ -1038,7 +1038,7 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
 
   std::shared_ptr<Window> window;
   if (!updated_window || enable_translucent_window_debug) {
-    this->sdl_window_data.clear(0x000000FF);
+    this->screen_port.data.clear(0x000000FF);
     window = this->bottom_window;
   } else {
     window = updated_window;
@@ -1046,13 +1046,13 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
 
   for (; window; window = window->window_above) {
     // Draw window border
-    this->sdl_window_data.draw_horizontal_line(window->port.portRect.left - 1, window->port.portRect.right, window->port.portRect.top - 1, 0, 0x000000FF);
-    this->sdl_window_data.draw_horizontal_line(window->port.portRect.left - 1, window->port.portRect.right, window->port.portRect.bottom, 0, 0x000000FF);
-    this->sdl_window_data.draw_vertical_line(window->port.portRect.left - 1, window->port.portRect.top, window->port.portRect.bottom, 0, 0x000000FF);
-    this->sdl_window_data.draw_vertical_line(window->port.portRect.right, window->port.portRect.top, window->port.portRect.bottom, 0, 0x000000FF);
+    this->screen_port.data.draw_horizontal_line(window->port.portRect.left - 1, window->port.portRect.right, window->port.portRect.top - 1, 0, 0x000000FF);
+    this->screen_port.data.draw_horizontal_line(window->port.portRect.left - 1, window->port.portRect.right, window->port.portRect.bottom, 0, 0x000000FF);
+    this->screen_port.data.draw_vertical_line(window->port.portRect.left - 1, window->port.portRect.top, window->port.portRect.bottom, 0, 0x000000FF);
+    this->screen_port.data.draw_vertical_line(window->port.portRect.right, window->port.portRect.top, window->port.portRect.bottom, 0, 0x000000FF);
 
     if (enable_translucent_window_debug) {
-      this->sdl_window_data.copy_from_with_custom(
+      this->screen_port.data.copy_from_with_custom(
           window->port.data,
           window->port.portRect.left,
           window->port.portRect.top,
@@ -1064,7 +1064,7 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
             return phosg::alpha_blend(dst_c, phosg::replace_alpha(src_c, 0x80)) | 0x000000FF;
           });
     } else {
-      this->sdl_window_data.copy_from_with_blend(
+      this->screen_port.data.copy_from_with_blend(
           window->port.data,
           window->port.portRect.left,
           window->port.portRect.top,
@@ -1081,14 +1081,14 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
       wm_log.error_f("Could not get window renderer: {}", SDL_GetError());
     } else {
 
-      auto w = this->sdl_window_data.get_width();
-      auto h = this->sdl_window_data.get_height();
+      auto w = this->screen_port.data.get_width();
+      auto h = this->screen_port.data.get_height();
       if (ENABLE_RECOMPOSITE_DEBUG) {
         wm_log.info_f("Writing debug{}.bmp", debug_number);
-        phosg::save_file(std::format("debug{}.bmp", debug_number++), this->sdl_window_data.serialize(phosg::ImageFormat::WINDOWS_BITMAP));
+        phosg::save_file(std::format("debug{}.bmp", debug_number++), this->screen_port.data.serialize(phosg::ImageFormat::WINDOWS_BITMAP));
       }
       auto surface = sdl_make_unique(SDL_CreateSurfaceFrom(
-          w, h, SDL_PIXELFORMAT_RGBA8888, this->sdl_window_data.get_data(), 4 * this->sdl_window_data.get_width()));
+          w, h, SDL_PIXELFORMAT_RGBA8888, this->screen_port.data.get_data(), 4 * this->screen_port.data.get_width()));
       if (!surface) {
         wm_log.error_f("Could not create surface: {}", SDL_GetError());
       } else {

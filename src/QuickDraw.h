@@ -135,7 +135,7 @@ typedef CIcon *CIconPtr, **CIconHandle;
 
 typedef struct {
   CGrafPtr thePort;
-  BitMap screenBits;
+  BitMap* screenBits;
 } QuickDrawGlobals;
 
 // Global struct holding the current graphics port.

@@ -87,6 +87,9 @@ public:
 };
 
 class WindowManager {
+public:
+  CCGrafPort screen_port;
+
 private:
   std::unordered_map<DialogItemHandle, std::shared_ptr<DialogItem>> dialog_items_by_handle;
   // TODO(fuzziqersoftware): It'd be nice to get rid of this map and treat Windows similarly to CCGrafPorts. This is
@@ -96,7 +99,6 @@ private:
   std::shared_ptr<Window> top_window;
   std::shared_ptr<Window> bottom_window;
   sdl_window_shared sdl_window;
-  phosg::ImageRGBA8888N sdl_window_data;
   bool text_editing_active = false;
   bool recomposite_enabled = true;
 

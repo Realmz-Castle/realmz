@@ -7,6 +7,7 @@
 #define BLACK_CHANCERY_FONT_ID 1602
 #define GENEVA_FONT_ID 1
 #define CHICAGO_FONT_ID 0
+#define ALTERNATIVE_GENEVA_FONT_ID 3
 
 // variables.h defines "genevafont" as 10. It doesn't seem like Classic Mac had a
 // standard FONT resource with id 10, but clearly they expected it to be Geneva.

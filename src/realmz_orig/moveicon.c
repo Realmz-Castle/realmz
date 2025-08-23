@@ -37,7 +37,11 @@ void moveicon(void) {
   struct itemattr tempitem;
   Boolean baditem = 0;
   int index;
-  BitMap src;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(danapplegate): It seems that the global screen buffer was directly accessible. We've
+   * updated the implementation here to achieve a similar effect with our in-memory screen buffer.
+   */
+  BitMap* src;
   BitMap* dst = GetPortBitMapForCopyBits(gedge);
   GetQDGlobalsScreenBits(&src);
 
@@ -264,7 +268,7 @@ void moveicon(void) {
   iconop = iconpict;
   OffsetRect(&iconpict, GlobalLeft, GlobalTop);
 
-  CopyBits(&src, dst, &iconpict, &store, 0, NIL);
+  CopyBits(src, dst, &iconpict, &store, 0, NIL);
   do {
     GetMouse(&point);
 
@@ -277,9 +281,9 @@ void moveicon(void) {
       OffsetRect(&iconnp, GlobalLeft, GlobalTop);
       OffsetRect(&iconop, GlobalLeft, GlobalTop);
 
-      CopyBits(dst, &src, &store, &iconop, 0, NIL);
-      CopyBits(&src, dst, &iconnp, &store, 0, NIL);
-      CopyBits(&src, &src, &iconpict, &iconnp, 39, NIL);
+      CopyBits(dst, src, &store, &iconop, 0, NIL);
+      CopyBits(src, dst, &iconnp, &store, 0, NIL);
+      CopyBits(src, src, &iconpict, &iconnp, 39, NIL);
       OffsetRect(&iconnp, -GlobalLeft, -GlobalTop);
 
       iconop = iconnp;
@@ -288,7 +292,8 @@ void moveicon(void) {
   } while (StillDown());
 
   OffsetRect(&iconop, GlobalLeft, GlobalTop);
-  CopyBits(dst, &src, &store, &iconop, 0, NIL);
+  CopyBits(dst, src, &store, &iconop, 0, NIL);
+  /* *** END CHANGES *** */
 
 fastmove:
 
