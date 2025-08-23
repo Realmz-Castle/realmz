@@ -1,6 +1,26 @@
 #include "prototypes.h"
 #include "variables.h"
 
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(danapplegate): I'm not sure how the goshopinshop and other ControlHandles were
+ * initialized in the original code, but it appears that this was an area of active development.
+ * Based on a fix commit by a previous developer, it seems this code was broken in the initial commit
+ * of the archive repo we have access to. I've restored his fix by introducing the MoveControlPair
+ * struct and updating MoveControlByID in this file.
+ */
+typedef struct {
+  ControlHandle* h;
+  int16_t id;
+} MoveControlPair;
+
+static inline ControlHandle MoveControlByID(int16_t id, WindowPtr dlg, int16_t dx, int16_t dy) {
+  Rect r;
+  ControlHandle h = GetNewControl(id, dlg);
+  GetControlBounds(h, &r);
+  MoveControl(h, r.left + dx, r.top + dy);
+  return h;
+}
+
 /***************************** Showitems ********************************/
 void Showitems(short mode) {
   inshop = TRUE;
@@ -15,9 +35,19 @@ void Showitems(short mode) {
   compactheap();
 
   if (!mode) {
-    int16_t move_ids[] = {144, 153, 137, 138,
-        139, 200, 201, 128,
-        129, 141, 136, 133};
+    MoveControlPair move_ids[] = {
+        {&goshopinshop, 144},
+        {&rightcharacter, 153},
+        {&leftcharacter, 137},
+        {&poolshop, 138},
+        {&shareshop, 139},
+        {&leftarrow, 200},
+        {&rightarrow, 201},
+        {&charitemsvert, 128},
+        {&shopitemsvert, 129},
+        {&departshop, 141},
+        {&moneybut, 136},
+        {&goitems, 133}};
     unsigned int i = 0;
     unsigned int count = sizeof(move_ids) / sizeof(move_ids[0]);
 
@@ -31,20 +61,28 @@ void Showitems(short mode) {
     TextFace(NIL);
 
     for (i = 0; i < count; i++) {
-      MoveControlByID(move_ids[i], gshop, (leftshift / 2), 0);
+      MoveControlPair p = move_ids[i];
+      *(p.h) = MoveControlByID(p.id, gshop, (leftshift / 2), 0);
     }
 
     if (shopavail) {
-      int16_t move_ids[] = {131, 130, 132, 134, 135};
+      MoveControlPair move_ids[] = {
+          {&weapons, 131},
+          {&armor, 130},
+          {&helms, 132},
+          {&magic, 134},
+          {&supplies, 135}};
 
       i = 0;
       count = sizeof(move_ids) / sizeof(move_ids[0]);
 
       for (i = 0; i < count; i++) {
-        MoveControlByID(move_ids[i], gshop, (leftshift / 2), 0);
+        MoveControlPair p = move_ids[i];
+        *(p.h) = MoveControlByID(p.id, gshop, (leftshift / 2), 0);
       }
     }
   }
+  /* *** END CHANGES *** */
 
   blank = TRUE;
   SetPort(GetWindowPort(gshop));

@@ -227,13 +227,6 @@ void InitWindows(void);
 void GetPortBounds(CGrafPtr port, Rect* rect);
 void ErasePortRect(void);
 
-static inline void MoveControlByID(int16_t id, WindowPtr dlg, int16_t dx, int16_t dy) {
-  Rect r;
-  ControlHandle h = GetNewControl(id, dlg);
-  GetControlBounds(h, &r);
-  MoveControl(h, r.left + dx, r.top + dy);
-}
-
 void InitRealmzCocoa();
 
 #include "structs.h"

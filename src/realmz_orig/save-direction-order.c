@@ -616,6 +616,12 @@ short seeshop(short mode) {
     moneypool[2] += bank[2];
     bank[0] = bank[1] = bank[2] = 0;
   }
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(danapplegate): This function clearly expects itemswindow to be initialized
+   * as it calls Showitems, which calls quickinfo, but it doesn't seem like it's been
+   * initialized by this point. Adding initialization here and cleanup below.
+   */
+  itemswindow = GetNewWindow(129, 0L, (WindowPtr)-1L);
 
   if (!mode)
     Showitems(0); /**** initialize ******/
@@ -679,8 +685,11 @@ short seeshop(short mode) {
 
             case inContent:
               reply = choice(0);
-              if (reply)
+              if (reply) {
+                DisposeWindow(itemswindow);
+                itemswindow = NIL;
                 return (reply);
+              }
               break;
           }
           break;
@@ -722,8 +731,11 @@ short seeshop(short mode) {
           t = gTheEvent.message;
           theControl = NIL;
           reply = choice(0);
-          if (reply)
+          if (reply) {
+            DisposeWindow(itemswindow);
+            itemswindow = NIL;
             return (reply);
+          }
           break;
 
         case (autoKey):
@@ -743,4 +755,8 @@ short seeshop(short mode) {
       }
     }
   }
+
+  DisposeWindow(itemswindow);
+  itemswindow = NIL;
+  /* *** END CHANGES *** */
 }

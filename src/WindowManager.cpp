@@ -330,8 +330,9 @@ public:
         this->type = DialogItemType::RADIO_BUTTON;
         break;
 
-      // TODO: Figure out how to implement this. We'll need it for the trade/shop screen.
-      // case ControlType::SCROLL_BAR:
+      case ControlType::SCROLL_BAR:
+        this->type = DialogItemType::RESOURCE_CONTROL;
+        break;
 
       // We don't support these (yet?)
       // case ControlType::WINDOW_FONT_BUTTON:
@@ -379,6 +380,7 @@ public:
   // an item_id of zero, which will be overwritten by add_dialog_item.
   static std::shared_ptr<DialogItem> from_control(std::shared_ptr<Control> control) {
     auto ret = std::make_shared<DialogItem>(control);
+    control->dialog_item = ret;
     all_items[ret->opaque_handle] = ret;
     return ret;
   }
