@@ -40,7 +40,7 @@
 #define GetDialogPort(x) ((CGrafPtr) & (((DialogPeek)(x))->window.port))
 #define GetDialogFromWindow(x) (DialogPtr)(x)
 #define GetQDGlobalsThePort() ((CGrafPtr)qd.thePort)
-#define GetQDGlobalsScreenBits(x) ((*x) = qd.screenBits)
+#define GetQDGlobalsScreenBits(x) (*(x) = qd.screenBits)
 #define QDFlushPortBuffer(x, y)
 #define GetPortPixMap(x) &(((CGrafPtr)(x))->portPixMap);
 #define GetPortTextFont(x) ((x)->txFont)
