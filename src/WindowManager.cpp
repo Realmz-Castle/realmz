@@ -499,6 +499,10 @@ public:
         break;
       }
       case ResourceFile::DecodedDialogItem::Type::RESOURCE_CONTROL: {
+        if (this->control->type != ControlType::SCROLL_BAR) {
+          wm_log.error_f("Could not render resource control {} that is not a scrollbar", resource_id);
+          break;
+        }
         RGBColor prev_color;
         RGBColor prev_bg_color;
         GetForeColor(&prev_color);
@@ -1823,6 +1827,12 @@ short FindControl(Point pt, WindowPtr window, ControlHandle* handle) {
 
 short TrackControl(ControlHandle handle, Point pt, ProcPtr action_proc) {
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+
+  if (item->control->type != ControlType::SCROLL_BAR) {
+    wm_log.error_f("Tried to call TrackControl of a non-scrollbar control");
+    return 0;
+  }
+
   return item->track_control_part(pt);
 }
 
