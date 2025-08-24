@@ -52,12 +52,6 @@
 
 #define suspendResumeMessage 0x01
 
-#define kControlUpButtonPart 20
-#define kControlDownButtonPart 21
-#define kControlPageUpPart 22
-#define kControlPageDownPart 23
-#define kControlIndicatorPart 129
-
 #define resNotFound -192
 
 #define srcCopy 0

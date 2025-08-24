@@ -20,6 +20,7 @@
 #include "EventManager.h"
 #include "Font.hpp"
 #include "MemoryManager.h"
+#include "QuickDraw.h"
 #include "QuickDraw.hpp"
 #include "ResourceManager.h"
 #include "StringConvert.hpp"
@@ -497,7 +498,50 @@ public:
         }
         break;
       }
-      case ResourceFile::DecodedDialogItem::Type::RESOURCE_CONTROL:
+      case ResourceFile::DecodedDialogItem::Type::RESOURCE_CONTROL: {
+        if (this->control->type != ControlType::SCROLL_BAR) {
+          wm_log.error_f("Could not render resource control {} that is not a scrollbar", resource_id);
+          break;
+        }
+        RGBColor prev_color;
+        RGBColor prev_bg_color;
+        GetForeColor(&prev_color);
+        GetBackColor(&prev_bg_color);
+
+        auto r = this->rect;
+
+        auto bg_color = RGBColor{.red = 0x6666, .green = 0x6666, .blue = 0x6666};
+        RGBBackColor(&bg_color);
+        port.erase_rect(r);
+
+        ForeColor(blackColor);
+        auto w = get_width();
+        auto h = get_height();
+
+        auto top_arrow = r;
+        top_arrow.bottom = r.top + w;
+        port.fill_rect(top_arrow);
+
+        auto bottom_arrow = r;
+        bottom_arrow.top = r.bottom - w;
+        port.fill_rect(bottom_arrow);
+
+        auto slider_offset = get_slider_offset();
+        if (slider_offset > 0) {
+          ForeColor(yellowColor);
+        }
+
+        Rect slider_rect{
+            .top = static_cast<int16_t>(r.top + w + slider_offset),
+            .left = r.left,
+            .bottom = static_cast<int16_t>(r.top + 2 * w + slider_offset),
+            .right = r.right};
+        port.draw_rect_outline(slider_rect);
+
+        RGBForeColor(&prev_color);
+        RGBBackColor(&prev_bg_color);
+        break;
+      }
       case ResourceFile::DecodedDialogItem::Type::HELP_BALLOON:
       case ResourceFile::DecodedDialogItem::Type::CUSTOM:
       case ResourceFile::DecodedDialogItem::Type::UNKNOWN:
@@ -581,6 +625,42 @@ public:
       bounds.right = bounds.left + w;
       bounds.bottom = bounds.top + h;
       this->rect = bounds;
+    }
+  }
+
+  int16_t get_slider_offset() const {
+    auto w = get_width();
+    auto h = get_height();
+    float value_offset = 0.0;
+    int16_t slider_offset = 0;
+    if (this->control->max > this->control->min) {
+      auto value_range = this->control->max - this->control->min;
+      value_offset = static_cast<float>(this->control->value - this->control->min) / value_range;
+      // Slider offset is from the top of the slider, so the range is reduced by the top and bottom
+      // scroll buttons PLUS the height of the slider (3 * w)
+      auto slider_range = h - 3 * w;
+      slider_offset = slider_range * value_offset;
+    }
+    return slider_offset;
+  }
+
+  int16_t track_control_part(Point pt) {
+    auto slider_offset = get_slider_offset();
+    auto w = get_width();
+    auto local_point = pt;
+    local_point.h -= this->rect.left;
+    local_point.v -= this->rect.top;
+
+    if (local_point.v <= w) {
+      return kControlUpButtonPart;
+    } else if (local_point.v >= this->rect.bottom - w) {
+      return kControlDownButtonPart;
+    } else if (local_point.v >= slider_offset && local_point.v <= (slider_offset + w)) {
+      return kControlIndicatorPart;
+    } else if (local_point.v < slider_offset) {
+      return kControlPageUpPart;
+    } else {
+      return kControlPageDownPart;
     }
   }
 
@@ -1732,8 +1812,7 @@ short FindControl(Point pt, WindowPtr window, ControlHandle* handle) {
         case ControlType::WINDOW_FONT_RADIO_BUTTON:
           return kControlRadioButtonPart;
         case ControlType::SCROLL_BAR:
-          // TODO: We should implement the up/down buttons at some point
-          return kControlIndicatorPart;
+          return item->track_control_part(pt);
         case ControlType::POPUP_MENU:
           return kControlMenuPart;
         case ControlType::UNKNOWN:
@@ -1747,9 +1826,14 @@ short FindControl(Point pt, WindowPtr window, ControlHandle* handle) {
 }
 
 short TrackControl(ControlHandle handle, Point pt, ProcPtr action_proc) {
-  // TODO: This should do something! It seems this is only used for the scroll
-  // bars in the shop screen, so I assume we can get to this later.
-  return 0;
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(handle));
+
+  if (item->control->type != ControlType::SCROLL_BAR) {
+    wm_log.error_f("Tried to call TrackControl of a non-scrollbar control");
+    return 0;
+  }
+
+  return item->track_control_part(pt);
 }
 
 short GetControlValue(ControlHandle handle) {
