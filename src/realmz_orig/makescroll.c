@@ -4,7 +4,11 @@
 /*********************** makescroll ************************/
 void makescroll(void) {
   GrafPtr oldport;
-  char numparch;
+  // NOTE(fuzziqersoftware): This was previously a char, which can easily
+  // overflow if the party is good at collecting parchment, leading to an
+  // invalid cicn ID in the GetCIcon call below. We've changed this to a long,
+  // which should avoid this problem.
+  long numparch;
   short t;
   Boolean free;
   scribing = inscroll = TRUE;
