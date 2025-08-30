@@ -155,8 +155,7 @@ short items(void) {
 
 backup:
 
-  // NOTE(fuzziqersoftware): See note in mapstuff.cc about this function
-  WindowManager_SetEnableRecomposite(0);
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
   SetPort(GetWindowPort(itemswindow));
   TextMode(0);
@@ -232,8 +231,7 @@ backup:
 
   updatecharinfo();
 
-  // NOTE(fuzziqersoftware): See note in mapstuff.cc about this function
-  WindowManager_SetEnableRecomposite(1);
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 
   for (;;) {
   tryagain:

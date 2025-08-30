@@ -123,7 +123,15 @@ void TEDelete(TEHandle hTE);
 void TEDispose(TEHandle hTE);
 
 // Extensions for our implementation (not part of the original API)
-void WindowManager_SetEnableRecomposite(int enable);
+
+// Our window manager implementation recomposites the entire window after each
+// drawing call, which greatly amplifies the work required to draw parts of the
+// UI, especially if e.g. a map viewed by the player covers a large area. To
+// mitigate this, we disable recompositing temporarily in various places and
+// manually recomposite after multiple drawing calls. None of the callsites of
+// this function are part of the original source.
+int WindowManager_SetEnableRecomposite(int enable);
+void WindowManager_RecompositeAlways();
 
 #ifdef __cplusplus
 } // extern "C"

@@ -56,6 +56,8 @@ void updatechar(short who, short mode) {
       break;
   }
 
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   ydist = rect.top + 41;
   if (mode)
     updatepictbox(who, 1, 0); /******* no initial box ******/
@@ -180,4 +182,6 @@ void updatechar(short who, short mode) {
     updatelight(who, 0);
 
   SetPort(oldport);
+
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }

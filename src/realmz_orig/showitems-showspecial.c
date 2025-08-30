@@ -23,6 +23,8 @@ static inline ControlHandle MoveControlByID(int16_t id, WindowPtr dlg, int16_t d
 
 /***************************** Showitems ********************************/
 void Showitems(short mode) {
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   inshop = TRUE;
 
   SetMenuBar(copywright);
@@ -146,15 +148,15 @@ void Showitems(short mode) {
   if (mode == 2) {
     theControl = rightarrow;
     change(0, 2);
-    return;
+  } else {
+    theControl = leftarrow;
+    change(0, 0);
+    theControl = rightarrow;
+    change(0, 0);
+
+    quickinfo(cl, 0, c[cl].items[0].id, 0);
   }
-
-  theControl = leftarrow;
-  change(0, 0);
-  theControl = rightarrow;
-  change(0, 0);
-
-  quickinfo(cl, 0, c[cl].items[0].id, 0);
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }
 
 /***************************** showitemstats *******************/

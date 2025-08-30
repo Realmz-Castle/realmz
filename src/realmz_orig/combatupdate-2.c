@@ -13,6 +13,9 @@ void combatupdate(short body) {
   if (body < 0)
     return;
 
+  // NOTE(fuzziqersoftware): This makes battle much faster.
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   if (body < 6) {
     temp = c[body].movement;
     tempmax = c[body].movementmax;
@@ -49,7 +52,10 @@ void combatupdate(short body) {
   MoveTo(169, 341 + downshift);
 
   string(tempstamina);
+
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }
+
 /************************ combatupdate2 ***********************/
 void combatupdate2(short body) {
   Rect iconrect;
@@ -60,6 +66,9 @@ void combatupdate2(short body) {
 
   if (body < 0)
     return;
+
+  // NOTE(fuzziqersoftware): This makes battle much faster.
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
   if (!infocombat) {
     pict(153 - (8 * inspell), buttons);
@@ -328,7 +337,10 @@ void combatupdate2(short body) {
       MoveTo(120, 449 + downshift);
       PtoCstr(myString);
       MyrDrawCString((Ptr)myString);
-      return;
+
+      break;
     }
   }
+
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }

@@ -1188,14 +1188,15 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
   }
 }
 
-void WindowManager::set_enable_recomposite(bool enable) {
+bool WindowManager::set_enable_recomposite(bool enable) {
   if (enable == this->recomposite_enabled) {
-    return;
+    return enable;
   }
   this->recomposite_enabled = enable;
   if (this->recomposite_enabled) {
     this->recomposite_all();
   }
+  return !enable;
 }
 
 WindowManager& WindowManager::instance() {
@@ -1914,8 +1915,13 @@ void DisposeWindow(WindowPtr w) {
   WindowManager_DisposeWindow(w);
 }
 
-void WindowManager_SetEnableRecomposite(int enable) {
-  WindowManager::instance().set_enable_recomposite(enable);
+int WindowManager_SetEnableRecomposite(int enable) {
+  return WindowManager::instance().set_enable_recomposite(enable);
+}
+
+void WindowManager_RecompositeAlways() {
+  auto& wm = WindowManager::instance();
+  wm.set_enable_recomposite(wm.set_enable_recomposite(true));
 }
 
 TEHandle TENew(const Rect* destRect, const Rect* viewRect) {

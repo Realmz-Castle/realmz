@@ -130,7 +130,7 @@ public:
   void on_dialog_item_focus_changed();
 
   void recomposite(std::shared_ptr<Window> updated_window);
-  void set_enable_recomposite(bool enable);
+  bool set_enable_recomposite(bool enable);
 
   // Recomposites the window stack, starting with the given window. Windows below
   // the given window are not recomposited. Updates the SDL window with the

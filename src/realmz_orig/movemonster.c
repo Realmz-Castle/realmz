@@ -89,6 +89,10 @@ goback:
   if (monster[monsterup].condition[0])
     checkforenemy(2); /***** second check for retreat ******/
 
+  // NOTE(fuzziqersoftware): This hides intermediate frames where parts of large
+  // monsters would flicker, since they aren't all drawn at the same time.
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   bodyground(monsterup + 10, 0);
   bodyfield(monsterup + 10);
   monpos[monsterup][0] = monx + deltax;
@@ -96,6 +100,8 @@ goback:
   monster[monsterup].movement -= cost;
   placemonster(monx + deltax, mony + deltay, monsterup);
   drawbody(monsterup + 10, 0, 0);
+
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 
   if (monster[monsterup].underneath[1][1] > 999)
     sound(mapstats[monster[monsterup].underneath[1][1] - 1000].sound);

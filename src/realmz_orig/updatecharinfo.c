@@ -3,6 +3,8 @@
 
 /*************************** updatecharinfo *******************/
 void updatecharinfo(void) {
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   GrafPtr oldport;
   short temp, conditionindex = 0;
   GetPort(&oldport);
@@ -96,8 +98,10 @@ void updatecharinfo(void) {
       GetIndString(myString, 133, t + 1);
       MyrPascalDiStr(29 + conditionindex++, myString);
       if (conditionindex == 5)
-        return;
+        break;
     }
   }
   SetPort(oldport);
+
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }

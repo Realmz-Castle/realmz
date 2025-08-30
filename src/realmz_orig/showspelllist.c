@@ -7,6 +7,8 @@ void showspelllist(void) {
 
   class = c[charselectnew].spellcastertype - 1;
 
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   for (t = 0; t < 12; t++) {
     GetDialogItem(gCurrent, t + 1, &itemType, &itemHandle, &buttonrect);
     buttonrect.left -= 2;
@@ -28,4 +30,6 @@ void showspelllist(void) {
       MyrCDiStr(t + 1, (StringPtr) "");
     }
   }
+
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }

@@ -31,7 +31,9 @@ void cast(short targetnum, short who) {
     ploticon3(11992 + spellinfo.spelllook1 * 8, spell);
   times = 128 + delayspeed;
 
-  if ((showcast) && (spellinfo.targettype != 6) && (spellinfo.spellclass != 9) && (targetnum > 1))
+  // NOTE(fuzziqersoftware): Made fast spell casting apply to missile weapons
+  // and single-target spells too, since recompositing is too slow otherwise.
+  if ((showcast) /* && (spellinfo.targettype != 6) && (spellinfo.spellclass != 9) && (targetnum > 1) */)
     times = 30 + delayspeed;
 
   curControlValue = spellinfo.cost * powerlevel; /***** spell energy used *****/
@@ -46,6 +48,9 @@ void cast(short targetnum, short who) {
 
   for (loop = 0; loop < targetnum; loop++) /****** end ******/
   {
+    // NOTE(fuzziqersoftware): This makes spell casting and missile weapons smoother.
+    int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
     first = bad = 0;
     SetPort((GrafPtr)GetWindowPort(look));
     ForeColor(blackColor);
@@ -284,12 +289,16 @@ void cast(short targetnum, short who) {
       pushon:
         oldorig = orig;
       }
+
+      WindowManager_RecompositeAlways();
     }
     if (SectRect(&oldorig, &copyrect, &test)) {
       BitMapPtr src = GetPortBitMapForCopyBits(gthePixels);
       BitMapPtr dst = GetPortBitMapForCopyBits(GetWindowPort(look));
       CopyBits(src, dst, &store, &oldorig, 0, NIL);
     }
+
+    WindowManager_SetEnableRecomposite(enable_recomposite);
 
     if ((spellinfo.targettype != 6) && (!bad))
       spelltargets(loop, -1, 0, 0);

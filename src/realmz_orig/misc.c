@@ -511,6 +511,8 @@ long GetDialogNum(short number) {
 void xy(short mode) {
   Rect itemRect;
 
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   SetPort(GetWindowPort(screen));
   BackPixPat(base);
   RGBBackColor(&greycolor);
@@ -568,6 +570,8 @@ void xy(short mode) {
         MyrDrawCString((Ptr)myString);
     }
   }
+
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }
 
 /********************* scratch **************************/
@@ -843,6 +847,8 @@ pascal void ScrollProc(ControlHandle dummycontrol, short theCode) {
 
   dummycontrol = NIL;
 
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   curControlValue = GetControlValue(theControl);
   maxControlValue = GetControlMaximum(theControl);
   minControlValue = GetControlMinimum(theControl);
@@ -859,7 +865,8 @@ pascal void ScrollProc(ControlHandle dummycontrol, short theCode) {
       rect.bottom = 386;
       for (tt = 0; tt < 9; tt++) {
         charge = 0;
-        delay(2); // Slows it down on fast machines.
+        // NOTE(fuzziqersoftware): We want this to be fast, so we've disabled this call.
+        // delay(2); // Slows it down on fast machines.
         if (curControlValue < maxControlValue) {
           curControlValue++;
           ScrollRect(&rect, 0, -40, 0L);
@@ -919,7 +926,8 @@ pascal void ScrollProc(ControlHandle dummycontrol, short theCode) {
         if (scroll == TRUE)
           for (t = 0; t < 4; t++)
             ScrollRect(&rect, 0, -10, 0L);
-        delay(2); // Slows it down on fast machines.
+        // NOTE(fuzziqersoftware): We want this to be fast, so we've disabled this call.
+        // delay(2); // Slows it down on fast machines.
         icon.top = 336;
         if (theControl == shopitemsvert) {
           if (cr == -1) {
@@ -969,7 +977,8 @@ pascal void ScrollProc(ControlHandle dummycontrol, short theCode) {
         curControlValue--;
         for (t = 0; t < 4; t++)
           ScrollRect(&rect, 0, 10, 0L);
-        delay(2); // Slows it down on fast machines.
+        // NOTE(fuzziqersoftware): We want this to be fast, so we've disabled this call.
+        // delay(2); // Slows it down on fast machines.
         icon.top = 16;
 
         if (shop == TRUE) {
@@ -1008,7 +1017,8 @@ pascal void ScrollProc(ControlHandle dummycontrol, short theCode) {
       rect.bottom = 368;
       for (tt = 0; tt < 9; tt++) {
         charge = 0;
-        delay(2); // Slows it down on fast machines.
+        // NOTE(fuzziqersoftware): We want this to be fast, so we've disabled this call.
+        // delay(2); // Slows it down on fast machines.
         if (curControlValue > minControlValue) {
           curControlValue--;
           ScrollRect(&rect, 0, 40, 0L);
@@ -1047,6 +1057,7 @@ pascal void ScrollProc(ControlHandle dummycontrol, short theCode) {
       break;
   }
   SetControlValue(theControl, curControlValue);
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }
 
 /***************** updateshop ********************************/
@@ -1139,18 +1150,16 @@ void eraseshopname(short mode) {
 
 /**************************** shortupdate ****************/
 void shortupdate(short mode) {
-  // NOTE(fuzziqersoftware): See note in mapstuff.cc about this function
-  WindowManager_SetEnableRecomposite(0);
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
   needupdate = FALSE;
   updateprep();
   for (t = 0; t <= charnum; t++)
     updatechar(t, mode);
-  WindowManager_SetEnableRecomposite(1);
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }
 /**************************** selectupdate ****************/
 void selectupdate(void) {
-  // NOTE(fuzziqersoftware): See note in mapstuff.cc about this function
-  WindowManager_SetEnableRecomposite(0);
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
   for (t = 0; t <= charnum; t++) {
     if (select[t]) {
       if (select[t] > 0)
@@ -1160,7 +1169,7 @@ void selectupdate(void) {
       select[t] = 0;
     }
   }
-  WindowManager_SetEnableRecomposite(1);
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }
 
 /*************** center *********************/

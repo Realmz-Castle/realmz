@@ -4,6 +4,8 @@
 /************************************ updatefat ***************/
 void updatefat(short show, short num, short erase) {
   if ((FrontWindow() == look) || (FrontWindow() == gWindow)) {
+    int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
     SetPort(GetWindowPort(screen));
     BackPixPat(base);
 
@@ -16,8 +18,10 @@ void updatefat(short show, short num, short erase) {
       EraseRect(&buttonrect);
     }
 
-    if (incombat)
+    if (incombat) {
+      WindowManager_SetEnableRecomposite(enable_recomposite);
       return;
+    }
 
     if (num < 0) {
       buttonrect.top = 304 + downshift;
@@ -58,5 +62,7 @@ void updatefat(short show, short num, short erase) {
     BackPixPat(base);
     if (!num)
       xy(0);
+
+    WindowManager_SetEnableRecomposite(enable_recomposite);
   }
 }

@@ -5,6 +5,8 @@
 void showspellinfo(void) {
   short tempint;
 
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   spellrect2 = spellrect;
   tempint = 10000;
   switch (spellinfo.targettype) {
@@ -83,11 +85,15 @@ void showspellinfo(void) {
   ForeColor(redColor);
   MoveTo(548 + leftshift, 385 + downshift);
   string(powerlevel);
+
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }
 
 /**************** spellinfoupdate ************************/
 void spellinfoupdate(void) {
   short tempint;
+
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
   ForeColor(yellowColor);
   DialogNum(13, spellinfo.powerdam1 * powerlevel + spellinfo.damage1);
@@ -179,4 +185,6 @@ void spellinfoupdate(void) {
     PlotCIcon(&itemRect, iconhand);
     DisposeCIcon(iconhand);
   }
+
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }

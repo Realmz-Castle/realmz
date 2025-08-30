@@ -5,8 +5,7 @@
 void updateitems(short top, short bottom) {
   short t;
 
-  // NOTE(fuzziqersoftware): See note in mapstuff.cc about this function
-  WindowManager_SetEnableRecomposite(0);
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
   SetPort(GetWindowPort(itemswindow));
   box.left = 10;
@@ -51,5 +50,5 @@ void updateitems(short top, short bottom) {
   }
   c[charselectnew] = characterl;
 
-  WindowManager_SetEnableRecomposite(1);
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }

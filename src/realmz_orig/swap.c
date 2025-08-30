@@ -15,6 +15,8 @@ void swap(void) {
     bank[0] = bank[1] = bank[2] = 0;
   }
 
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   SetCCursor(sword);
   for (t = 0; t <= numchannel; t++)
     quiet(t);
@@ -101,6 +103,8 @@ void swap(void) {
   else
     MyrCDiStr(64, (StringPtr) "Money Changing is not available.");
 
+  WindowManager_SetEnableRecomposite(enable_recomposite);
+
   for (;;) {
   tryover:
     FlushEvents(everyEvent, 0);
@@ -108,16 +112,20 @@ void swap(void) {
     GetDialogItem(gswap, itemHit, &itemType, &itemHandle, &buttonrect);
 
     if (itemHit == 2) {
+      int enable_recomposite = WindowManager_SetEnableRecomposite(0);
       ploticon3(133, buttonrect);
       pool();
       updatemoney(0);
       ploticon3(134, buttonrect);
+      WindowManager_SetEnableRecomposite(enable_recomposite);
     }
     if (itemHit == 3) {
+      int enable_recomposite = WindowManager_SetEnableRecomposite(0);
       ploticon3(133, buttonrect);
       share();
       updatemoney(0);
       ploticon3(134, buttonrect);
+      WindowManager_SetEnableRecomposite(enable_recomposite);
     }
     if ((itemHit > 16) && (itemHit < 23)) {
       ploticon3(135, buttonrect);
@@ -136,6 +144,7 @@ void swap(void) {
         else
           direction = 0;
 
+        int enable_recomposite = WindowManager_SetEnableRecomposite(0);
         if ((c[whichchar].load + (wieght * times) > c[whichchar].loadmax) && (direction == 1))
           direction = 0;
         moneypool[moneytype] -= direction * times;
@@ -151,6 +160,7 @@ void swap(void) {
         TextSize(14);
         DialogNum(38 + 4 * whichchar, c[whichchar].movementmax);
         DialogNum(35 + moneytype + 4 * whichchar, c[whichchar].money[moneytype]);
+        WindowManager_SetEnableRecomposite(enable_recomposite);
       }
       ploticon3(136, buttonrect);
     }
@@ -160,6 +170,7 @@ void swap(void) {
         sound(6000);
         goto tryover;
       }
+      int enable_recomposite = WindowManager_SetEnableRecomposite(0);
       ploticon3(129, buttonrect);
       while ((Button()) && (moneypool[2])) {
         sound(-10129);
@@ -168,6 +179,7 @@ void swap(void) {
         updatemoney(1);
       }
       ploticon3(130, buttonrect);
+      WindowManager_SetEnableRecomposite(enable_recomposite);
     }
 
     if ((itemHit == 8) || (itemHit == 9)) {
@@ -190,6 +202,7 @@ void swap(void) {
 
     if ((itemHit > 28) && (itemHit < 35)) {
       if (itemHit - 29 <= charnum) {
+        int enable_recomposite = WindowManager_SetEnableRecomposite(0);
         buttonrect.left += 10;
         ploticon3(129, buttonrect);
         sound(141);
@@ -198,6 +211,7 @@ void swap(void) {
         GetDialogItem(gswap, itemHit - 6, &itemType, &itemHandle, &charselectrect);
         DrawPicture(marker, &charselectrect);
         ploticon3(130, buttonrect);
+        WindowManager_SetEnableRecomposite(enable_recomposite);
       }
     }
 

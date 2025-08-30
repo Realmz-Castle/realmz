@@ -64,6 +64,8 @@ selectagain:
   DrawDialog(spellwindow);
 wayback:
 
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   if ((incombat) || (!charnum)) {
     GetDialogItem(spellwindow, 45, &itemType, &itemHandle, &itemRect);
     ploticon3(0, itemRect);
@@ -179,6 +181,8 @@ wayback:
   SetPortDialogPort(spellwindow);
   BringToFront(GetDialogWindow(spellwindow));
 
+  WindowManager_SetEnableRecomposite(enable_recomposite);
+
 back:
   FlushEvents(everyEvent, 0);
   updatetier(1);
@@ -236,6 +240,8 @@ back:
         if (((itemHit == 39) || (itemHit == 40)) && (!incombat) && (charnum - killparty > 0)) {
           loop = def = TRUE;
 
+          int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
           GetDialogItem(spellwindow, castlevel + 23, &itemType, &itemHandle, &buttonrect);
           upbutton(FALSE);
 
@@ -277,6 +283,8 @@ back:
           GetDialogItem(spellwindow, itemHit, &itemType, &itemHandle, &itemRect);
           ploticon3(136, itemRect);
           itemHit = 23;
+
+          WindowManager_SetEnableRecomposite(enable_recomposite);
           goto newjump;
         }
 

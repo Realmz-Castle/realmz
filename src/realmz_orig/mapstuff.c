@@ -90,6 +90,8 @@ void showmap(short mapnumber) {
     }
     pict(themap.pictid, itemRect);
   } else {
+    int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
     temp = 320 / themap.iconsize;
     if (temp * themap.iconsize < 320)
       temp++;
@@ -114,13 +116,6 @@ void showmap(short mapnumber) {
     temprect.right = temprect.bottom = themap.iconsize;
 
     if (!indung) {
-      /* *** CHANGED FROM ORIGINAL CODE ***
-       * NOTE(fuzziqersoftware): Our window manager implementation recomposites
-       * the entire window after each drawing call, which greatly amplifies the
-       * work required to draw a map, especially if the map covers a large
-       * area. To mitigate this, we disable recompositing temporarily and
-       * manually recomposite after drawing all the map tiles. */
-      WindowManager_SetEnableRecomposite(0);
       for (t = themap.starty; t < temp + themap.starty; t++) {
         for (tt = themap.startx; tt < themap.startx + temp; tt++) {
           fastplotmap(field[tt][t], temprect);
@@ -128,7 +123,6 @@ void showmap(short mapnumber) {
         }
         OffsetRect(&temprect, -(themap.iconsize * temp), themap.iconsize);
       }
-      WindowManager_SetEnableRecomposite(1);
     } else {
       SetPort(GetWindowPort(look));
       ForeColor(blackColor);
@@ -167,6 +161,8 @@ void showmap(short mapnumber) {
         }
       }
     }
+
+    WindowManager_SetEnableRecomposite(enable_recomposite);
   }
 
   point.h = partyx + lookx;

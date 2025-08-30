@@ -9,6 +9,8 @@ void Display(short mode) {
   compactheap();
   music(8); /******* shop music ********/
 
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
   SetPort(gshop);
   updateshop();
   updateshopwings(cl, cr);
@@ -71,6 +73,5 @@ void Display(short mode) {
     shopequip = FALSE;
   }
 
-  if ((skiptest) || (skip))
-    return;
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }

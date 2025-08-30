@@ -159,8 +159,7 @@ short timeclick(unsigned char number, short checkforrandom) {
       tyme.tm_min -= 60;
       tyme.tm_hour++;
 
-      // NOTE(fuzziqersoftware): See note in mapstuff.cc about this function
-      WindowManager_SetEnableRecomposite(0);
+      int enable_recomposite = WindowManager_SetEnableRecomposite(0);
       if (timeclick)
         updatefat(FALSE, 1, FALSE);
 
@@ -175,7 +174,7 @@ short timeclick(unsigned char number, short checkforrandom) {
           updatecharshort(t, FALSE);
         }
       }
-      WindowManager_SetEnableRecomposite(1);
+      WindowManager_SetEnableRecomposite(enable_recomposite);
 
       for (t = 0; t < heldover; t++) /****** Allies Spell Points ******/
       {
@@ -317,8 +316,7 @@ short timeclick(unsigned char number, short checkforrandom) {
     }
   }
 
-  // NOTE(fuzziqersoftware): See note in mapstuff.cc about this function
-  WindowManager_SetEnableRecomposite(0);
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
   SetPort(GetWindowPort(screen));
   BackPixPat(base);
@@ -349,7 +347,7 @@ short timeclick(unsigned char number, short checkforrandom) {
   MoveTo(585 + leftshift, 401 + downshift);
   string(tyme.tm_yday);
 
-  WindowManager_SetEnableRecomposite(1);
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 
   SetPort(oldport);
   TextFont(font);

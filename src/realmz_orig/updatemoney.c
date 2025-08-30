@@ -5,6 +5,7 @@
 void updatemoney(short mode) {
   SetPortDialogPort(gswap);
   gCurrent = gswap;
+  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
   TextSize(22);
   TextFont(font);
   ForeColor(yellowColor);
@@ -20,4 +21,5 @@ void updatemoney(short mode) {
       DialogNum(38 + 4 * t, c[t].movementmax);
     }
   }
+  WindowManager_SetEnableRecomposite(enable_recomposite);
 }
