@@ -10,7 +10,23 @@
 extern "C" {
 #endif // __cplusplus
 
+// TEHandle is an opaque type accessible only in C++. We use this opaque struct
+// in C so the type of the handle will be unique, and incorrectly-typed objects
+// can't be passed to the various API functions.
+struct _TextEditOpaque {
+  int _opaque_contents;
+};
+typedef struct _TextEditOpaque* TEHandle;
+
 typedef Ptr ModalFilterProcPtr;
+
+typedef struct {
+  // We don't use style scrap records, so this is unimplemented. The format is
+  // ResourceDASM::StyleResourceCommand, but that's defined in C++ and can't be
+  // used directly here.
+  int _opaque_contents;
+} StScrpRec;
+typedef StScrpRec *StScrpPtr, **StScrpHandle;
 
 // Macintosh Toolbox Essentials (Introduction to Windows 4-11)
 enum {
@@ -116,11 +132,13 @@ void SetControlMinimum(ControlHandle ctl, short min);
 void SetControlMaximum(ControlHandle ctl, short max);
 void GetControlTitle(ControlHandle ctl, Str255 title);
 TEHandle TENew(const Rect* destRect, const Rect* viewRect);
-void TESetText(const void* text, int32_t length, TEHandle hTE);
-void TESetSelect(int32_t selStart, int32_t selEnd, TEHandle hTE);
-void TEUpdate(const Rect* rUpdate, TEHandle hTE);
-void TEDelete(TEHandle hTE);
+TEHandle TEStyleNew(const Rect* destRect, const Rect* viewRect);
 void TEDispose(TEHandle hTE);
+void TESetText(const void* text, int32_t length, TEHandle hTE);
+void TEUpdate(const Rect* rUpdate, TEHandle hTE);
+void TEStyleInsert(const void* text, int32_t length, StScrpHandle hSt, TEHandle hTE);
+void TESetAlignment(int16_t just, TEHandle hTE);
+void TEScroll(int16_t dh, int16_t dv, TEHandle hTE);
 
 // Extensions for our implementation (not part of the original API)
 

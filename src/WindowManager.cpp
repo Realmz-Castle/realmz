@@ -595,7 +595,7 @@ public:
   }
 
   void delete_char() {
-    if (text.size()) {
+    if (!text.empty()) {
       text.pop_back();
     }
   }
@@ -1925,30 +1925,191 @@ void WindowManager_RecompositeAlways() {
 }
 
 TEHandle TENew(const Rect* destRect, const Rect* viewRect) {
+  // We implement *unstyled* TextEdit instances as dialog items. In Classic Mac
+  // OS, the reverse was the case: edit control dialog items were implemented
+  // using TextEdit. In Realmz's limited use cases, this distinction is not
+  // important, since unstyled TextEdit instances are only used for text entry
+  // (in the character creation flow and the Speak encounter action).
   auto window = WindowManager::instance().window_for_port(qd.thePort);
   return window->add_text_edit(*destRect, *viewRect);
 }
 
-void TESetText(const void* text, int32_t length, TEHandle hTE) {
-  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(hTE));
-  item->set_text(string_for_pstr<256>(static_cast<const unsigned char*>(const_cast<void*>(text))));
+using HorizAlign = ResourceDASM::BitmapFontRenderer::HorizontalAlignment;
+
+struct StyledTextEdit {
+  phosg::PrefixedLogger log;
+  std::string text;
+  Rect layout_rect;
+  Rect view_rect;
+  HorizAlign align;
+  std::unique_ptr<phosg::ImageRGBA8888N> prerendered;
+
+  static std::unordered_set<const StyledTextEdit*> all_instances;
+
+  StyledTextEdit(const Rect& layout, const Rect& view)
+      : log(std::format("[STE-{:016X}] ", reinterpret_cast<intptr_t>(this)), wm_log.min_level),
+        layout_rect(layout),
+        view_rect(view),
+        align(HorizAlign::LEFT) {
+    StyledTextEdit::all_instances.emplace(this);
+    this->log.debug_f("Created with layout={{x0={}, y0={}, x1={}, y1={}}}, view={{x0={}, y0={}, x1={}, y1={}}}",
+        this->layout_rect.left, this->layout_rect.top, this->layout_rect.right, this->layout_rect.bottom,
+        this->view_rect.left, this->view_rect.top, this->view_rect.right, this->view_rect.bottom);
+  }
+  ~StyledTextEdit() {
+    this->log.debug_f("Destroyed");
+    StyledTextEdit::all_instances.erase(this);
+  }
+  static StyledTextEdit* from_void(void* ptr) {
+    auto* ste = reinterpret_cast<StyledTextEdit*>(ptr);
+    if (StyledTextEdit::all_instances.count(ste)) {
+      return ste;
+    } else {
+      throw std::runtime_error("Invalid styled TextEdit instance");
+    }
+  }
+  static StyledTextEdit* from_void_if(void* ptr) {
+    auto* ste = reinterpret_cast<StyledTextEdit*>(ptr);
+    return StyledTextEdit::all_instances.count(ste) ? ste : nullptr;
+  }
+};
+
+std::unordered_set<const StyledTextEdit*> StyledTextEdit::all_instances;
+
+TEHandle TEStyleNew(const Rect* dest, const Rect* view) {
+  // In contrast to unstyled TextEdit instances, styled instances are NOT
+  // dialog items. They instead are entirely disconnected from the window
+  // subsystem, which is similar to how they were implemented in Classic Mac
+  // OS. Despite this, we don't implement styling (yet), but we use the type of
+  // the TE instance to determine which implementation to use.
+  return reinterpret_cast<TEHandle>(new StyledTextEdit(*dest, *view));
 }
 
-void TESetSelect(int32_t selStart, int32_t selEnd, TEHandle hTE) {
-  // It looks like Realmz only uses this once, and sets the start and end to 0 and 1,
-  // respectively, effectively a no-op.
+void TEDispose(TEHandle te) {
+  delete StyledTextEdit::from_void(te);
 }
 
-void TEUpdate(const Rect* r, TEHandle hTE) {
-  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(hTE));
-  wm_log.debug_f("TEUpdate({{x0={}, y0={}, x1={}, y1={}}}, {})", r->left, r->top, r->right, r->bottom, reinterpret_cast<void*>(hTE));
+void TESetText(const void* text, int32_t length, TEHandle te) {
+  // In Realmz, this is only called for unstyled TextEdit instances
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(reinterpret_cast<Handle>(te)));
+  item->set_text(std::string(reinterpret_cast<const char*>(text), length));
+}
+
+void TEUpdateUnstyled(const Rect& r, TEHandle te) {
+  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(reinterpret_cast<Handle>(te)));
+  wm_log.debug_f("TEUpdateUnstyled({{x0={}, y0={}, x1={}, y1={}}}, {})", r.left, r.top, r.right, r.bottom, reinterpret_cast<void*>(te));
   auto window = item->owner_window.lock();
   item->render_in_port(window->get_port(), true);
   WindowManager::instance().recomposite_from_window(window);
 }
 
-void TEDispose(TEHandle hTE) {
-  auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(hTE));
-  auto window = item->owner_window.lock();
-  window->remove_text_edit(item);
+void TEUpdateStyled(const Rect& r, StyledTextEdit* ste) {
+  ste->log.debug_f("TEUpdateStyled({{x0={}, y0={}, x1={}, y1={}}})", r.left, r.top, r.right, r.bottom);
+  if (!ste->prerendered) {
+    ste->log.debug_f("Prerendered text is missing; generating it");
+    auto font = load_font(1601); // Theldrow
+    if (!std::holds_alternative<ResourceDASM::BitmapFontRenderer>(font)) {
+      throw std::logic_error("Theldrow is not a bitmap font");
+    }
+    const auto& bm_font = std::get<ResourceDASM::BitmapFontRenderer>(font);
+    ste->prerendered = std::make_unique<phosg::ImageRGBA8888N>(
+        bm_font.wrap_and_render_text<phosg::PixelFormat::RGBA8888_NATIVE>(
+            ste->text, ste->layout_rect.right - ste->layout_rect.left, 0, 0x000000FF, ste->align));
+    // TODO: There is apparently a bug that causes the background not to be
+    // erased properly, so the text renders over itself as it scrolls and
+    // quickly becomes unreadable. To work around this, we add a background to
+    // the text that's sort of parchment-colored (in keeping with the game's
+    // theme), but it'd be nice to fix this and restore the original behavior.
+    for (size_t y = 0; y < ste->prerendered->get_height(); y++) {
+      for (size_t x = 0; x < ste->prerendered->get_width(); x++) {
+        if (!phosg::get_a(ste->prerendered->read(x, y))) {
+          ste->prerendered->write(x, y, 0xF3E5ABFF);
+        }
+      }
+    }
+  }
+  auto* port = CCGrafPort::as_port(qd.thePort);
+  if (!port) {
+    wm_log.warning_f("TEUpdateStyled: current port is missing; cannot draw text");
+  } else {
+    ste->log.debug_f("Rendering into {} with layout={{x0={}, y0={}, x1={}, y1={}}}, view={{x0={}, y0={}, x1={}, y1={}}}",
+        port->ref(), ste->layout_rect.left, ste->layout_rect.top, ste->layout_rect.right, ste->layout_rect.bottom,
+        ste->view_rect.left, ste->view_rect.top, ste->view_rect.right, ste->view_rect.bottom);
+    port->erase_rect(ste->view_rect);
+    port->data.copy_from(
+        *ste->prerendered,
+        ste->view_rect.left,
+        ste->view_rect.top,
+        ste->view_rect.right - ste->view_rect.left,
+        ste->view_rect.bottom - ste->view_rect.top,
+        ste->view_rect.left - ste->layout_rect.left,
+        ste->view_rect.top - ste->layout_rect.top,
+        ste->layout_rect.right - ste->layout_rect.left,
+        ste->layout_rect.bottom - ste->layout_rect.top,
+        phosg::ResizeMode::NONE); // Clip if out of bounds
+  }
+}
+
+void TEUpdate(const Rect* r, TEHandle te) {
+  auto* ste = StyledTextEdit::from_void_if(te);
+  if (ste) {
+    TEUpdateStyled(*r, ste);
+  } else {
+    TEUpdateUnstyled(*r, te);
+  }
+}
+
+void TEStyleInsert(const void* text_v, int32_t length, StScrpHandle hSt, TEHandle te) {
+  // This function should only be used with styled TextEdit instances
+  auto* ste = StyledTextEdit::from_void(te);
+  const char* text = reinterpret_cast<const char*>(text_v);
+  ste->text.clear();
+  ste->text.reserve(length);
+  for (size_t z = 0; z < length; z++) {
+    char ch = text[z];
+    ste->text.push_back((ch == '\r') ? '\n' : ch);
+  }
+  ste->log.debug_f("TEStyleInsert(\"{}\")", ste->text);
+  ste->prerendered.reset();
+  // TODO: We currently don't implement styled text. It'd be nice to support
+  // this in the future, but TTF fonts make this difficult - there aren't
+  // functions that make it easy to render heterogenously-styled text in
+  // SDL_ttf.
+}
+
+void TESetAlignment(int16_t just, TEHandle te) {
+  // In Realmz, this is only called for styled TextEdit instances
+  auto* ste = StyledTextEdit::from_void(te);
+  ste->log.debug_f("TESetAlignment({})", just);
+  switch (just) {
+    case 0: // System default (left for Roman charsets)
+    case -2: // Always left
+      ste->align = HorizAlign::LEFT;
+      break;
+    case 1: // Always center
+      ste->align = HorizAlign::CENTER;
+      break;
+    case -1: // Always right
+      ste->align = HorizAlign::RIGHT;
+      break;
+    default:
+      throw std::logic_error("Invalid text alignment mode");
+  }
+  ste->prerendered.reset();
+}
+
+void TEScroll(int16_t dh, int16_t dv, TEHandle te) {
+  // In Realmz, this is only called for styled TextEdit instances
+  auto* ste = StyledTextEdit::from_void(te);
+  ste->layout_rect.left += dh;
+  ste->layout_rect.right += dh;
+  ste->layout_rect.top += dv;
+  ste->layout_rect.bottom += dv;
+  ste->log.debug_f("TEScroll(dh={}, dv={}) => layout={{x0={}, y0={}, x1={}, y1={}}}, view={{x0={}, y0={}, x1={}, y1={}}}",
+      dh, dv,
+      ste->layout_rect.left, ste->layout_rect.top, ste->layout_rect.right, ste->layout_rect.bottom,
+      ste->view_rect.left, ste->view_rect.top, ste->view_rect.right, ste->view_rect.bottom);
+  // NOTE: TEScroll is supposed to update the text displayed on screen (that
+  // is, render the text to the current port), but Realmz always calls TEUpdate
+  // shortly after TEScroll, so as an optimization, we don't render here.
 }

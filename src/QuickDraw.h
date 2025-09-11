@@ -123,8 +123,6 @@ typedef CGrafPtr GWorldPtr;
 typedef GrafPort* GrafPtr;
 typedef GrafPort** GrafHandle; // Not part of Classic Mac OS API
 
-typedef Handle TEHandle;
-
 typedef struct {
   PixMap iconPMap;
   BitMap iconBMap;

@@ -177,27 +177,11 @@ void SFGetFile(Point where, const Str255 prompt, Ptr fileFilter, int16_t numType
     Ptr dlgHook, SFReply* reply) {
 }
 
-TEHandle TEStyleNew(const Rect* destRect, const Rect* viewRect) {
-  return NULL;
-}
-
-void TEStyleInsert(const void* text, int32_t length, StScrpHandle hSt, TEHandle hTE) {
-}
-
-void TESetAlignment(int16_t just, TEHandle hTE) {
-}
-
-void TEScroll(int16_t dh, int16_t dv, TEHandle hTE) {
-}
-
 void SFPutFile(Point where, const Str255 prompt, const Str255 origName, Ptr dlgHook, SFReply* reply) {
 }
 
 OSErr GetProcessInformation(const ProcessSerialNumber* PSN, ProcessInfoRecPtr info) {
   return 0;
-}
-
-void TEDelete(TEHandle hTE) {
 }
 
 void InitWindows(void) {

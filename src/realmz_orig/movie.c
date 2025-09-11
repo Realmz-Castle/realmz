@@ -24,6 +24,10 @@ void movie(short textID, short dataid, short justify) // � 'About...' dialog b
   // � Setup scrolling window for text.
   about = GetNewWindow(133, nil, (WindowPtr)-1);
   SetPort(GetWindowPort(about));
+  // NOTE(fuzziqersoftware): This appears to be a Realmz 8 bug? The text rect
+  // is larger than the window size, so the text overflows off the right edge.
+  // We fix this by resizing the window to the text rect size.
+  SizeWindow(about, txtRect.right - txtRect.left, txtRect.bottom - txtRect.top, 0);
   ForeColor(blackColor);
   BackColor(whiteColor);
   backpat = GetPixPat(dataid);

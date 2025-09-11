@@ -49,15 +49,22 @@ void textbox(short class, short index, short click, short different, Rect newrec
   TextMode(1);
   BackPixPat(base);
   messagetext = TENew(&userect, &userect);
-  TESetText(myString, 255, messagetext);
-  MyrDump("textbox :[%s]\n", myString);
-  TESetSelect(0, 1, messagetext);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * The original code takes the raw result from GetIndString and puts it into
+   * the TextEdit object, then calls TESetSelect and TEDelete to delete the
+   * Pascal string length field off of the beginning. We handle the Pascal
+   * string length field properly instead. */
+  // TESetText(myString, 255, messagetext);
+  // MyrDump("textbox :[%s]\n", myString);
+  // TESetSelect(0, 1, messagetext);
+  // #ifndef PC // Myriad
+  //   TEDelete(messagetext);
+  // #endif
+  TESetText(&myString[1], myString[0], messagetext);
+  /* *** END CHANGES *** */
   EraseRect(&userect);
   if (!different)
     userect.bottom = 333;
-#ifndef PC // Myriad
-  TEDelete(messagetext);
-#endif
   if (!different)
     userect.bottom = 448 + downshift;
   TEUpdate(&userect, messagetext);

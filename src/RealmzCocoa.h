@@ -125,11 +125,6 @@ typedef struct {
 typedef OSType SFTypeList[4];
 
 typedef struct {
-
-} StScrpRec;
-typedef StScrpRec *StScrpPtr, **StScrpHandle;
-
-typedef struct {
   uint32_t processInfoLength;
   StringPtr processName;
   FSSpecPtr processAppSpec;
@@ -203,10 +198,6 @@ void SectRgn(RgnHandle srcRgnA, RgnHandle srcRgnB, RgnHandle dstRgn);
 void PaintOne(WindowPeek window, RgnHandle clobberedRgn);
 void SFGetFile(Point where, const Str255 prompt, Ptr fileFilter, int16_t numTypes, SFTypeList typeList,
     Ptr dlgHook, SFReply* reply);
-TEHandle TEStyleNew(const Rect* destRect, const Rect* viewRect);
-void TEStyleInsert(const void* text, int32_t length, StScrpHandle hSt, TEHandle hTE);
-void TESetAlignment(int16_t just, TEHandle hTE);
-void TEScroll(int16_t dh, int16_t dv, TEHandle hTE);
 int32_t GetResourceSizeOnDisk(Handle theResource);
 void SFPutFile(Point where, const Str255 prompt, const Str255 origName, Ptr dlgHook, SFReply* reply);
 OSErr GetProcessInformation(const ProcessSerialNumber* PSN, ProcessInfoRecPtr info);
