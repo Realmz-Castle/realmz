@@ -1923,7 +1923,7 @@ TEHandle TENew(const Rect* destRect, const Rect* viewRect) {
   // OS, the reverse was the case: edit control dialog items were implemented
   // using TextEdit. In Realmz's limited use cases, this distinction is not
   // important, since unstyled TextEdit instances are only used for text entry
-  // (in the chaaracter creation flow and the Speak encounter action).
+  // (in the character creation flow and the Speak encounter action).
   auto window = WindowManager::instance().window_for_port(qd.thePort);
   return window->add_text_edit(*destRect, *viewRect);
 }
