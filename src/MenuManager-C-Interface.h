@@ -2,6 +2,10 @@
 
 #include "Types.h"
 
+// Due to a link conflict with the DrawMenuBar function from libuser32.a when compiling for
+// Windows targets, we have to rename uses of our classic Mac DrawMenuBar implementation.
+#define DrawMenuBar Realmz_DrawMenuBar
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -14,7 +18,7 @@ MenuHandle GetMenu(int16_t resourceID);
 void SetMenuBar(Handle menuList);
 void InsertMenu(MenuHandle theMenu, int16_t beforeID);
 void GetMenuItemText(MenuHandle theMenu, uint16_t item, Str255 itemString);
-void DrawMenuBar(void);
+void DrawMenuBar();
 void DeleteMenu(int16_t menuID);
 void SetMenuItemText(MenuHandle theMenu, uint16_t item, ConstStr255Param itemString);
 int32_t MenuSelect(Point startPt);
