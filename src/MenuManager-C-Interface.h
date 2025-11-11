@@ -2,9 +2,11 @@
 
 #include "Types.h"
 
-// Due to a link conflict with the DrawMenuBar function from libuser32.a when compiling for
-// Windows targets, we have to rename uses of our classic Mac DrawMenuBar implementation.
+// Due to a link conflict with the DrawMenuBar and GetMenu functions from libuser32.a when
+// compiling for Windows targets, we have to rename uses of our classic Mac DrawMenuBar and
+// GetMenu implementations.
 #define DrawMenuBar Realmz_DrawMenuBar
+#define GetMenu Realmz_GetMenu
 
 #ifdef __cplusplus
 extern "C" {

@@ -5,14 +5,14 @@
 #include "WindowManager.hpp"
 
 WinMenu::Item win_menu_item_from_menu_item(const Menu::Item& item) {
-  return {
-      item.name,
-      item.icon_number,
-      item.key_equivalent,
-      item.mark_character,
-      item.style_flags,
-      item.enabled,
-      item.checked};
+  return WinMenu::Item{
+      .name = item.name,
+      .icon_number = item.icon_number,
+      .key_equivalent = item.key_equivalent,
+      .mark_character = item.mark_character,
+      .style_flags = item.style_flags,
+      .enabled = item.enabled,
+      .checked = item.checked};
 }
 
 std::shared_ptr<WinMenu> win_menu_from_menu(std::shared_ptr<Menu> menu) {

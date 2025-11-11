@@ -13,15 +13,6 @@ struct WinMenu {
     uint8_t style_flags; // See TextStyleFlag
     bool enabled;
     bool checked;
-
-    Item(
-        const std::string& name,
-        uint8_t icon_number,
-        char key_equivalent,
-        char mark_character,
-        uint8_t style_flags,
-        bool enabled,
-        bool checked);
   };
 
   int16_t menu_id;
@@ -29,13 +20,6 @@ struct WinMenu {
   std::string title;
   bool enabled;
   std::vector<Item> items;
-
-  WinMenu(
-      int16_t menu_id,
-      int16_t proc_id,
-      const std::string& title,
-      bool enabled,
-      std::vector<Item>&& items);
 };
 
 struct WinMenuList {

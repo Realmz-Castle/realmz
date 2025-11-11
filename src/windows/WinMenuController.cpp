@@ -17,34 +17,6 @@ static WNDPROC g_OldWndProc = nullptr;
 // the item in the menu)
 static void (*menuCallback)(int16_t, int16_t){};
 
-WinMenu::Item::Item(
-    const std::string& name,
-    uint8_t icon_number,
-    char key_equivalent,
-    char mark_character,
-    uint8_t style_flags,
-    bool enabled,
-    bool checked)
-    : name{name},
-      icon_number{icon_number},
-      key_equivalent{key_equivalent},
-      mark_character{mark_character},
-      style_flags{style_flags},
-      enabled{enabled},
-      checked{checked} {};
-
-WinMenu::WinMenu(
-    int16_t menu_id,
-    int16_t proc_id,
-    const std::string& title,
-    bool enabled,
-    std::vector<Item>&& items)
-    : menu_id{menu_id},
-      proc_id{proc_id},
-      title{title},
-      enabled{enabled},
-      items{std::move(items)} {};
-
 // Packs the menu id and item id of each submenu item into a single word. When a command menu
 // item is clicked, Windows sends a WM_COMMAND message with the low byte of the wParam filled
 // with the wID property of the MENUITEMINFO struct of the menu. By packing both the Realmz
@@ -61,13 +33,12 @@ std::pair<int16_t, int16_t> UnpackMenuIdentifier(WORD wParam) {
 }
 
 LRESULT CALLBACK RealmzWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-  switch (msg) {
-    case WM_COMMAND:
-      if (menuCallback != nullptr) {
-        auto identifier_pair = UnpackMenuIdentifier(wParam);
-        menuCallback(identifier_pair.first, identifier_pair.second);
-      }
-      return 0;
+  if (msg == WM_COMMAND) {
+    if (menuCallback != nullptr) {
+      auto identifier_pair = UnpackMenuIdentifier(wParam);
+      menuCallback(identifier_pair.first, identifier_pair.second);
+    }
+    return 0;
   }
 
   // Forward everything else to the original WndProc
@@ -137,8 +108,13 @@ void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list,
     InsertMenuItem(win_menu, menu->menu_id, FALSE, &item_info);
   }
 
+  auto old_menu = GetMenu(wind_handle);
   SetMenu(wind_handle, win_menu);
   HookWndProc(wind_handle);
 
   DrawMenuBar(wind_handle);
+
+  if (old_menu) {
+    DestroyMenu(old_menu);
+  }
 }
