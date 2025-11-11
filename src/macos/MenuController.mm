@@ -1,4 +1,4 @@
-#import "MenuController.h"
+#import "../MenuController.h"
 #import <Cocoa/Cocoa.h>
 #import <Foundation/Foundation.h>
 #include <cstddef>

@@ -18,17 +18,33 @@ set(CMAKE_XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf")
 #     add_compile_options(-Wall -Wextra -Werror)
 # endif()
 
+# set the output directory for built objects.
+# This makes sure that the dynamic library goes into the build directory automatically.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/")
+
 # Library search
 find_package(phosg REQUIRED)
+message(STATUS "CMake found phosg at: ${phosg_DIR}")
 find_package(resource_file REQUIRED)
-find_package(SDL3 REQUIRED)
-find_package(SDL3_ttf REQUIRED)
-find_package(SDL3_image REQUIRED)
+message(STATUS "CMake found resource_file at: ${resource_file_DIR}")
+find_package(ZLIB REQUIRED)
+message(STATUS "CMake found zlib at: ${zlib_DIR}")
 
 # Debug flag - REALMZ_DEBUG is defined if the build type is Debug or RelWithDebInfo
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+if($<CONFIG:Debug,RelWithDebInfo>)
     add_compile_definitions(REALMZ_DEBUG)
 endif()
+
+# For cross-compilation to Windows
+if(WIN32)
+    link_directories($ENV{HOME}/mingw-install/lib ${CMAKE_CURRENT_BINARY_DIR}/vendored/SDL_ttf/external/freetype)
+endif()
+
+# Dependencies
+add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
+add_subdirectory(vendored/SDL_ttf EXCLUDE_FROM_ALL)
+add_subdirectory(vendored/SDL_image EXCLUDE_FROM_ALL)
 
 # Executable definition
 set(REALMZ_EXECUTABLE_SRC src/realmz_orig/main.c)
@@ -185,7 +201,6 @@ set(SOURCES
     src/realmz_orig/viewcharacter.c
     src/realmz_orig/warn.c
     src/realmz_orig/wear.c
-    src/macos/MenuController.mm
     src/RealmzCocoa.c
     src/EventManager.cpp
     src/FileManager.cpp
@@ -198,6 +213,28 @@ set(SOURCES
     src/SoundManager.cpp
     src/WindowManager.cpp
 )
+
+set(realmz_lib_LINK_LIBRARIES
+    SDL3::SDL3-shared
+    SDL3_ttf::SDL3_ttf
+    SDL3_image::SDL3_image
+    z
+    phosg::phosg
+    resource_file
+)
+
+if(APPLE)
+    list(APPEND SOURCES src/macos/MenuController.mm)
+    list(APPEND realmz_lib_LINK_LIBRARIES
+        "-framework Foundation"
+        "-framework Cocoa"
+    )
+elseif(WIN32)
+    list(APPEND SOURCES src/windows/MenuController.cpp src/windows/WinMenuController.cpp)
+    list(APPEND realmz_lib_LINK_LIBRARIES
+        bcrypt # Used by phosg::phosg during compilation for windows targets
+    )
+endif()
 
 # Installed in Contents/Resources
 set(RESOURCE_FILES
@@ -254,14 +291,14 @@ set_source_files_properties(${CHARACTER_RESOURCE_FILES} PROPERTIES
 add_library(realmz_lib STATIC ${SOURCES})
 target_compile_definitions(realmz_lib PUBLIC REALMZ_COCOA=1)
 target_compile_options(realmz_lib PUBLIC -fpascal-strings)
-target_include_directories(realmz_lib PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig src/macos)
+target_include_directories(realmz_lib PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig)
+
+if(WIN32)
+  target_compile_definitions(realmz_lib PUBLIC PHOSG_WINDOWS=1)
+endif()
+
 target_link_libraries(realmz_lib
-    ${SDL3_LIBRARIES}
-    SDL3_ttf::SDL3_ttf
-    SDL3_image::SDL3_image
-    resource_file::resource_file
-    "-framework Foundation"
-    "-framework Cocoa"
+    ${realmz_lib_LINK_LIBRARIES}
 )
 
 add_executable(Realmz MACOSX_BUNDLE
@@ -276,8 +313,6 @@ target_include_directories(Realmz PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_ori
 target_link_libraries(Realmz
     PUBLIC
     realmz_lib
-    "-framework Foundation"
-    "-framework Cocoa"
 )
 
 target_compile_options(Realmz PRIVATE -fsanitize=address)
@@ -333,14 +368,6 @@ set_source_files_properties(${CHARACTER_DATA_FILES} PROPERTIES
     MACOSX_PACKAGE_LOCATION "Resources/Character Files"
 )
 
-# Create save game directories. This should happen at cmake install time instead,
-# or during end user installation through an install script
-set(SAVE_GAME_DIRECTORIES "A" "B" "C" "D" "E" "F" "G" "H" "I" "J")
-foreach(SAVE_GAME_DIRECTORY ${SAVE_GAME_DIRECTORIES})
-add_custom_target(build-time-make-save-directory-${SAVE_GAME_DIRECTORY} ALL
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/Realmz.app/Contents/Resources/Save/Game ${SAVE_GAME_DIRECTORY}")
-endforeach()
-
 if(APPLE)
     set_target_properties(Realmz PROPERTIES
         MACOSX_BUNDLE ON
@@ -350,4 +377,54 @@ if(APPLE)
         MACOSX_BUNDLE_ICON_FILE "AppIcon"
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/bundle/Info.plist.in"
     )
+    # Create save game directories. This should happen at cmake install time instead,
+    # or during end user installation through an install script
+    set(SAVE_GAME_DIRECTORIES "A" "B" "C" "D" "E" "F" "G" "H" "I" "J")
+    foreach(SAVE_GAME_DIRECTORY ${SAVE_GAME_DIRECTORIES})
+    add_custom_target(build-time-make-save-directory-${SAVE_GAME_DIRECTORY} ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/Realmz.app/Contents/Resources/Save/Game ${SAVE_GAME_DIRECTORY}")
+    endforeach()
+elseif(WIN32)
+    install(TARGETS Realmz DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${RESOURCE_FILES} DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${DATA_RESOURCE_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/Data Files")
+    install(FILES ${CHARACTER_RESOURCE_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/Character Files")
+    install(DIRECTORY "base/Realmz/Scenarios" DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${CHARACTER_DATA_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/Character Files")
+
+    # CMake's RUNTIME_DEPENDENCIES argument to install should work to include necessary
+    # runtime dlls alongside the Realmz executable, but unfortunately (as of 4.1.1) it does
+    # not support the cross-compiling use case. Instead, we manually include these.
+    install(IMPORTED_RUNTIME_ARTIFACTS
+        SDL3-shared
+        SDL3_ttf-shared
+        SDL3_image-shared)
+
+    # The LLVM MinGW toolchain injects a couple of runtime dependencies that we have to install
+    # alongside the executable.
+    if(CMAKE_CROSSCOMPILING)
+        find_file(libc++ NAMES libc++.dll PATH_SUFFIXES bin REQUIRED)
+        message("Found c++ lib at ${libc++}")
+        find_file(libunwind NAMES libunwind.dll PATH_SUFFIXES bin REQUIRED)
+        message("Found unwind lib at ${libunwind}")
+        find_file(libasan NAMES libclang_rt.asan_dynamic-x86_64.dll PATH_SUFFIXES bin REQUIRED)
+        message("Found asan lib at ${libasan}")
+        install(FILES ${libc++} ${libunwind} ${libasan} DESTINATION ${CMAKE_INSTALL_BINDIR})
+    endif()
 endif()
+
+
+# CPack Package Installer Section
+configure_file ("${PROJECT_SOURCE_DIR}/CPackOptions.cmake.in"
+                "${PROJECT_BINARY_DIR}/CPackOptions.cmake"
+                @ONLY)
+set (CPACK_PROJECT_CONFIG_FILE
+     "${PROJECT_BINARY_DIR}/CPackOptions.cmake")
+
+include(InstallRequiredSystemLibraries)
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_PACKAGE_VERSION_MAJOR "${Realmz_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${Realmz_VERSION_MINOR}")
+set(CPACK_GENERATOR "ZIP")
+set(CPACK_SOURCE_GENERATOR "TGZ")
+include(CPack)

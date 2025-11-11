@@ -1,10 +1,10 @@
 #include "MenuManager.hpp"
 #include "EventManager.h"
 #include "MemoryManager.hpp"
+#include "MenuController.h"
 #include "MenuManager-C-Interface.h"
 #include "ResourceManager.h"
 #include "StringConvert.hpp"
-#include "macos/MenuController.h"
 #include <list>
 #include <phosg/Strings.hh>
 #include <resource_file/ResourceFile.hh>
@@ -158,7 +158,7 @@ void GetMenuItemText(MenuHandle theMenu, uint16_t item, Str255 itemString) {
   pstr_for_string<256>(itemString, menu_item.name);
 }
 
-void DrawMenuBar(void) {
+void DrawMenuBar() {
   mm.sync();
 }
 

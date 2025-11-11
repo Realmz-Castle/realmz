@@ -1,7 +1,6 @@
 #ifndef CONVERT_H
 #define CONVERT_H
 
-#include <libkern/OSByteOrder.h>
 #include <stdint.h>
 
 #include "structs.h"
@@ -12,8 +11,9 @@
 #define SLOWSWAP_BIG32(x)
 #else
 
-#define SWAP_BIG16(x) OSSwapBigToHostInt16(x)
-#define SWAP_BIG32(x) OSSwapBigToHostInt32(x)
+// TODO: Fix byteswapping to work on both windows and mac
+#define SWAP_BIG16(x) (x)
+#define SWAP_BIG32(x) (x)
 
 static inline void SLOWSWAP_BIG16(int16_t* x) {
   uint8_t* p = (uint8_t*)x;

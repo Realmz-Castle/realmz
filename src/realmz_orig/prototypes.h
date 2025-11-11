@@ -317,7 +317,7 @@ void viewcharacter(short view, short mode);
 void warn(short string);
 short wear(short character, short itemnum, short play);
 void ToolBoxInit(void);
-int main(void);
+int main(int argc, char* argv[]);
 void MainLoop(void);
 short checkforerrors(void);
 void aboutrealmz(void);

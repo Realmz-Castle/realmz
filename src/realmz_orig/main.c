@@ -1579,7 +1579,7 @@ void MainLoop(void) {
 }
 
 /******************************** main  ************************/
-int main(void) {
+int main(int argc, char* argvp[]) {
   ToolBoxInit();
 
   SetPortDialogPort(background);
@@ -2087,7 +2087,7 @@ short regscen(void) {
   if (tempvalue < 0)
     tempvalue *= -1;
 
-  // Fantasoft v7.0 BEGIN
+    // Fantasoft v7.0 BEGIN
 #ifdef PC
 //
 #else

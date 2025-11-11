@@ -434,7 +434,7 @@ protected:
         this->enqueue_event(app4Evt, 0, FrontWindow(), e.text.text);
         break;
       default:
-        em_log.info_f("Unhandled SDL event type 0x{:X}", e.type);
+        em_log.debug_f("Unhandled SDL event type 0x{:X}", e.type);
     }
   }
 
