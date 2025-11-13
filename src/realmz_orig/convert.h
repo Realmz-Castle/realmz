@@ -1,6 +1,7 @@
 #ifndef CONVERT_H
 #define CONVERT_H
 
+#include <SDL3/SDL_endian.h>
 #include <stdint.h>
 
 #include "structs.h"
@@ -11,9 +12,8 @@
 #define SLOWSWAP_BIG32(x)
 #else
 
-// TODO: Fix byteswapping to work on both windows and mac
-#define SWAP_BIG16(x) (x)
-#define SWAP_BIG32(x) (x)
+#define SWAP_BIG16(x) (SDL_Swap16BE(x))
+#define SWAP_BIG32(x) (SDL_Swap32BE(x))
 
 static inline void SLOWSWAP_BIG16(int16_t* x) {
   uint8_t* p = (uint8_t*)x;
