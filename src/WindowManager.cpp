@@ -1986,7 +1986,18 @@ TEHandle TEStyleNew(const Rect* dest, const Rect* view) {
 }
 
 void TEDispose(TEHandle te) {
-  delete StyledTextEdit::from_void(te);
+  auto* styled = StyledTextEdit::from_void_if(te);
+  if (styled) {
+    delete styled;
+  } else {
+    // It must be an unstyled TextEdit instance; Realmz uses this in
+    // textbox-time.c to render wrapped text, it seems
+    auto di = DialogItem::get_item_by_handle(reinterpret_cast<size_t>(te));
+    auto window = di->owner_window.lock();
+    if (window) {
+      window->remove_text_edit(di);
+    }
+  }
 }
 
 void TESetText(const void* text, int32_t length, TEHandle te) {
