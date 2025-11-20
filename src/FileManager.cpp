@@ -1,6 +1,6 @@
 #include "FileManager.h"
 
-#include <SDL3/SDL_filesystem.h>
+#include <SDL3/SDL_storage.h>
 #include <filesystem>
 #include <phosg/Strings.hh>
 
@@ -8,7 +8,9 @@
 
 static phosg::PrefixedLogger fm_log("[FileManager] ");
 
-std::string host_filename_for_mac_filename(const std::string& mac_path, bool implicitly_local) {
+const static std::string user_basepath = SDL_GetPrefPath("Fantasoft", "Realmz");
+
+std::string normalize_mac_path(const std::string& mac_path, bool implicitly_local) {
   std::string ret = mac_path;
 
   // If the path begins with ':', it's a relative path. On modern systems,
@@ -25,18 +27,31 @@ std::string host_filename_for_mac_filename(const std::string& mac_path, bool imp
         ret[z] = '/';
       }
     }
-
-    auto base_path = SDL_GetBasePath();
-    if (!base_path) {
-      fm_log.error_f("Failed to get SDL base path: {}", SDL_GetError());
-      return "";
-    }
-
-    return base_path + ret;
   } else {
     // Don't allow absolute paths
     throw std::runtime_error("absolute path not supported: " + ret);
   }
+
+  return ret;
+}
+
+std::string userdata_filename_for_mac_filename(const std::string& mac_path) {
+  std::string ret = normalize_mac_path(mac_path, false);
+
+  return user_basepath + ret;
+}
+
+std::string
+host_filename_for_mac_filename(const std::string& mac_path, bool implicitly_local) {
+  std::string ret = normalize_mac_path(mac_path, implicitly_local);
+
+  auto base_path = SDL_GetBasePath();
+  if (!base_path) {
+    fm_log.error_f("Failed to get SDL base path: {}", SDL_GetError());
+    return "";
+  }
+
+  return base_path + ret;
 }
 
 std::string host_filename_for_FSSpec(const FSSpec* fsp) {
@@ -129,7 +144,22 @@ FILE* mac_fopen(const char* filename, const char* mode) {
     return nullptr;
   }
 
-  std::string host_filename = host_filename_for_mac_filename(filename, false);
+  std::string user_filename = userdata_filename_for_mac_filename(filename);
+  std::string host_filename{};
+
+  // When writing, we should always write to the user preferences folder. When
+  // reading, we should first check to see if the file exists in the user's directory,
+  // which allows users to override the data and resource files.
+  if (mode[0] == 'w' || std::filesystem::exists(user_filename)) {
+    host_filename = user_filename;
+
+    // Ensure all parent directories exist
+    std::filesystem::path host_path{host_filename};
+    SDL_CreateDirectory(host_path.parent_path().string().c_str());
+  } else {
+    // Otherwise, fall back to reading the file from the Realmz application directory
+    host_filename = host_filename_for_mac_filename(filename, false);
+  }
 
   // Sometimes bugs may cause Realmz to try to open a directory. For example,
   // when you click on an empty slot in the party select list, it will call
