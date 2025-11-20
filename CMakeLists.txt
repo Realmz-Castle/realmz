@@ -220,7 +220,7 @@ set(realmz_lib_LINK_LIBRARIES
     SDL3_image::SDL3_image
     z
     phosg::phosg
-    resource_file
+    resource_file::resource_file
 )
 
 if(APPLE)
@@ -408,9 +408,6 @@ endif()
 
 
 # CPack Package Installer Section
-configure_file ("${PROJECT_SOURCE_DIR}/CPackOptions.cmake.in"
-                "${PROJECT_BINARY_DIR}/CPackOptions.cmake"
-                @ONLY)
 set (CPACK_PROJECT_CONFIG_FILE
      "${PROJECT_BINARY_DIR}/CPackOptions.cmake")
 
