@@ -317,8 +317,16 @@ short load(void) {
 
   fread(&notes, sizeof notes, 1, fp);
 
-  fread(&cancamp, sizeof cancamp, 10, fp);
-  CvtTabShortToPc(&cancamp, 10); // Myriad ????
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(danapplegate): This appears to have been a bug, possibly introduced by Myriad
+   * as the comments speculate. cancamp is a scalar short variable, while these calls
+   * seem to think it is an array of 10 shorts. This was causing buffer overflows.
+   */
+  // fread(&cancamp, sizeof cancamp, 10, fp);
+  // CvtTabShortToPc(&cancamp, 10); // Myriad ????
+  fread(&cancamp, sizeof cancamp, 1, fp);
+  CvtTabShortToPc(&cancamp, 1); // Myriad ????
+  /* *** END CHANGES *** */
 
   fread(&storage, sizeof storage, 1, fp);
   CvtTabItemToPc(&storage, 6);
