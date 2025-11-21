@@ -5,17 +5,17 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>English</string>
     <key>CFBundleExecutable</key>
-    <string>@MACOSX_BUNDLE_BUNDLE_NAME@</string>
+    <string>@PROJECT_NAME@</string>
     <key>CFBundleDisplayName</key>
-    <string>@MACOSX_BUNDLE_BUNDLE_NAME@</string>
+    <string>@PROJECT_NAME@</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon.icns</string>
     <key>CFBundleIdentifier</key>
-    <string>com.fantasoft.@MACOSX_BUNDLE_BUNDLE_NAME@</string>
+    <string>com.fantasoft.@PROJECT_NAME@</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>@MACOSX_BUNDLE_BUNDLE_NAME@</string>
+    <string>@PROJECT_NAME@</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleSignature</key>
@@ -25,6 +25,8 @@
     <key>CSResourcesFileMapped</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>@MACOSX_BUNDLE_COPYRIGHT@</string>
+    <string>@PROJECT_COPYRIGHT@</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.3</string>
 </dict>
 </plist>

@@ -1,11 +1,20 @@
 cmake_minimum_required(VERSION 3.27)
 
+# Build against both ARM and x86_64 architectures for Apple targets. Both executables are packaged
+# together in a so-called "fat" binary. This must be set before the first call to either `project`
+# or `enable_language`.
+set(CACHE{CMAKE_OSX_ARCHITECTURES} "x86_64;arm64")
+
+# Lowest version of the MacOS SDK that we can compile our code against, currently.
+set(CACHE{CMAKE_OSX_DEPLOYMENT_TARGET} "13.3")
+
 # Project setup
 project(Realmz
     VERSION 8.0.5
     DESCRIPTION "Classic turn-based RPG from Fantasoft"
     LANGUAGES C CXX OBJC
 )
+set(PROJECT_COPYRIGHT "Realmz Copyright 1994 by Tim Phillips")
 
 set(CMAKE_C_STANDARD 90)
 set(CMAKE_CXX_STANDARD 23)
@@ -301,7 +310,7 @@ target_link_libraries(realmz_lib
     ${realmz_lib_LINK_LIBRARIES}
 )
 
-add_executable(Realmz MACOSX_BUNDLE
+add_executable(Realmz
     ${REALMZ_EXECUTABLE_SRC}
     ${RESOURCE_FILES}
     ${DATA_RESOURCE_FILES}
@@ -356,27 +365,19 @@ set(SCENARIO_NAMES
 foreach(SCENARIO_NAME ${SCENARIO_NAMES})
 file(GLOB SCENARIO_RESOURCE_FILES "base/Realmz/Scenarios/${SCENARIO_NAME}/*")
 target_sources(Realmz PRIVATE ${SCENARIO_RESOURCE_FILES})
-set_source_files_properties(${SCENARIO_RESOURCE_FILES} PROPERTIES
-    MACOSX_PACKAGE_LOCATION "Resources/Scenarios/${SCENARIO_NAME}"
-)
 endforeach()
 
 # Character data installed in Contents/Resources/Character Files
 file(GLOB CHARACTER_DATA_FILES "base/Realmz/Character Files/*")
 target_sources(Realmz PRIVATE ${CHARACTER_DATA_FILES})
-set_source_files_properties(${CHARACTER_DATA_FILES} PROPERTIES
-    MACOSX_PACKAGE_LOCATION "Resources/Character Files"
-)
 
 if(APPLE)
-    set_target_properties(Realmz PROPERTIES
-        MACOSX_BUNDLE ON
-        MACOSX_BUNDLE_BUNDLE_NAME Realmz
-        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
-        MACOSX_BUNDLE_COPYRIGHT "Realmz Copyright 1994 by Tim Phillips"
-        MACOSX_BUNDLE_ICON_FILE "AppIcon"
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/bundle/Info.plist.in"
-    )
+    # Install data files to <bundle_root>/Resources
+    install(FILES ${RESOURCE_FILES} DESTINATION ".")
+    install(FILES ${DATA_RESOURCE_FILES} DESTINATION "Data Files")
+    install(FILES ${CHARACTER_RESOURCE_FILES} DESTINATION "Character Files")
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/base/Realmz/Scenarios" DESTINATION ".")
+    install(FILES ${CHARACTER_DATA_FILES} DESTINATION "Character Files")
 elseif(WIN32)
     install(TARGETS Realmz DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(FILES ${RESOURCE_FILES} DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -408,13 +409,20 @@ endif()
 
 
 # CPack Package Installer Section
-set (CPACK_PROJECT_CONFIG_FILE
-     "${PROJECT_BINARY_DIR}/CPackOptions.cmake")
-
 include(InstallRequiredSystemLibraries)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_VERSION_MAJOR "${Realmz_VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${Realmz_VERSION_MINOR}")
-set(CPACK_GENERATOR "ZIP")
 set(CPACK_SOURCE_GENERATOR "TGZ")
+
+if(WIN32)
+    set(CPACK_GENERATOR "ZIP")
+elseif(APPLE)
+    configure_file(bundle/Info.plist.in Info.plist)
+    set(CPACK_GENERATOR "Bundle")
+    set(CPACK_BUNDLE_NAME "Realmz")
+    set(CPACK_BUNDLE_PLIST "${PROJECT_BINARY_DIR}/Info.plist")
+    set(CPACK_BUNDLE_ICON "${PROJECT_SOURCE_DIR}/bundle/AppIcon.icns")
+    set(CPACK_BUNDLE_STARTUP_COMMAND Realmz)
+endif()
 include(CPack)
