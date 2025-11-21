@@ -23,7 +23,7 @@ Download the latest release for your system from the releases page. On Mac, doub
 - Download dependencies as git submodules
   - `git submodule init`
   - Download external dependencies of SDL_ttf `vendored/SDL_ttf/external/download.sh`
-- `VERBOSE=1 cmake --fresh -B build -D CMAKE_BUILD_TYPE=Debug -D CMAKE_VERBOSE_MAKEFILE:BOOL=ON -DSDLTTF_VENDORED=ON -DDISABLE_SDL:BOOL=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3`
+- `VERBOSE=1 cmake --fresh -B build_mac -D CMAKE_BUILD_TYPE=Debug -D CMAKE_VERBOSE_MAKEFILE:BOOL=ON -DSDLTTF_VENDORED=ON -DDISABLE_SDL:BOOL=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3`
 - `cmake --build build_mac --target package`
 
 # Cross-compiling for Windows from Mac
