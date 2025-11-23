@@ -246,6 +246,8 @@ int32_t PopUpMenuSelect(MenuHandle menu, int16_t top, int16_t left, int16_t popU
   result = -1;
   MCCreatePopupMenu(nsWindow, m, {top, left}, &popupCallback);
 
+  // Wait for either an item to be selected and fire the callback to modify result, or for
+  // the menu to be closed without a selection, which will fire the callback with 0 as the result.
   while (result == -1) {
     SDL_Delay(1);
   }
