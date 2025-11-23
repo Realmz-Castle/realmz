@@ -8,7 +8,7 @@
       "name": "(lldb) Launch",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/Realmz.app/Contents/MacOS/Realmz",
+      "program": "${workspaceFolder}/build/Realmz",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
