@@ -47,20 +47,6 @@ public:
         .h = static_cast<int16_t>(p.h - this->portRect.left),
     };
   }
-  inline Rect to_global_space(const Rect& r) const {
-    return Rect{
-        .top = static_cast<int16_t>(r.top + this->portRect.top),
-        .left = static_cast<int16_t>(r.left + this->portRect.left),
-        .bottom = static_cast<int16_t>(r.bottom + this->portRect.top),
-        .right = static_cast<int16_t>(r.right + this->portRect.left),
-    };
-  }
-  inline Point to_global_space(const Point& p) const {
-    return Point{
-        .v = static_cast<int16_t>(p.v + this->portRect.top),
-        .h = static_cast<int16_t>(p.h + this->portRect.left),
-    };
-  }
 
   inline size_t get_width() const {
     return this->data.get_width();
