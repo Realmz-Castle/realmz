@@ -304,7 +304,7 @@ target_compile_options(realmz_lib PUBLIC -fpascal-strings)
 target_include_directories(realmz_lib PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig)
 
 if(WIN32)
-  target_compile_definitions(realmz_lib PUBLIC PHOSG_WINDOWS=1)
+  target_compile_definitions(realmz_lib PUBLIC PHOSG_WINDOWS=1 TARGET_WINDOWS=1)
 endif()
 
 target_link_libraries(realmz_lib
