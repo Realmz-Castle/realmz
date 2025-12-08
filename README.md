@@ -24,8 +24,8 @@ Download the latest release for your system from the releases page. On Mac, doub
   - `git submodule init`
   - Download external dependencies of SDL_ttf `vendored/SDL_ttf/external/download.sh`
 - Download and install phosg and resource_dasm. Make sure to compile with `-DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"` in order to build Realmz as a fat binary that can run on both architectures. Also use `-DCMAKE_OSX_DEPLOYMENT_TARGET=13.3` to make sure all dependencies and Realmz are targeting the same minimum MacOS SDK.
-- `VERBOSE=1 cmake --fresh -B build_mac -D CMAKE_BUILD_TYPE=Debug -D CMAKE_VERBOSE_MAKEFILE:BOOL=ON -DSDLTTF_VENDORED=ON -DDISABLE_SDL:BOOL=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"`
-- `cmake --build build_mac --target package`
+- `cmake --preset macOS`
+- `cmake --build --preset macOS`
 
 # Cross-compiling for Windows from Mac
 

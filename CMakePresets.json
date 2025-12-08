@@ -1,0 +1,35 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 27,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": {"value": "Debug"},
+        "CMAKE_VERBOSE_MAKEFILE": {"value": "ON", "type": "BOOL"},
+        "SDLTTF_VENDORED": {"value": "ON", "type": "BOOL"},
+        "CMAKE_OSX_DEPLOYMENT_TARGET": {"value": "13.3"},
+        "CMAKE_OSX_ARCHITECTURES": {"value": "x86_64;arm64"}
+      }
+    },
+    {
+      "name": "macOS",
+      "description": "Generate a macOS build (debug configuration).",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build_mac"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "macOS",
+      "configurePreset": "macOS",
+      "targets": ["package"]
+    }
+  ]
+}
