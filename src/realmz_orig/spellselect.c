@@ -161,7 +161,18 @@ void Spellselect(void) {
 
       GetDialogItemText(itemHandle, myString);
       skiptest = FALSE;
-      if (((!lock.cspells[spelllevel][itemHit - 10]) && (characterl.cspells[spelllevel][itemHit - 10]) || (characterl.cspells[spelllevel][itemHit - 10]))) {
+
+      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+       * NOTE(jpetrie): This if statement originally read:
+       *
+       *   if (((!lock.cspells[spelllevel][itemHit - 10]) && (characterl.cspells[spelllevel][itemHit - 10]) || (characterl.cspells[spelllevel][itemHit - 10])))
+       *
+       * Simplified, this is "if (!A && B || B)" as the last two expressions are the same. This generates a warning
+       * about an && within an ||. The intent is to determine if spell button needs to be changed from the "pressed" to
+       * an "unpressed" state, which means the correct grouping of expressions is (!A && B) || B. This simplifies,
+       * however, to simply testing B.
+       */
+      if (characterl.cspells[spelllevel][itemHit - 10]) {
         buttonrect.left -= 2;
         buttonrect.top--;
         upbutton(FALSE);
