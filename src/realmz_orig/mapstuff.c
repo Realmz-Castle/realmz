@@ -150,7 +150,16 @@ void showmap(short mapnumber) {
         iconhand = NIL;
         iconhand = GetCIcon(themap.icon[t][0]);
 
-        if ((themap.icon[t][0] == 137) || (139)) /*** let x and s be full size ***/
+        /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+         * NOTE(jpetrie): This if statement originally read:
+         *
+         *   if ((themap.icon[t][0] == 137) || (139))
+         *
+         * The comment implies that this is supposed to be a check for the X-marks-the-spot or S-for-secret icons to
+         * ensure they're displayed full-size. However, because the right-hand side of the || is non-zero, the
+         * expression was always true. Properly testing against the icon ID restores the intended behavior.
+         */
+        if ((themap.icon[t][0] == 137) || (themap.icon[t][0] == 139)) /*** let x and s be full size ***/
         {
           InsetRect(&temprect, -((32 - themap.iconsize) / 2), -((32 - themap.iconsize) / 2));
         }

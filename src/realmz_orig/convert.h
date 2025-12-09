@@ -137,11 +137,17 @@ static inline void CvtTabMapStatToPc(struct mapstats* x, unsigned int count) {
     CvtMapStatToPc(x++);
 }
 
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(jpetrie): CvtTabSpellToPc and CvtContactToPc were originally just #define'd to nothing as they are no longer
+ * neccessary. That generates warnings because they're used as macros in the code, which leaves the expressions within
+ * the macro behind. They have been changed to take and ignore parameters, which has the same effect without warnings.
+ */
+
 // Spells are already composed solely of bytes.
-#define CvtTabSpellToPc
+#define CvtTabSpellToPc(spelldata, spellid)
 
 // contactdata is a bunch of static strings.
-#define CvtContactToPc
+#define CvtContactToPc(contactdata)
 
 // These are just arrays of shorts.
 #define CvtFieldToPc(x) CvtTabShortToPc(x, 90 * 90)
