@@ -66,6 +66,15 @@ void combat(short suprise, short mode) {
 
   combatsetup(0, suprise, mode);
 
+  // NOTE(fuzziqersoftware): It seems that the window order isn't correctly
+  // updated when a battle is started from 3D dungeon view. This obviously
+  // worked in the original builds, so it's likely a deficiency of some sort in
+  // our Window Manager implementation. This appears to be the easiest way to
+  // work around the issue.
+  if (indung && (viewtype == 1)) {
+    SelectWindow(look);
+  }
+
   while (incombat) {
     music(11); /**** battle music ***/
 

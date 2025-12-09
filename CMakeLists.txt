@@ -40,11 +40,6 @@ message(STATUS "CMake found resource_file at: ${resource_file_DIR}")
 find_package(ZLIB REQUIRED)
 message(STATUS "CMake found zlib at: ${zlib_DIR}")
 
-# Debug flag - REALMZ_DEBUG is defined if the build type is Debug or RelWithDebInfo
-if($<CONFIG:Debug,RelWithDebInfo>)
-    add_compile_definitions(REALMZ_DEBUG)
-endif()
-
 # For cross-compilation to Windows
 if(WIN32)
     link_directories($ENV{HOME}/mingw-install/lib ${CMAKE_CURRENT_BINARY_DIR}/vendored/SDL_ttf/external/freetype)
@@ -299,6 +294,12 @@ set_source_files_properties(${CHARACTER_RESOURCE_FILES} PROPERTIES
 # be shared as if they were a library to enable test executables
 add_library(realmz_lib STATIC ${SOURCES})
 target_compile_definitions(realmz_lib PUBLIC REALMZ_COCOA=1)
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug" OR ${CMAKE_BUILD_TYPE} STREQUAL RelWithDebInfo)
+    message("-- REALMZ_DEBUG is enabled because CMAKE_BUILD_TYPE is \"${CMAKE_BUILD_TYPE}\"")
+    target_compile_definitions(realmz_lib PUBLIC REALMZ_DEBUG=1)
+else()
+    message("-- REALMZ_DEBUG is disabled because CMAKE_BUILD_TYPE is \"${CMAKE_BUILD_TYPE}\"")
+endif()
 target_compile_options(realmz_lib PUBLIC -fpascal-strings)
 target_include_directories(realmz_lib PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz_orig)
 

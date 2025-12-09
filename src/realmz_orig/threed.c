@@ -348,7 +348,7 @@ move:
 
               if ((multiview) || (partycondition[4])) {
                 viewtype *= -1;
-                if (viewtype == 1) {
+                if (viewtype == 1) { /* 3D */
                   UpdateWindow(FALSE);
                   goto startover;
                 } else
