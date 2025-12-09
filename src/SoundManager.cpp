@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include <algorithm>
+#include <limits>
 #include <memory>
 #include <phosg/Encoding.hh>
 #include <resource_file/ResourceFile.hh>
@@ -28,7 +29,7 @@ public:
     if (this->device_id > 0) {
       return;
     }
-    if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+    if (!SDL_Init(SDL_INIT_AUDIO)) {
       sm_log.warning_f("Could not initialize audio subsystem: {}", SDL_GetError());
       return;
     }
@@ -60,7 +61,7 @@ public:
     SDL_BindAudioStream(this->device_id, channel->sdlAudioStream);
     sm_log.info_f("Created output channel on audio stream device: {}", SDL_GetAudioStreamDevice(channel->sdlAudioStream));
 
-    if (SDL_SetAudioStreamFormat(channel->sdlAudioStream, &spec, NULL) < 0) {
+    if (!SDL_SetAudioStreamFormat(channel->sdlAudioStream, &spec, NULL)) {
       sm_log.warning_f("Could not set audio stream format: {}", SDL_GetError());
     }
 
@@ -77,7 +78,15 @@ public:
       return;
     }
 
-    if (SDL_PutAudioStreamData(sdlAudioStream, sound->data.data(), sound->data.size()) < 0) {
+    // SDL_PutAudioStreamData takes an int to represent the audio stream size in bytes. It's unlikely that any sound
+    // will exceed that, but just in case, this check makes it obvious. It also guarantees the cast of the size argument
+    // is safe.
+    if (sound->data.size() > std::numeric_limits<int>::max()) {
+      sm_log.warning_f("Audio stream data is too large ({} bytes)", sound->data.size());
+      return;
+    }
+
+    if (!SDL_PutAudioStreamData(sdlAudioStream, sound->data.data(), static_cast<int>(sound->data.size()))) {
       sm_log.warning_f("Could not put audio stream data: {}", SDL_GetError());
     }
   }
