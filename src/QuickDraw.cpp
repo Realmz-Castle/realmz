@@ -190,7 +190,12 @@ bool CCGrafPort::draw_text_ttf(TTF_Font* font, const std::string& processed_text
     return false;
   } else {
     auto img = image_for_sdl_surface(text_surface.get());
-    data.copy_from_with_blend(img, rect.left, rect.top, w, h, 0, 0);
+    // This is annoying, but it seems there isn't a better way to do it... if the rendered text height exceeds the
+    // target rect, we trim off some of the top rows to center it vertically. This isn't exactly correct (some text
+    // appears to be off by 1 or 2 pixels sometimes) but it will do for now. There aren't good metrics provided by
+    // SDL_ttf for this (ascent/height don't match the actual amount we need to trim) so we have to do this instead.
+    size_t y_offset = (img.get_height() > h) ? ((img.get_height() - h) / 2) : 0;
+    data.copy_from_with_blend(img, rect.left, rect.top, w, h, 0, y_offset);
     return true;
   }
 }

@@ -119,10 +119,15 @@ void ShowStats(short showprestige) {
 
   TextSize(20);
   DialogNum(32, characterl.level);
+  /* NOTE(fuzziqersoftware): The original code used "\245\245\245\245" for the
+   * case when the character has no spell selection points. On Classic Mac OS
+   * this would be four bullet characters, but for better portability, we
+   * replace it with four dashes instead.
+   */
   if (characterl.spellpointsmax)
     DialogNum(33, getnumspells(characterl.spellcastertype, characterl.caste, characterl.level));
   else
-    MyrCDiStr(33, (StringPtr) "\245\245\245\245");
+    MyrCDiStr(33, (StringPtr) "----");
 
   TextFont(font);
   CtoPstr(characterl.name);
