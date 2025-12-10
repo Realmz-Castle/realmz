@@ -29,7 +29,7 @@ On Windows, extract the `.zip` file to your Program Files directory.
 - Download dependencies as git submodules
   - `git submodule init`
   - Download external dependencies of SDL_ttf `vendored/SDL_ttf/external/download.sh`
-- Download and install phosg and resource_dasm. Make sure to compile with `-DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"` in order to build Realmz as a fat binary that can run on both architectures. Also use `-DCMAKE_OSX_DEPLOYMENT_TARGET=13.3` to make sure all dependencies and Realmz are targeting the same minimum MacOS SDK.
+- Download and install [phosg](https://github.com/fuzziqersoftware/phosg) (commit [b2e0c12edb7e274a5e20c460f44eee44f49f57ef](https://github.com/fuzziqersoftware/phosg/tree/b2e0c12edb7e274a5e20c460f44eee44f49f57ef)) and [resource_dasm](https://github.com/fuzziqersoftware/resource_dasm) (commit [27f64c89a5fed855e68c2a5e97b6c6c389d8eb19](https://github.com/fuzziqersoftware/resource_dasm/tree/27f64c89a5fed855e68c2a5e97b6c6c389d8eb19)). Make sure to compile with `-DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"` in order to build Realmz as a fat binary that can run on both architectures. Also use `-DCMAKE_OSX_DEPLOYMENT_TARGET=13.3` to make sure all dependencies and Realmz are targeting the same minimum MacOS SDK.
 - `cmake --preset macOS`
 - `cmake --build --preset macOS`
 
