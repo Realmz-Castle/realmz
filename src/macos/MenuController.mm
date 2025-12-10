@@ -80,9 +80,9 @@ NSMenu* MCCreateSubMenu(NSString* title, const Menu& menuRes, const std::list<st
     } else {
       NSString* name = [NSString stringWithCString:subMenuItemRes.name.c_str() encoding:NSMacOSRomanStringEncoding];
       if (name != nullptr) {
-        auto s = std::string(&subMenuItemRes.key_equivalent, 1);
-        NSString* key = [NSString stringWithCString:s.c_str() encoding:NSMacOSRomanStringEncoding];
-        NSMenuItem* subMenuItem = [newMenu addItemWithTitle:name action:NULL keyEquivalent:@""];
+        char key_equiv[2] = {static_cast<char>(tolower(subMenuItemRes.key_equivalent)), '\0'};
+        NSString* key = [NSString stringWithCString:key_equiv encoding:NSMacOSRomanStringEncoding];
+        NSMenuItem* subMenuItem = [newMenu addItemWithTitle:name action:NULL keyEquivalent:key];
         [subMenuItem setTarget:self];
         [subMenuItem setAction:@selector(MCHandleMenuClick:)];
         id menuIdentifier = [[MCMenuItemIdentifier alloc] initWithRawIds:menu.menu_id itemId:itemId];

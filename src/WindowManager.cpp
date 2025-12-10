@@ -24,6 +24,7 @@
 #include "QuickDraw.hpp"
 #include "ResourceManager.h"
 #include "StringConvert.hpp"
+#include "Types.hpp"
 
 using ResourceDASM::ResourceFile;
 
@@ -51,12 +52,7 @@ inline Rect copy_rect(const ResourceDASM::Rect& src) {
 ////////////////////////////////////////////////////////////////////////////////
 // SDL and rendering helpers
 
-#ifdef REALMZ_DEBUG
-constexpr auto default_log_level = phosg::LogLevel::L_DEBUG;
-#else
-constexpr auto default_log_level = phosg::LogLevel::L_INFO;
-#endif
-static phosg::PrefixedLogger wm_log("[WindowManager] ", default_log_level);
+static phosg::PrefixedLogger wm_log("[WindowManager] ", DEFAULT_LOG_LEVEL);
 
 static size_t generate_opaque_handle() {
   static size_t next_handle = 1;
