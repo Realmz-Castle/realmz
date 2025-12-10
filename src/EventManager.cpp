@@ -460,14 +460,6 @@ protected:
         if (e.button.button == 1) {
           this->mouse_loc.h = e.button.x;
           this->mouse_loc.v = e.button.y;
-
-#ifdef TARGET_WINDOWS
-          // On Windows, SDL appears to report the mouse click approximately 16 pixels higher (lower v value)
-          // than it should be. This causes problems when trying to click on interface buttons in the lower
-          // right of the screen. Perhaps this is due to the Windows menu bar offsetting the content
-          // area? Not sure. This is a hacky fix to get this working.
-          this->mouse_loc.v += 16;
-#endif
           this->set_modifier_value(EVMOD_MOUSE_BUTTON_UP, (e.type == SDL_EVENT_MOUSE_BUTTON_UP));
           auto window = WindowManager::instance().window_for_point(this->mouse_loc.h, this->mouse_loc.v);
           this->enqueue_event((e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) ? mouseDown : mouseUp, 0, window ? &window->get_port() : nullptr, "");
