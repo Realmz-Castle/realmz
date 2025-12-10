@@ -148,7 +148,6 @@ void GetSoundVol(short* x);
 OSErr SetDefaultOutputVolume(uint32_t level);
 #define SetSoundVol SetDefaultOutputVolume
 void TextFont(uint16_t font);
-int32_t MenuKey(int16_t ch);
 void HiliteMenu(int16_t menuID);
 void TextSize(uint16_t size);
 GDHandle GetGDevice(void);
