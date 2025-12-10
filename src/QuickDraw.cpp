@@ -30,12 +30,7 @@
 #include "Types.hpp"
 #include "WindowManager.hpp"
 
-#ifdef REALMZ_DEBUG
-constexpr auto default_log_level = phosg::LogLevel::L_DEBUG;
-#else
-constexpr auto default_log_level = phosg::LogLevel::L_INFO;
-#endif
-static phosg::PrefixedLogger qd_log("[QuickDraw] ", default_log_level);
+static phosg::PrefixedLogger qd_log("[QuickDraw] ", DEFAULT_LOG_LEVEL);
 
 ///////////////////////////////////////////////////////////////////////////////
 // CCGrafPort implementation

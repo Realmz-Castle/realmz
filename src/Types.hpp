@@ -37,3 +37,9 @@ template <bool BE>
 using S32T = typename std::conditional<BE, be_int32_t, le_int32_t>::type;
 template <bool BE>
 using F32T = typename std::conditional<BE, be_float, le_float>::type;
+
+#ifdef REALMZ_DEBUG
+constexpr auto DEFAULT_LOG_LEVEL = phosg::LogLevel::L_DEBUG;
+#else
+constexpr auto DEFAULT_LOG_LEVEL = phosg::LogLevel::L_INFO;
+#endif

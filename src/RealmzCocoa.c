@@ -76,10 +76,6 @@ int16_t DIBadMount(Point where, int32_t evtMessage) {
   return 0;
 }
 
-int32_t MenuKey(int16_t ch) {
-  return 0;
-}
-
 void HiliteMenu(int16_t menuID) {
 }
 

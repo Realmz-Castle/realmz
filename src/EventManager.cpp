@@ -9,7 +9,7 @@
 #include "Types.hpp"
 #include "WindowManager.hpp"
 
-static phosg::PrefixedLogger em_log("[EventManager] ");
+static phosg::PrefixedLogger em_log("[EventManager] ", DEFAULT_LOG_LEVEL);
 
 static constexpr uint16_t EVMOD_RIGHT_CONTROL_KEY_DOWN = 0x8000;
 static constexpr uint16_t EVMOD_RIGHT_OPTION_KEY_DOWN = 0x4000;
@@ -271,6 +271,45 @@ uint8_t mac_vk_from_message(uint32_t message) {
   return (uint8_t)(message >> 8);
 }
 
+std::string name_for_event_type(uint16_t what) {
+  switch (what) {
+    case nullEvent:
+      return "nullEvent";
+    case mouseDown:
+      return "mouseDown";
+    case mouseUp:
+      return "mouseUp";
+    case keyDown:
+      return "keyDown";
+    case keyUp:
+      return "keyUp";
+    case autoKey:
+      return "autoKey";
+    case updateEvt:
+      return "updateEvt";
+    case diskEvt:
+      return "diskEvt";
+    case activateEvt:
+      return "activateEvt";
+    case networkEvt:
+      return "networkEvt";
+    case driverEvt:
+      return "driverEvt";
+    case app1Evt:
+      return "app1Evt";
+    case app2Evt:
+      return "app2Evt";
+    case app3Evt:
+      return "app3Evt";
+    case app4Evt:
+      return "app4Evt/osEvt";
+    case everyEvent:
+      return "everyEvent";
+    default:
+      return std::format("0x{:04X}", what);
+  }
+}
+
 class EventManager {
 public:
   EventManager() = default;
@@ -279,6 +318,7 @@ public:
   void flush_events() {
     this->enqueue_pending_events(0);
     this->event_queue.clear();
+    em_log.debug_f("Event queue cleared");
   }
 
   EventRecord get_next_event(uint32_t wait_ms) {
@@ -288,13 +328,15 @@ public:
     } else {
       EventRecord ev = this->event_queue.front();
       this->event_queue.pop_front();
+      em_log.debug_f("Dequeued event (what={}, message=0x{:08X}, when=0x{:08X}, where=(h={}, v={}), modifiers=0x{:04X})", name_for_event_type(ev.what), ev.message, ev.when, ev.where.h, ev.where.v, ev.modifiers);
       return ev;
     }
   }
 
   void push_menu_event(int16_t menu_id, int16_t item_id) {
     Point where = {static_cast<int16_t>(-menu_id), static_cast<int16_t>(-item_id)};
-    this->event_queue.emplace_back(EventRecord{mouseDown, 0, 0, where, 0});
+    const auto& ev = this->event_queue.emplace_back(EventRecord{mouseDown, 0, 0, where, 0});
+    em_log.debug_f("Enqueued menu event (what={}, message=0x{:08X}, when=0x{:08X}, where=(h={}, v={}), modifiers=0x{:04X})", name_for_event_type(ev.what), ev.message, ev.when, ev.where.h, ev.where.v, ev.modifiers);
   }
 
   void reset_mouse_state() {
@@ -368,6 +410,7 @@ protected:
       WindowManager::instance().on_debug_signal();
     }
 #endif
+    em_log.debug_f("Enqueued event (what={}, message=0x{:08X}, when=0x{:08X}, where=(h={}, v={}), modifiers=0x{:04X})", name_for_event_type(ev.what), ev.message, ev.when, ev.where.h, ev.where.v, ev.modifiers);
   }
 
   void enqueue_sdl_event(const SDL_Event& e) {
@@ -483,6 +526,7 @@ void FlushEvents(int16_t which_mask, uint16_t stop_mask) {
     throw std::logic_error("stop_mask specifies some events");
   }
 
+  em_log.debug_f("FlushEvents(0x{:04X}, 0x{:04X})", which_mask, stop_mask);
   em.flush_events();
 }
 
