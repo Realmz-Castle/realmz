@@ -8,12 +8,18 @@ Realmz is a classic, turn-based RPG, originally developed for early Macintosh co
 
 # Installing
 
-Download the latest release for your system from the releases page. On Mac, double click the `.dmg` file you downloaded, then click and drag the Realmz bundle into your Applications folder. On Windows, extract the `.zip` file to your Program Files directory.
+_WARNING: This is a beta release. The game may be unstable, crashes may occur, and save game and character data may become corrupted. If you have saves or character files that you care about, we strongly suggest regularly backing up your user data directory (`%AppData%\Fantasoft\Realmz` on Windows and `~/Library/Application\ Support/Fantasoft/Realmz` on Mac)._
+
+Download the latest release for your system from the releases page. Scroll down to and expand the "Assets" section. Download the `.dmg` file for Mac, and the `.zip` file for Windows.
+
+On Mac, double click the `.dmg` file you downloaded, then click and drag the Realmz bundle into your Applications folder. As reported in #171, there is currently an issue with the Mac application bundle. You must build the SDL3, SDL_ttf, and SDL_image shared dylibs, then copy them into `/Applications/Realmz.app/Contents/MacOS` in order for Realmz to successfully launch. This was resolved by #175 and should be fixed with the next release.
+
+On Windows, extract the `.zip` file to your Program Files directory.
 
 # Reporting Bugs
 
 - Save the crash report file (if possible)
-- Zip up your Realmz userdata directory (`%AppData%/Fantasoft/Realmz` on Windows, `~/Library/Application\ Support/Fantasoft/Realmz` on Mac)
+- Zip up your Realmz userdata directory (`%AppData%\Fantasoft\Realmz` on Windows, `~/Library/Application\ Support/Fantasoft/Realmz` on Mac)
 - Submit an issue to the Github repository
 - Attach the crash report and archive of your userdata directory
 - List the steps necessary to reproduce the bug
@@ -23,7 +29,7 @@ Download the latest release for your system from the releases page. On Mac, doub
 - Download dependencies as git submodules
   - `git submodule init`
   - Download external dependencies of SDL_ttf `vendored/SDL_ttf/external/download.sh`
-- Download and install phosg and resource_dasm. Make sure to compile with `-DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"` in order to build Realmz as a fat binary that can run on both architectures. Also use `-DCMAKE_OSX_DEPLOYMENT_TARGET=13.3` to make sure all dependencies and Realmz are targeting the same minimum MacOS SDK.
+- Download and install [phosg](https://github.com/fuzziqersoftware/phosg) (commit [b2e0c12edb7e274a5e20c460f44eee44f49f57ef](https://github.com/fuzziqersoftware/phosg/tree/b2e0c12edb7e274a5e20c460f44eee44f49f57ef)) and [resource_dasm](https://github.com/fuzziqersoftware/resource_dasm) (commit [27f64c89a5fed855e68c2a5e97b6c6c389d8eb19](https://github.com/fuzziqersoftware/resource_dasm/tree/27f64c89a5fed855e68c2a5e97b6c6c389d8eb19)). Make sure to compile with `-DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"` in order to build Realmz as a fat binary that can run on both architectures. Also use `-DCMAKE_OSX_DEPLOYMENT_TARGET=13.3` to make sure all dependencies and Realmz are targeting the same minimum MacOS SDK.
 - `cmake --preset macOS`
 - `cmake --build --preset macOS`
 
