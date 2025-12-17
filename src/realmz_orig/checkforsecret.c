@@ -21,7 +21,11 @@ short checkforsecret(short force) /****** 2 = trap/pit one square only, 1 = Secr
 
   chancesecret /= (charnum + 1);
 
-  if (partycondition[2])
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(jpetrie): The original check below was against index 2, which is actually for the ogre/dragon hide effect and
+   * probably not the intended check. The index for the Discover Secret condition is actually 3, which makes more sense.
+   */
+  if (partycondition[3])
     chancesecret = 100;
 
   if ((partycondition[5]) || (force)) {
