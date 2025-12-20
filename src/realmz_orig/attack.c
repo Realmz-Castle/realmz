@@ -1,6 +1,12 @@
 #include "prototypes.h"
 #include "variables.h"
 
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(danapplegate): A number of fixes have been made to this file to correct apparent
+ * mismatches between character and item special attributes, item damage types, monster
+ * types, and conditions. See PR #191 for details.
+ */
+
 /*************** attack (man to other) ********************/
 short attack(short chare, short mon) {
   Boolean kill = 0;
@@ -104,7 +110,7 @@ moveon:
     att -= 5; /**** curse ***/
   if (character.condition[36])
     att -= abs(character.condition[36]); /*** Hinder atk ***/
-  if (((monst.type[4]) || (monst.type[5])) && (character.condition[22]))
+  if (monst.type[4] && character.condition[22])
     att += 10; /*** +10% for pro evil ***/
   att += Rand(character.lu + character.maglu); /*** luck ***/
 
@@ -310,7 +316,7 @@ donefumble:
           damage += Rand(item.vsundead);
         if ((item.vsdd) && ((monst.type[2]) || (monst.type[3])))
           damage += Rand(item.vsdd);
-        if ((item.vsevil) && ((monst.type[4]) || (monst.type[5])))
+        if (item.vsevil && monst.type[4])
           damage += Rand(item.vsevil);
         damage += Rand(item.vssmall);
       } else /**** hit man ****/
@@ -538,7 +544,7 @@ trynewweapon:
     att -= Rand(character.lu + character.maglu); /*** luck ***/
     att -= character.ac;
     att -= 2 * abs(character.condition[7]); /*** shield ***/
-    if (((monst.type[4]) || (monst.type[5])) && (character.condition[22]))
+    if (monst.type[4] && character.condition[22])
       att -= 10; /*** +10% for pro evil ***/
   } else {
     if ((monpos[chare - 10][0] > monpos[mon - 10][0]) && (monst.lr == 0)) {
@@ -571,7 +577,7 @@ trynewweapon:
       att -= abs(monster[chare - 10].condition[38]); /*** defense bonus ***/
     att -= monster[chare - 10].ac;
     att -= 2 * abs(monster[chare - 10].condition[7]); /*** shield ***/
-    if (((monst.type[4]) || (monst.type[5])) && (monster[chare - 10].condition[22]))
+    if (monst.type[4] && monster[chare - 10].condition[22])
       att -= 10; /*** +10% for pro evil ***/
   }
 
