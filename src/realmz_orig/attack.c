@@ -4,7 +4,7 @@
 /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
  * NOTE(danapplegate): A number of fixes have been made to this file to correct apparent
  * mismatches between character and item special attributes, item damage types, monster
- * types, and conditions. See PR #191 for details.
+ * types, and conditions. See PRs #191, #192 for details.
  */
 
 /*************** attack (man to other) ********************/
@@ -314,7 +314,7 @@ donefumble:
         }
         if ((item.vsundead) && (monst.type[1]))
           damage += Rand(item.vsundead);
-        if ((item.vsdd) && ((monst.type[2]) || (monst.type[3])))
+        if (item.vsdd && monst.type[2])
           damage += Rand(item.vsdd);
         if (item.vsevil && monst.type[4])
           damage += Rand(item.vsevil);
