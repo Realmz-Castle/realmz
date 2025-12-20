@@ -121,7 +121,7 @@ OSErr FSpDelete(const FSSpec* spec) {
 }
 
 OSErr FSMakeFSSpec(int16_t vRefNum, int32_t dirID, ConstStr255Param fileName, FSSpecPtr spec) {
-  memcpy(spec->name, fileName, fileName[0] + 1);
+  memcpy(spec->name, fileName, static_cast<uint8_t>(fileName[0]) + 1);
   spec->vRefNum = vRefNum;
   spec->parID = dirID;
   return 0;

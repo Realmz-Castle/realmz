@@ -23,9 +23,15 @@ char* dialog_open_file(const char** types, const char* prompt) {
 
   type_count = i;
 
-  SFGetFile(where, (const unsigned char*)p_prompt, NULL, -1, sf_types, NULL, &sf_reply);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(jpetrie): In the original implementation, p_prompt was cast to "const unsigned char*" - this isn't neccessary
+   * any longer since SFGetFile() takes a signed char string. The length byte of fName has also been explicitly cast to
+   * an unsigned value to ensure it is handled properly.
+   */
+  SFGetFile(where, p_prompt, NULL, -1, sf_types, NULL, &sf_reply);
   if (sf_reply.good) {
-    filename = (char*)malloc(sf_reply.fName[0] + 1);
+
+    filename = (char*)malloc((uint8_t)sf_reply.fName[0] + 1);
     // GetFInfo(sf_reply.fName, sf_reply.
     P2CStr(sf_reply.fName);
     strcpy(filename, (const char*)sf_reply.fName);
@@ -45,9 +51,14 @@ char* dialog_save_file(const char* prompt, const char* default_name) {
   strncpy(p_default, default_name, sizeof(p_default));
   C2PStr(p_default);
 
-  SFPutFile(where, (unsigned char*)p_prompt, (unsigned char*)p_default, NULL, &sf_reply);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(jpetrie): In the original implementation, p_prompt and p_default were cast to unsigned types - this isn't
+   * neccessary any longer since SFPutFile() takes signed char strings. The length byte of fName has also been
+   * explicitly cast to an unsigned value to ensure it is handled properly.
+   */
+  SFPutFile(where, p_prompt, p_default, NULL, &sf_reply);
   if (sf_reply.good) {
-    filename = (char*)malloc(sf_reply.fName[0] + 1);
+    filename = (char*)malloc((uint8_t)sf_reply.fName[0] + 1);
     // GetFInfo(sf_reply.fName, sf_reply.
     P2CStr(sf_reply.fName);
     strcpy(filename, (char*)sf_reply.fName);
