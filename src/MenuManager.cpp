@@ -115,6 +115,32 @@ public:
     }
   }
 
+  int32_t find_item_by_key_equivalent(char ch) const {
+    // Returns the menu ID in the high word and item ID in the low word, or 0
+    // if no such item was found
+    if (!this->cur_menu_list) {
+      return 0;
+    }
+    ch = toupper(ch);
+    for (const auto& menu_set : {this->cur_menu_list->menus, this->cur_menu_list->submenus}) {
+      for (const auto& menu : menu_set) {
+        if (!menu->enabled) {
+          continue;
+        }
+        for (size_t item_id = 0; item_id < menu->items.size(); item_id++) {
+          const auto& item = menu->items[item_id];
+          if (!item.enabled) {
+            continue;
+          }
+          if (toupper(item.key_equivalent) == ch) {
+            return (menu->menu_id << 16) | item_id;
+          }
+        }
+      }
+    }
+    return 0;
+  }
+
 private:
   std::shared_ptr<MenuList> cur_menu_list;
   std::unordered_map<Handle, std::shared_ptr<MenuList>> handle_to_menulist;
@@ -262,4 +288,8 @@ int32_t PopUpMenuSelect(MenuHandle menu, int16_t top, int16_t left, int16_t popU
 int16_t CountMItems(MenuHandle theMenu) {
   auto m = mm.get_menu(theMenu);
   return m->items.size();
+}
+
+int32_t MenuKey(int16_t ch) {
+  return 0;
 }

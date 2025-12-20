@@ -30,6 +30,7 @@ void CheckItem(MenuHandle theMenu, uint16_t item, Boolean checked);
 int32_t PopUpMenuSelect(MenuHandle menu, int16_t top, int16_t left, int16_t popUpItem);
 void AppendMenu(MenuHandle menu, ConstStr255Param data);
 int16_t CountMItems(MenuHandle theMenu);
+int32_t MenuKey(int16_t ch);
 
 #ifdef __cplusplus
 }
