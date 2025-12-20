@@ -791,15 +791,24 @@ trynewweapon:
            *   if ((c[chare].condition[0] += abs(specdamage)) < 30)
            *     c[chare].condition[0] += abs(specdamage);
            *
-           * This appears to have been intended to ensure that the stacked duration of each character
-           * condition could not exceed 30 rounds. However, note that the compound assignment operator
+           * This appears to have been intended to only apply damage if adding the damage to the condition
+           * duration would not exceed 30 rounds. However, note that the compound assignment operator
            * is used in the if clause and the body, apparently inadvertently applying the condition
            * twice. This makes monster attacks that impose a condition twice as effective as the spell
-           * data would imply. We fix them by removing the accidental assignment from the check.
+           * data would imply.
+           *
+           * If we were to fix it by changing it to read:
+           *
+           *   it ((c[chare].condition[0] + abs(specdamage)) < 30)
+           *
+           * that would fix the double application of damage, but would have the strange result that more
+           * powerful monsters that deal large amounts of special damage would have a lower chance of
+           * inflicting any damage at all. As an alternative approach, we modify the logic to only apply
+           * the attack if the starting condition duration is less than 30.
            */
           case 1: /**** fear ****/
             if ((!savevs(5, chare)) && (character.condition[0] > -1)) {
-              if ((c[chare].condition[0] + abs(specdamage)) < 30)
+              if (c[chare].condition[0] < 30)
                 c[chare].condition[0] += abs(specdamage);
               sound(630);
               showresults(chare, -33, mon); /****** special attack ******/
@@ -808,7 +817,7 @@ trynewweapon:
 
           case 2: /**** paralyze ****/
             if ((!savevs(5, chare)) && (character.condition[1] > -1)) {
-              if ((c[chare].condition[1] + abs(specdamage)) < 30)
+              if (c[chare].condition[1] < 30)
                 c[chare].condition[1] += abs(specdamage);
               sound(630);
               showresults(chare, -32, mon); /****** special attack ******/
@@ -817,7 +826,7 @@ trynewweapon:
 
           case 3: /**** curse ****/
             if ((!savevs(7, chare)) && (character.condition[3] > -1)) {
-              if ((c[chare].condition[3] + abs(specdamage)) < 30)
+              if (c[chare].condition[3] < 30)
                 c[chare].condition[3] += abs(specdamage);
               sound(630);
               showresults(chare, -31, mon); /****** special attack ******/
@@ -826,7 +835,7 @@ trynewweapon:
 
           case 4: /**** stupid ****/
             if ((!savevs(5, chare)) && (character.condition[5] > -1)) {
-              if ((c[chare].condition[5] + abs(specdamage)) < 30)
+              if (c[chare].condition[5] < 30)
                 c[chare].condition[5] += abs(specdamage);
               sound(630);
               showresults(chare, -30, mon); /****** special attack ******/
@@ -835,7 +844,7 @@ trynewweapon:
 
           case 5: /**** entangle ****/
             if ((!savevs(7, chare)) && (character.condition[6] > -1)) {
-              if ((c[chare].condition[6] + abs(specdamage)) < 30)
+              if (c[chare].condition[6] < 30)
                 c[chare].condition[6] += abs(specdamage);
               sound(630);
               showresults(chare, -29, mon); /****** special attack ******/
@@ -844,7 +853,7 @@ trynewweapon:
 
           case 6: /**** poison ****/
             if ((!savevs(4, chare)) && (character.condition[9] > -1)) {
-              if ((c[chare].condition[9] + abs(specdamage)) < 30)
+              if (c[chare].condition[9] < 30)
                 c[chare].condition[9] += abs(specdamage);
               sound(630);
               showresults(chare, -28, mon); /****** special attack ******/
@@ -853,7 +862,7 @@ trynewweapon:
 
           case 7: /**** confuse ****/
             if ((!savevs(5, chare)) && (character.condition[29] > -1)) {
-              if ((c[chare].condition[29] + abs(specdamage)) < 30)
+              if (c[chare].condition[29] < 30)
                 c[chare].condition[29] += abs(specdamage);
               sound(630);
               showresults(chare, -27, mon); /****** special attack ******/
@@ -862,7 +871,7 @@ trynewweapon:
 
           case 16: /**** disease ****/
             if ((!savevs(4, chare)) && (character.condition[28] > -1)) {
-              if ((c[chare].condition[28] + abs(specdamage)) < 30)
+              if (c[chare].condition[28] < 30)
                 c[chare].condition[28] += abs(specdamage);
               sound(630);
               showresults(chare, -34, mon); /****** special attack ******/
