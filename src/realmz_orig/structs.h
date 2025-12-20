@@ -136,6 +136,18 @@ struct timeencounter {
   short stuff[10];
 };
 
+/* NOTE(danapplegate):
+ *
+ * Monster types, from STR# resource 132 "Special Attributes"
+ * 0: Magic-using
+ * 1: Undead
+ * 2: Demonic
+ * 3: Reptilian
+ * 4: Evil Creature
+ * 5: Intelligent
+ * 6: Large Creature
+ * 7: Non-Humanoid
+ */
 struct monster {
   unsigned char hd, bonus, dx, name, movementmax;
   char ac, magres, dist;
@@ -246,6 +258,46 @@ struct spell {
   unsigned char spellclass, incombat, incamp;
 };
 
+/* NOTE(danapplegate):
+ *
+ * Character conditions, from STR# resource 133 "Shown Conditions"
+ * 0: In Retreat
+ * 1: Is Helpless
+ * 2: Entangled
+ * 3: Cursed
+ * 4: Magic Aura
+ * 5: Stupid
+ * 6: Moving Slowly
+ * 7: Shielded from Hits
+ * 8: Missile Shield
+ * 9: Poisoned
+ * 10: Regenerating
+ * 11: Fire Protection
+ * 12: Cold Protection
+ * 13: Electrical Protection
+ * 14: Chemical Protection
+ * 15: Psi Protection
+ * 16-20: Pro' First-Fifth Level
+ * 21: Strong
+ * 22: Pro' from Foe
+ * 23: Speedy
+ * 24: Invisible
+ * 25: Animated
+ * 26: Turned to Stone
+ * 27: Blind
+ * 28: Is Diseased
+ * 29: Confused
+ * 30: Reflecting Spells
+ * 31: Reflecting Attacks
+ * 32: Bonus Damage
+ * 33: Absorbing Energy
+ * 34: Losing Energy
+ * 35: Absorbing Spell Energy
+ * 36: Hindered Attacks
+ * 37: Hindered Defense
+ * 38: Increased Defense
+ * 39: Silenced
+ */
 struct character {
   short version, verify1, tohit, dodge, missile, twohand, traiter, normattacks, beenattacked, guarding, target;
   short numitems, weaponsound, underneath, face, attackbonus, magco, position, maglu, magst, magres;
