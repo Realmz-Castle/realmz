@@ -4,7 +4,7 @@
 /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
  * NOTE(danapplegate): A number of fixes have been made to this file to correct apparent
  * mismatches between character and item special attributes, item damage types, monster
- * types, and conditions. See PRs #191, #192, #194 for details.
+ * types, and conditions. See PRs #191, #192, #194, #195 for details.
  */
 
 /*************** attack (man to other) ********************/
