@@ -713,32 +713,20 @@ trynewweapon:
           if (specdamage)
             showresults(chare, -21, mon);
         }
-        if ((item.vsundead) && (monst.type[4])) {
-          specdamage = Rand(item.electric);
-          if (savevs(3, chare))
-            specdamage /= 2;
-          if (monster[chare - 10].condition[13])
-            specdamage /= 2;
+        if ((item.vsundead) && (monst.type[1])) {
+          specdamage = Rand(item.vsundead);
           specialdam += specdamage;
           if (specdamage)
             showresults(chare, -21, mon);
         }
-        if ((item.vsdd) && (monst.type[5])) {
-          specdamage = Rand(item.electric);
-          if (savevs(3, chare))
-            specdamage /= 2;
-          if (monster[chare - 10].condition[13])
-            specdamage /= 2;
+        if ((item.vsdd) && (monst.type[2])) {
+          specdamage = Rand(item.vsdd);
           specialdam += specdamage;
           if (specdamage)
             showresults(chare, -21, mon);
         }
-        if ((item.vsevil) && (monst.type[6])) {
-          specdamage = Rand(item.electric);
-          if (savevs(3, chare))
-            specdamage /= 2;
-          if (monster[chare - 10].condition[13])
-            specdamage /= 2;
+        if ((item.vsevil) && (monst.type[4])) {
+          specdamage = Rand(item.vsevil);
           specialdam += specdamage;
           if (specdamage)
             showresults(chare, -21, mon);
