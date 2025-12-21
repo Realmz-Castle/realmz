@@ -147,6 +147,14 @@ struct timeencounter {
  * 5: Intelligent
  * 6: Large Creature
  * 7: Non-Humanoid
+ *
+ * Save/Immunity Types:
+ * 0: Charm
+ * 1: Heat
+ * 2: Cold
+ * 3: Electrical
+ * 4: Chemical
+ * 5: Mental
  */
 struct monster {
   unsigned char hd, bonus, dx, name, movementmax;
