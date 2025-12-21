@@ -716,20 +716,14 @@ trynewweapon:
         if ((item.vsundead) && (monst.type[1])) {
           specdamage = Rand(item.vsundead);
           specialdam += specdamage;
-          if (specdamage)
-            showresults(chare, -21, mon);
         }
         if ((item.vsdd) && (monst.type[2])) {
           specdamage = Rand(item.vsdd);
           specialdam += specdamage;
-          if (specdamage)
-            showresults(chare, -21, mon);
         }
         if ((item.vsevil) && (monst.type[4])) {
           specdamage = Rand(item.vsevil);
           specialdam += specdamage;
-          if (specdamage)
-            showresults(chare, -21, mon);
         }
       } else {
         damage += Rand(item.vssmall);
