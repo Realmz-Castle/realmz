@@ -21,12 +21,13 @@ void init_fonts() {
       host_filename_for_mac_filename(":Black Chancery.ttf", true);
   tt_fonts_by_id[BLACK_CHANCERY_FONT_ID] =
       TTF_OpenFont(font_filename.c_str(), 16);
-  font_filename = host_filename_for_mac_filename(":Geneva.ttf", true);
+  // Since Geneva itself is still copyrighted, we use the open Inter font instead.
+  font_filename = host_filename_for_mac_filename(":InterVariable.ttf", true);
   auto geneva_font = TTF_OpenFont(font_filename.c_str(), 16);
   tt_fonts_by_id[GENEVA_FONT_ID] = geneva_font;
   tt_fonts_by_id[ALTERNATIVE_GENEVA_FONT_ID] = geneva_font;
   tt_fonts_by_id[REALMZ_GENEVA_FONT_ID] = geneva_font;
-  font_filename = host_filename_for_mac_filename(":Chicago.ttf", true);
+  font_filename = host_filename_for_mac_filename(":ChicagoFLF.ttf", true);
   tt_fonts_by_id[CHICAGO_FONT_ID] = TTF_OpenFont(font_filename.c_str(), 16);
 }
 
