@@ -34,6 +34,9 @@ OSErr SndNewChannel(SndChannelPtr* chan, uint16_t synth, int32_t init, void* use
 OSErr SndDoImmediate(SndChannelPtr chan, const SndCommand* cmd);
 OSErr SndPlay(SndChannelPtr chan, Handle sndHdl, Boolean async);
 
+OSErr SetDefaultOutputVolume(uint32_t level);
+#define SetSoundVol SetDefaultOutputVolume
+
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus
