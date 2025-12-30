@@ -4,7 +4,7 @@
 /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
  * NOTE(danapplegate): A number of fixes have been made to this file to correct apparent
  * mismatches between character and item special attributes, item damage types, monster
- * types, and conditions. See PRs #191, #192, #194 for details.
+ * types, and conditions. See PRs #191, #192, #194, #195 for details.
  */
 
 /*************** attack (man to other) ********************/
@@ -682,7 +682,7 @@ trynewweapon:
 
         damage += Rand(item.vssmall);
 
-        if ((item.heat) && (!monst.spellimmune[1])) {
+        if ((item.heat) && (!monster[chare - 10].spellimmune[1])) {
           specdamage = Rand(item.heat);
           if (savevs(1, chare))
             specdamage /= 2;
@@ -692,7 +692,7 @@ trynewweapon:
           if (specdamage)
             showresults(chare, -19, mon);
         }
-        if ((item.cold) && (!monst.spellimmune[2])) {
+        if ((item.cold) && (!monster[chare - 10].spellimmune[2])) {
           specdamage = Rand(item.cold);
           if (savevs(2, chare))
             specdamage /= 2;
@@ -702,7 +702,7 @@ trynewweapon:
           if (specdamage)
             showresults(chare, -20, mon);
         }
-        if ((item.electric) && (!monst.spellimmune[3])) {
+        if ((item.electric) && (!monster[chare - 10].spellimmune[3])) {
           specdamage = Rand(item.electric);
           if (savevs(3, chare))
             specdamage /= 2;
@@ -713,15 +713,15 @@ trynewweapon:
           if (specdamage)
             showresults(chare, -21, mon);
         }
-        if ((item.vsundead) && (monst.type[1])) {
+        if ((item.vsundead) && (monster[chare - 10].type[1])) {
           specdamage = Rand(item.vsundead);
           specialdam += specdamage;
         }
-        if ((item.vsdd) && (monst.type[2])) {
+        if ((item.vsdd) && (monster[chare - 10].type[2])) {
           specdamage = Rand(item.vsdd);
           specialdam += specdamage;
         }
-        if ((item.vsevil) && (monst.type[4])) {
+        if ((item.vsevil) && (monster[chare - 10].type[4])) {
           specdamage = Rand(item.vsevil);
           specialdam += specdamage;
         }
