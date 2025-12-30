@@ -145,8 +145,6 @@ void ExitToShell(void);
 OSErr SetDepth(GDHandle aDevice, uint16_t depth, uint16_t whichFlags, uint16_t flags);
 OSErr GetDefaultOutputVolume(uint32_t* level);
 void GetSoundVol(short* x);
-OSErr SetDefaultOutputVolume(uint32_t level);
-#define SetSoundVol SetDefaultOutputVolume
 void TextFont(uint16_t font);
 void HiliteMenu(int16_t menuID);
 void TextSize(uint16_t size);

@@ -106,6 +106,7 @@ int16_t OpenDeskAcc(ConstStr255Param deskAccName) {
 }
 
 void SetItemMark(MenuHandle theMenu, int16_t item, int16_t markChar) {
+  // TODO
 }
 
 void EndUpdate(WindowPtr theWindow) {
@@ -124,10 +125,6 @@ void OffsetRect(Rect* r, uint16_t dh, uint16_t dv) {
   r->right += dh;
   r->top += dv;
   r->bottom += dv;
-}
-
-OSErr SetDefaultOutputVolume(uint32_t level) {
-  return 0;
 }
 
 OSErr SetDepth(GDHandle aDevice, uint16_t depth, uint16_t whichFlags, uint16_t flags) {

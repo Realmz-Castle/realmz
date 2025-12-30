@@ -64,6 +64,9 @@ public:
     if (!SDL_SetAudioStreamFormat(channel->sdlAudioStream, &spec, NULL)) {
       sm_log.warning_f("Could not set audio stream format: {}", SDL_GetError());
     }
+    if (!SDL_SetAudioStreamGain(channel->sdlAudioStream, this->default_volume)) {
+      sm_log.warning_f("Could not set audio stream gain: {}", SDL_GetError());
+    }
 
     this->all_channels.emplace(channel);
     return channel;
@@ -94,6 +97,15 @@ public:
   void delete_unplayed_audio(SDL_AudioStream* sdlAudioStream) {
     if (!SDL_ClearAudioStream(sdlAudioStream)) {
       sm_log.warning_f("Could not delete audio stream data: {}", SDL_GetError());
+    }
+  }
+
+  void set_global_volume(float gain) {
+    this->default_volume = gain;
+    for (auto& channel : this->all_channels) {
+      if (!SDL_SetAudioStreamGain(channel->sdlAudioStream, this->default_volume)) {
+        sm_log.warning_f("Could not set audio stream gain: {}", SDL_GetError());
+      }
     }
   }
 
@@ -176,6 +188,7 @@ private:
   }
 
   SDL_AudioDeviceID device_id;
+  float default_volume = 4.0f / 7.0f;
   std::unordered_set<std::shared_ptr<SndChannel>> all_channels;
   std::unordered_map<Handle, std::shared_ptr<const Sound>> decoded_sounds;
 };
@@ -214,4 +227,14 @@ OSErr SndPlay(SndChannelPtr chan, Handle data_handle, Boolean async) {
   }
   sm.play_sound(chan->sdlAudioStream, data_handle);
   return noErr;
+}
+
+OSErr SetDefaultOutputVolume(uint32_t level) {
+  // level is apparently a number in the range [0, 7], where 0 is silent and 7 is full volume.
+  if (level < 0 || level > 7) {
+    throw std::logic_error(std::format("Global volume {} is out of range", level));
+  }
+  sm.set_global_volume(static_cast<float>(level) / 7.0);
+  sm_log.info_f("Default output volume set to {}", level);
+  return 0;
 }
