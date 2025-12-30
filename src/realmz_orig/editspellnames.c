@@ -43,13 +43,19 @@ OSErr SetIndString(StringPtr theStr, short resID, short strIndex) {
   offset = sizeof(short); /* get a pointer to the string to replace */
   resStr = (char*)*theRes + sizeof(short);
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(jpetrie): The original implementation of the remainder of this function used "str[0]" indexing to get the
+   * size of a variety of Pascal strings. Since string types are signed now, each of those lines have been updated to
+   * cast to uint8_t to ensure that longer strings don't result in bugs because their length byte was interpreted as a
+   * negative value.
+   */
   for (ourString = 1; ourString < strIndex; ourString++) {
-    offset += 1 + resStr[0];
-    resStr += 1 + resStr[0];
+    offset += 1 + (uint8_t)resStr[0];
+    resStr += 1 + (uint8_t)resStr[0];
   }
 
   oldSize = GetHandleSize(theRes); /* grow/shrink resource handle to make room for new string */
-  newSize = oldSize - resStr[0] + theStr[0];
+  newSize = oldSize - (uint8_t)resStr[0] + (uint8_t)theStr[0];
   HUnlock(theRes);
   SetHandleSize(theRes, newSize);
 
@@ -62,10 +68,10 @@ OSErr SetIndString(StringPtr theStr, short resID, short strIndex) {
   resStr = *theRes + offset;
 
   /* move old data forward/backward to make room */
-  BlockMove(resStr + resStr[0] + 1, resStr + theStr[0] + 1, oldSize - offset - resStr[0] - 1);
+  BlockMove(resStr + (uint8_t)resStr[0] + 1, resStr + (uint8_t)theStr[0] + 1, oldSize - offset - (uint8_t)resStr[0] - 1);
 
   /* move new data in */
-  BlockMove(theStr, resStr, theStr[0] + 1);
+  BlockMove(theStr, resStr, (uint8_t)theStr[0] + 1);
 
   /* write resource out */
 

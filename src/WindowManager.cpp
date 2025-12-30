@@ -1480,7 +1480,7 @@ void SetDialogItemText(DialogItemHandle item_handle, ConstStr255Param text) {
 }
 
 int16_t StringWidth(ConstStr255Param s) {
-  return s[0];
+  return static_cast<uint8_t>(s[0]);
 }
 
 Boolean IsDialogEvent(const EventRecord* ev) {
@@ -1674,7 +1674,7 @@ void StringToNum(ConstStr255Param str, int32_t* num) {
   //   ASCII code for a space is $20.
   // We implement the same behavior here.
   *num = 0;
-  if (str[0] > 0) {
+  if (static_cast<uint8_t>(str[0]) > 0) {
     bool negative = (str[1] == '-');
     size_t offset = negative ? 1 : 0;
     for (size_t z = 0; z < static_cast<uint8_t>(str[0]); z++) {
