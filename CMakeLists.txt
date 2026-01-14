@@ -328,6 +328,31 @@ target_link_libraries(Realmz
 target_compile_options(Realmz PRIVATE -fsanitize=address)
 target_link_options(Realmz PRIVATE -fsanitize=address)
 
+if(APPLE)
+    # Generate a bundle.
+    set_target_properties(Realmz PROPERTIES
+        MACOSX_BUNDLE ON
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/bundle/Info.plist.in"
+        INSTALL_RPATH "@executable_path/../Frameworks"
+        BUILD_WITH_INSTALL_RPATH TRUE
+    )
+
+    # Because the SDL targets are imported alias targets, getting their outputs is a little clunky, especially for
+    # multi-configuration generators like Xcode.
+    set(REALMZ_RUNTIME_DYLIBS
+        "$<TARGET_FILE_DIR:Realmz>/../../../libSDL3.0.dylib"
+        "$<TARGET_FILE_DIR:Realmz>/../../../libSDL3_ttf.0.dylib"
+        "$<TARGET_FILE_DIR:Realmz>/../../../libSDL3_image.0.dylib"
+    )
+
+    # Ensure that the shared libraries Realmz needs are packaged in the bundle, and the bundle is relocatable.
+    add_custom_command(TARGET Realmz POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:Realmz>/../Frameworks"
+        COMMAND ${CMAKE_COMMAND} -E copy -t "$<TARGET_FILE_DIR:Realmz>/../Frameworks" ${REALMZ_RUNTIME_DYLIBS}
+        COMMENT "Finalizing application bundle..."
+    )
+endif()
+
 set(TEST_EXECUTABLES "GraphicsTest")
 foreach(TEST_EXECUTABLE ${TEST_EXECUTABLES})
     add_executable(${TEST_EXECUTABLE} MACOSX_BUNDLE
@@ -364,35 +389,22 @@ set(SCENARIO_NAMES
     "Wrath of the Mind Lords"
 )
 foreach(SCENARIO_NAME ${SCENARIO_NAMES})
-file(GLOB SCENARIO_RESOURCE_FILES "base/Realmz/Scenarios/${SCENARIO_NAME}/*")
-target_sources(Realmz PRIVATE ${SCENARIO_RESOURCE_FILES})
+    file(GLOB SCENARIO_RESOURCE_FILES "base/Realmz/Scenarios/${SCENARIO_NAME}/*")
+    target_sources(Realmz PRIVATE ${SCENARIO_RESOURCE_FILES})
+    set_source_files_properties(${SCENARIO_RESOURCE_FILES} PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources/Scenarios/${SCENARIO_NAME}"
+    )
 endforeach()
 
 # Character data installed in Contents/Resources/Character Files
 file(GLOB CHARACTER_DATA_FILES "base/Realmz/Character Files/*")
 target_sources(Realmz PRIVATE ${CHARACTER_DATA_FILES})
+set_source_files_properties(${CHARACTER_DATA_FILES} PROPERTIES
+    MACOSX_PACKAGE_LOCATION "Resources/Character Files"
+)
 
 if(APPLE)
-    # Install data files to <bundle_root>/Resources
-    install(FILES ${RESOURCE_FILES} DESTINATION ".")
-    install(FILES ${DATA_RESOURCE_FILES} DESTINATION "Data Files")
-    install(FILES ${CHARACTER_RESOURCE_FILES} DESTINATION "Character Files")
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/base/Realmz/Scenarios" DESTINATION ".")
-    install(FILES ${CHARACTER_DATA_FILES} DESTINATION "Character Files")
-
-    # We dynamically link to the SDL* libraries (plus an asan lib that clang links against),
-    # so we need to ensure that they get included in the bundle. MacOS supports rpaths, which
-    # specify directly in the Mach-0 executable the directories in which runtime libraries may
-    # be found. By default, LIBRARY artifacts will be installed to Resources/lib in the bundle,
-    # so we set the RPATH below to this directory.
-    install(IMPORTED_RUNTIME_ARTIFACTS Realmz RUNTIME_DEPENDENCY_SET runtimeDeps)
-    install(RUNTIME_DEPENDENCY_SET runtimeDeps LIBRARY)
-
-    # Manually set the rpath to avoid CMake automatically adding hardcoded build machine paths
-    set_target_properties(Realmz PROPERTIES
-        INSTALL_RPATH "@executable_path/../Resources/lib"
-        BUILD_WITH_INSTALL_RPATH TRUE
-    )
+    install(TARGETS Realmz BUNDLE DESTINATION ".")
 elseif(WIN32)
     install(TARGETS Realmz DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(FILES ${RESOURCE_FILES} DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -422,7 +434,6 @@ elseif(WIN32)
     endif()
 endif()
 
-
 # CPack Package Installer Section
 include(InstallRequiredSystemLibraries)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
@@ -433,11 +444,6 @@ set(CPACK_SOURCE_GENERATOR "TGZ")
 if(WIN32)
     set(CPACK_GENERATOR "ZIP")
 elseif(APPLE)
-    configure_file(bundle/Info.plist.in Info.plist)
-    set(CPACK_GENERATOR "Bundle")
-    set(CPACK_BUNDLE_NAME "Realmz")
-    set(CPACK_BUNDLE_PLIST "${PROJECT_BINARY_DIR}/Info.plist")
-    set(CPACK_BUNDLE_ICON "${PROJECT_SOURCE_DIR}/bundle/AppIcon.icns")
-    set(CPACK_BUNDLE_STARTUP_COMMAND Realmz)
+    set(CPACK_GENERATOR "DragNDrop")
 endif()
 include(CPack)
