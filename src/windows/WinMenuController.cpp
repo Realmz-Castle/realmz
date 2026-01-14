@@ -121,6 +121,14 @@ void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list,
   if (old_menu) {
     DestroyMenu(old_menu);
   }
+
+  // After experimenting with this, it seems that calls to SDL_SetWindowSize actually set the
+  // client area of the window, not the full window size inclusive of the menu bar. Since we have to
+  // bypass SDL to create the menu directly via the Windows API, it seems that SDL doesn't know that
+  // the rendering of the menu bar has shrunk the client area. So, a quick call to SDL_SetWindowSize is
+  // enough to force SDL to realize the menu bar now exists and to expand the window to ensure that the
+  // client area is the full 800x600.
+  SDL_SetWindowSize(sdl_window, 800, 600);
 }
 
 int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu) {
