@@ -328,6 +328,12 @@ target_link_libraries(Realmz
 target_compile_options(Realmz PRIVATE -fsanitize=address)
 target_link_options(Realmz PRIVATE -fsanitize=address)
 
+# Ensure the files the bare Realmz executable needs exist in the build directory.
+add_custom_command(TARGET Realmz POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/resources" "$<TARGET_FILE_DIR:Realmz>"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/base/Realmz" "$<TARGET_FILE_DIR:Realmz>"
+)
+
 set(TEST_EXECUTABLES "GraphicsTest")
 foreach(TEST_EXECUTABLE ${TEST_EXECUTABLES})
     add_executable(${TEST_EXECUTABLE} MACOSX_BUNDLE
