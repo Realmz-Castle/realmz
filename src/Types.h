@@ -38,12 +38,12 @@ typedef unsigned char Boolean;
 #define noErr 0
 #define resProblem -204
 
-typedef unsigned char Str255[256];
-typedef unsigned char Str63[64];
-typedef unsigned char* StringPtr;
+typedef char Str255[256];
+typedef char Str63[64];
+typedef char* StringPtr;
 typedef StringPtr* StringHandle;
-typedef const unsigned char* ConstStr255Param;
-typedef const unsigned char* ConstStr63Param;
+typedef const char* ConstStr255Param;
+typedef const char* ConstStr63Param;
 
 // See also the C++ versions of these in resource_file/ResourceFormats.hh
 typedef struct {

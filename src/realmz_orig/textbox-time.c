@@ -53,14 +53,17 @@ void textbox(short class, short index, short click, short different, Rect newrec
    * The original code takes the raw result from GetIndString and puts it into
    * the TextEdit object, then calls TESetSelect and TEDelete to delete the
    * Pascal string length field off of the beginning. We handle the Pascal
-   * string length field properly instead. */
+   * string length field properly instead.
+   *
+   * NOTE(jpetrie): This change also now ensures the Pascal string length byte is cast to an unsigned type.
+   */
   // TESetText(myString, 255, messagetext);
   // MyrDump("textbox :[%s]\n", myString);
   // TESetSelect(0, 1, messagetext);
   // #ifndef PC // Myriad
   //   TEDelete(messagetext);
   // #endif
-  TESetText(&myString[1], myString[0], messagetext);
+  TESetText(&myString[1], (uint8_t)myString[0], messagetext);
   /* *** END CHANGES *** */
   EraseRect(&userect);
   if (!different)

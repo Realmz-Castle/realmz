@@ -569,7 +569,7 @@ Handle Get1Resource(ResType type, int16_t id) {
     if (type == 'PRFN' && id == 128 /* PREF_RES_ID */) {
       SetHandleSize(res->data_handle, sizeof(PrefRecord));
       auto pref_handle = (PrefHandle)res->data_handle;
-      int name_str_size = (int)(*pref_handle)->name_str[0];
+      int name_str_size = static_cast<uint8_t>((*pref_handle)->name_str[0]);
       auto end_of_name_str = (char*)*pref_handle + offsetof(PrefRecord, name_str) + 1 + name_str_size;
       memmove((char*)*pref_handle + offsetof(PrefRecord, autonote), end_of_name_str, 18);
     }
