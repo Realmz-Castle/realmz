@@ -157,6 +157,19 @@ waynew:
       characterl.st++;
       characterl.de--;
     }
+
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(jpetrie): Initial damage and to-hit bonus are computed here now. Previously they were computed later (see
+     * my comment below), after the application of age modifiers. However, applyage() handles damage and to-hit by
+     * subtracting the current bonuses, updating the character's strength based on aging progression, and they adding
+     * the bonuses based on the new strength back on the character. This means it was assuming initial damage and to-hit
+     * were already set in the character record, and since that was not the case, bonuses were ending up higher than
+     * intended and did not scale correctly.
+     */
+    strength(characterl.st);
+    characterl.damage += damage;
+    characterl.tohit += temp;
+
     characterl.currentagegroup = 0;
     applyage(characterl.race, 1, 1); /*********** applies initial Youth age parameters ***/
     if (caste.minimumagegroup > 1)
@@ -231,10 +244,10 @@ waynew:
     }
     characterl.staminamax += temp;
 
-    strength(characterl.st);
-
-    characterl.damage += damage;
-    characterl.tohit += temp;
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(jpetrie): This is where the initial to-hit and damage bonuses were originally calculated. That code has
+     * been moved (see my comment above) to fix a bug related to age modifier application.
+     */
 
     characterl.magres = (characterl.in + characterl.wi) / 10;
 
