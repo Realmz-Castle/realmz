@@ -9,6 +9,11 @@
 #include "Types.hpp"
 #include "WindowManager.hpp"
 
+// Defined in main.c of the original Realmz code, this value is the base scalar for the game speed. It is used in this
+// file to prevent repeated key down events from clogging the event queue faster than the game will read them; see the
+// code in EventManager::enqueue_sdl_event().
+extern long oldspeed;
+
 static phosg::PrefixedLogger em_log("[EventManager] ", DEFAULT_LOG_LEVEL);
 
 static constexpr uint16_t EVMOD_RIGHT_CONTROL_KEY_DOWN = 0x8000;
@@ -435,10 +440,40 @@ protected:
         this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_GUI);
 
         uint32_t message = mac_message_for_sdl_key_code(e.key.key, this->modifier_flags);
+        bool enqueue = true;
         if (message != 0) {
-          // TODO: Do keyboard events always go to the front window, or is
-          // there some notion of keyboard focus in Classic Mac OS?
-          this->enqueue_event((e.type == SDL_EVENT_KEY_DOWN) ? keyDown : keyUp, message, FrontWindow(), "");
+          if (e.type == SDL_EVENT_KEY_DOWN) {
+            // Key down repeats can come in faster than Realmz will process them, depending on the game speed settings.
+            // When key events get backlogged in that fashion, the game appears sluggish until it clears the queue. To
+            // prevent that, key repeats are deduplicated so that no key repeat enters the queue faster than the game
+            // speed. The queue is scanned backwards since events are inserted at the back.
+            auto cursor = event_queue.rbegin();
+            while (cursor != event_queue.rend()) {
+              EventRecord& existing = *cursor;
+              if (existing.what == keyDown && existing.message == message) {
+                // Determine how long it's been since the most recent key down event for this same key.
+                uint32_t duration = TickCount() - existing.when;
+
+                // This cast is safe because oldspeed will never be larger than 11. Note that calculation used for the
+                // actual checkdelay() function in Realmz is "2 * oldspeed * scale" where scale is the parameter to
+                // checkdelay(), but Realmz never calls it with a value other than 1.
+                uint32_t threshold = static_cast<uint32_t>(2 * oldspeed);
+                if (duration < threshold) {
+                  em_log.info_f("Deduplicating key down for key=0x{:X}; {} ticks since previous event (threshold is {}).", static_cast<size_t>(e.key.key), duration, threshold);
+                  enqueue = false;
+                  break;
+                }
+              }
+
+              ++cursor;
+            }
+          }
+
+          if (enqueue) {
+            // TODO: Do keyboard events always go to the front window, or is
+            // there some notion of keyboard focus in Classic Mac OS?
+            this->enqueue_event((e.type == SDL_EVENT_KEY_DOWN) ? keyDown : keyUp, message, FrontWindow(), "");
+          }
         } else {
           em_log.warning_f("Unknown key pressed: key=0x{:X} scancode=0x{:X}",
               static_cast<size_t>(e.key.key), static_cast<size_t>(e.key.scancode));
