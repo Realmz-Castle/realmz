@@ -12,7 +12,7 @@
 // Defined in main.c of the original Realmz code, this value is the base scalar for the game speed. It is used in this
 // file to prevent repeated key down events from clogging the event queue faster than the game will read them; see the
 // code in EventManager::enqueue_sdl_event().
-extern long oldspeed;
+extern short oldspeed;
 
 static phosg::PrefixedLogger em_log("[EventManager] ", DEFAULT_LOG_LEVEL);
 
@@ -454,10 +454,9 @@ protected:
                 // Determine how long it's been since the most recent key down event for this same key.
                 uint32_t duration = TickCount() - existing.when;
 
-                // This cast is safe because oldspeed will never be larger than 11. Note that calculation used for the
-                // actual checkdelay() function in Realmz is "2 * oldspeed * scale" where scale is the parameter to
-                // checkdelay(), but Realmz never calls it with a value other than 1.
-                uint32_t threshold = static_cast<uint32_t>(2 * oldspeed);
+                // Note that calculation used for the actual checkdelay() function in Realmz is "2 * oldspeed * scale"
+                // where scale is the parameter to checkdelay(), but Realmz never calls it with a value other than 1.
+                uint32_t threshold = 2 * oldspeed;
                 if (duration < threshold) {
                   em_log.info_f("Deduplicating key down for key=0x{:X}; {} ticks since previous event (threshold is {}).", static_cast<size_t>(e.key.key), duration, threshold);
                   enqueue = false;
