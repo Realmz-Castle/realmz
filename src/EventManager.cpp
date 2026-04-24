@@ -343,6 +343,10 @@ public:
     this->modifier_flags |= EVMOD_MOUSE_BUTTON_UP;
   }
 
+  void expect_orphan_mouseup() {
+    this->expecting_orphan_mouseup = true;
+  }
+
   inline const Point& get_mouse_loc() const {
     return this->mouse_loc;
   }
@@ -372,6 +376,7 @@ protected:
   Point mouse_loc = {0, 0};
   uint16_t modifier_flags = EVMOD_MOUSE_BUTTON_UP | EVMOD_WINDOW_ACTIVATED;
   std::deque<EventRecord> event_queue;
+  bool expecting_orphan_mouseup = false;
 
   void set_modifier_value(uint16_t what, bool enabled) {
     if (enabled) {
@@ -480,8 +485,16 @@ protected:
         if (e.button.button == 1) {
           this->mouse_loc.h = e.button.x;
           this->mouse_loc.v = e.button.y;
-          this->set_modifier_value(EVMOD_MOUSE_BUTTON_UP, (e.type == SDL_EVENT_MOUSE_BUTTON_UP));
           auto window = WindowManager::instance().window_for_point(this->mouse_loc.h, this->mouse_loc.v);
+          // SDL#13134: native popup eats the mouseDown; synthesize it from the lone mouseUp (single-shot).
+          if (this->expecting_orphan_mouseup) {
+            this->expecting_orphan_mouseup = false;
+            if (e.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+              this->set_modifier_value(EVMOD_MOUSE_BUTTON_UP, false);
+              this->enqueue_event(mouseDown, 0, window ? &window->get_port() : nullptr, "");
+            }
+          }
+          this->set_modifier_value(EVMOD_MOUSE_BUTTON_UP, (e.type == SDL_EVENT_MOUSE_BUTTON_UP));
           this->enqueue_event((e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) ? mouseDown : mouseUp, 0, window ? &window->get_port() : nullptr, "");
         }
         break;
@@ -609,4 +622,8 @@ void PushMenuEvent(int16_t menu_id, int16_t item_id) {
 
 void reset_mouse_state() {
   em.reset_mouse_state();
+}
+
+void expect_orphan_mouseup() {
+  em.expect_orphan_mouseup();
 }

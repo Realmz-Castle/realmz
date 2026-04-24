@@ -274,6 +274,10 @@ int32_t PopUpMenuSelect(MenuHandle menu, int16_t top, int16_t left, int16_t popU
   auto nsWindow = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
 
   result = -1;
+#if defined(__APPLE__)
+  // SDL#13134 is Mac-only.
+  expect_orphan_mouseup();
+#endif
   MCCreatePopupMenu(nsWindow, m, {top, left}, &popupCallback);
 
   // Wait for either an item to be selected and fire the callback to modify result, or for

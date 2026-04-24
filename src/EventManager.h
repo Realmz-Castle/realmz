@@ -95,6 +95,7 @@ void FlushEvents(int16_t mask, uint16_t stop_mask); // IM2-69
 Boolean WaitNextEvent(int16_t mask, EventRecord* ev, uint32_t sleep, RgnHandle mouse_rgn);
 
 void reset_mouse_state();
+void expect_orphan_mouseup();
 
 #ifdef __cplusplus
 }
