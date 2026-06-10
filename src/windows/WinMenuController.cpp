@@ -43,12 +43,12 @@ static bool IsPortCommand(WORD cmd) {
 static void BuildPortMenu(HMENU menubar) {
   HMENU port_menu = CreatePopupMenu();
 
+  HMENU filter_menu = CreatePopupMenu();
   WORD id = PORT_FILTER_BASE;
   for (const auto& filter : kPortFilters) {
-    AppendMenu(port_menu, MF_STRING, id++, filter.title);
+    AppendMenu(filter_menu, MF_STRING, id++, filter.title);
   }
-
-  AppendMenu(port_menu, MF_SEPARATOR, 0, nullptr);
+  AppendMenu(port_menu, MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(filter_menu), "Filter");
 
   HMENU scale_menu = CreatePopupMenu();
   id = PORT_SCALE_BASE;

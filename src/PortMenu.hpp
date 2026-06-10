@@ -18,9 +18,9 @@ struct PortScaleOption {
 };
 
 inline constexpr PortFilterOption kPortFilters[] = {
-    {"Filter: Pixel Art", SDL_SCALEMODE_PIXELART},
-    {"Filter: Linear", SDL_SCALEMODE_LINEAR},
-    {"Filter: Nearest", SDL_SCALEMODE_NEAREST},
+    {"Pixel Art", SDL_SCALEMODE_PIXELART},
+    {"Linear", SDL_SCALEMODE_LINEAR},
+    {"Nearest", SDL_SCALEMODE_NEAREST},
 };
 
 inline constexpr PortScaleOption kPortScales[] = {

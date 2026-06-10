@@ -147,23 +147,28 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   [portMenu setAutoenablesItems:NO];
   portMenu.delegate = self;
 
+  NSMenuItem* filteringItem = [[NSMenuItem alloc] initWithTitle:@"Filter" action:NULL keyEquivalent:@""];
+  [portMenu addItem:filteringItem];
+  NSMenu* filterMenu = [[NSMenu alloc] initWithTitle:@"Filter"];
+  [filterMenu setAutoenablesItems:NO];
+  filterMenu.delegate = self;
   const struct {
     const char* title;
     SDL_ScaleMode mode;
   } filters[] = {
-      {"Filter: Pixel Art", SDL_SCALEMODE_PIXELART},
-      {"Filter: Linear", SDL_SCALEMODE_LINEAR},
-      {"Filter: Nearest", SDL_SCALEMODE_NEAREST},
+      {"Pixel Art", SDL_SCALEMODE_PIXELART},
+      {"Linear", SDL_SCALEMODE_LINEAR},
+      {"Nearest", SDL_SCALEMODE_NEAREST},
   };
   for (const auto& f : filters) {
-    NSMenuItem* item = [portMenu addItemWithTitle:[NSString stringWithUTF8String:f.title]
-                                           action:@selector(MCHandleFilter:)
-                                    keyEquivalent:@""];
+    NSMenuItem* item = [filterMenu addItemWithTitle:[NSString stringWithUTF8String:f.title]
+                                             action:@selector(MCHandleFilter:)
+                                      keyEquivalent:@""];
     [item setTarget:self];
     [item setTag:(NSInteger)f.mode];
   }
+  [portMenu setSubmenu:filterMenu forItem:filteringItem];
 
-  [portMenu addItem:[NSMenuItem separatorItem]];
   NSMenuItem* scaleItem = [[NSMenuItem alloc] initWithTitle:@"Scale" action:NULL keyEquivalent:@""];
   [portMenu addItem:scaleItem];
   NSMenu* scaleMenu = [[NSMenu alloc] initWithTitle:@"Scale"];
