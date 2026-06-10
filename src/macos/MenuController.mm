@@ -194,7 +194,6 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   }
   [portMenu setSubmenu:scaleMenu forItem:scaleItem];
 
-  [portMenu addItem:[NSMenuItem separatorItem]];
   NSMenuItem* aspectItem = [portMenu addItemWithTitle:@"Lock Aspect Ratio"
                                                action:@selector(MCHandleAspectLock:)
                                         keyEquivalent:@""];

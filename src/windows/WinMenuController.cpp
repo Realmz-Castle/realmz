@@ -56,8 +56,6 @@ static void BuildPortMenu(HMENU menubar) {
     AppendMenu(scale_menu, MF_STRING, id++, scale.title);
   }
   AppendMenu(port_menu, MF_POPUP, reinterpret_cast<UINT_PTR>(scale_menu), "Scale");
-
-  AppendMenu(port_menu, MF_SEPARATOR, 0, nullptr);
   AppendMenu(port_menu, MF_STRING, PORT_ASPECT_LOCK, "Lock Aspect Ratio");
 
   AppendMenu(port_menu, MF_SEPARATOR, 0, nullptr);
