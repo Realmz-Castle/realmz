@@ -1,5 +1,7 @@
 #include "WindowManager.hpp"
 
+#include "PortPrefs.hpp"
+
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_properties.h>
 #include <memory>
@@ -938,16 +940,26 @@ WindowManager::~WindowManager() = default;
 void WindowManager::create_sdl_window() {
   wm_log.debug_f("WindowManager::create_sdl_window()");
 
-  static constexpr size_t w = 800;
-  static constexpr size_t h = 600;
-  this->sdl_window = sdl_make_shared(SDL_CreateWindow("Realmz", w, h, 0));
+  static constexpr int logical_w = 800;
+  static constexpr int logical_h = 600;
+
+  PortPrefs prefs = load_port_prefs();
+  this->scale_mode = prefs.scale_mode;
+  this->aspect_locked = prefs.aspect_locked;
+
+  this->sdl_window = sdl_make_shared(SDL_CreateWindow("Realmz", prefs.window_w, prefs.window_h, SDL_WINDOW_RESIZABLE));
   if (!this->sdl_window) {
     throw std::runtime_error(std::format("Could not create SDL window: {}", SDL_GetError()));
   }
-  if (!SDL_CreateRenderer(this->sdl_window.get(), nullptr)) {
+  // 4:3 enforced by snap_aspect() on resize, not SDL_SetWindowAspectRatio (crashes macOS fullscreen exit; SDL #14229, notourbug).
+
+  SDL_Renderer* renderer = SDL_CreateRenderer(this->sdl_window.get(), nullptr);
+  if (!renderer) {
     throw std::runtime_error(std::format("Could not create window renderer: {}", SDL_GetError()));
   }
-  this->screen_port.resize(w, h);
+  SDL_SetRenderLogicalPresentation(renderer, logical_w, logical_h, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+
+  this->screen_port.resize(logical_w, logical_h);
   this->recomposite_all();
 }
 
@@ -1187,6 +1199,9 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
         if (!texture) {
           wm_log.error_f("Could not create texture: {}", SDL_GetError());
         } else {
+          SDL_SetTextureScaleMode(texture.get(), this->scale_mode);
+          SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+          SDL_RenderClear(renderer);
           SDL_RenderTexture(renderer, texture.get(), nullptr, nullptr);
         }
       }
@@ -1226,6 +1241,111 @@ void WindowManager::recomposite_from_window(std::shared_ptr<Window> updated_wind
 }
 void WindowManager::recomposite_all() {
   this->recomposite(nullptr);
+}
+
+void WindowManager::set_scale_mode(SDL_ScaleMode mode) {
+  if (mode == this->scale_mode) {
+    return;
+  }
+  this->scale_mode = mode;
+  this->recomposite_all();
+  this->save_prefs();
+}
+
+void WindowManager::snap_aspect() {
+  if (!this->sdl_window || !this->aspect_locked || this->is_fullscreen()) {
+    return;
+  }
+  int w = 0, h = 0;
+  SDL_GetWindowSize(this->sdl_window.get(), &w, &h);
+  int snapped_h = (w * 600 + 400) / 800;
+  if (snapped_h != h) {
+    SDL_SetWindowSize(this->sdl_window.get(), w, snapped_h);
+  }
+}
+
+void WindowManager::set_aspect_locked(bool locked) {
+  this->aspect_locked = locked;
+  this->snap_aspect();
+  this->save_prefs();
+}
+
+void WindowManager::set_window_size(int w, int h) {
+  if (!this->sdl_window) {
+    return;
+  }
+  SDL_SetWindowSize(this->sdl_window.get(), w, h);
+  this->recomposite_all();
+  this->save_prefs();
+}
+
+bool WindowManager::size_fits(int w, int h) const {
+  if (!this->sdl_window) {
+    return false;
+  }
+  SDL_Rect usable;
+  SDL_DisplayID display = SDL_GetDisplayForWindow(this->sdl_window.get());
+  if (!SDL_GetDisplayUsableBounds(display, &usable)) {
+    return true;
+  }
+  return (w <= usable.w) && (h <= usable.h);
+}
+
+void WindowManager::get_window_size(int* w, int* h) const {
+  if (this->sdl_window) {
+    SDL_GetWindowSize(this->sdl_window.get(), w, h);
+  } else {
+    *w = *h = 0;
+  }
+}
+
+bool WindowManager::is_fullscreen() const {
+  if (!this->sdl_window) {
+    return false;
+  }
+  return (SDL_GetWindowFlags(this->sdl_window.get()) & SDL_WINDOW_FULLSCREEN) != 0;
+}
+
+void WindowManager::save_prefs() const {
+  PortPrefs prefs;
+  prefs.scale_mode = this->scale_mode;
+  prefs.aspect_locked = this->aspect_locked;
+  if (this->sdl_window) {
+    SDL_GetWindowSize(this->sdl_window.get(), &prefs.window_w, &prefs.window_h);
+  }
+  save_port_prefs(prefs);
+}
+
+extern "C" int WM_GetScaleMode(void) {
+  return static_cast<int>(WindowManager::instance().get_scale_mode());
+}
+
+extern "C" void WM_SetScaleMode(int mode) {
+  WindowManager::instance().set_scale_mode(static_cast<SDL_ScaleMode>(mode));
+}
+
+extern "C" void WM_SetWindowSize(int w, int h) {
+  WindowManager::instance().set_window_size(w, h);
+}
+
+extern "C" int WM_SizeFits(int w, int h) {
+  return WindowManager::instance().size_fits(w, h) ? 1 : 0;
+}
+
+extern "C" void WM_GetWindowSize(int* w, int* h) {
+  WindowManager::instance().get_window_size(w, h);
+}
+
+extern "C" int WM_IsFullscreen(void) {
+  return WindowManager::instance().is_fullscreen() ? 1 : 0;
+}
+
+extern "C" int WM_GetAspectLocked(void) {
+  return WindowManager::instance().get_aspect_locked() ? 1 : 0;
+}
+
+extern "C" void WM_SetAspectLocked(int locked) {
+  WindowManager::instance().set_aspect_locked(locked != 0);
 }
 
 void WindowManager::on_debug_signal() {

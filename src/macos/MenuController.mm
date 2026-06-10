@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <objc/NSObject.h>
 #include <phosg/Image.hh>
+#include <SDL3/SDL_surface.h>
 
 NSMenu* MCCreateMenu(const MenuList& menuList);
 NSMenu* MCCreateSubMenu(NSString* title, const Menu& menuRes, const std::list<std::shared_ptr<Menu>> submenus);
@@ -84,7 +85,7 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
 
 @end
 
-@interface MCMenuBar : NSObject
+@interface MCMenuBar : NSObject <NSMenuDelegate>
 
 @property(readonly) NSMenu* menuObject;
 @property(nonatomic) void (*callback)(int16_t, int16_t);
@@ -108,6 +109,19 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   callback([identifier menuID], [identifier itemID]);
 }
 
+- (IBAction)MCHandleFilter:(id)sender {
+  WM_SetScaleMode((int)[sender tag]);
+}
+
+- (IBAction)MCHandleScale:(id)sender {
+  NSInteger tag = [sender tag];
+  WM_SetWindowSize((int)(tag >> 16), (int)(tag & 0xFFFF));
+}
+
+- (IBAction)MCHandleAspectLock:(id)sender {
+  WM_SetAspectLocked(!WM_GetAspectLocked());
+}
+
 - (void)MCCreateMenu:(const MenuList&)menuList {
   _menuObject = [[NSMenu alloc] initWithTitle:@"Realmz"];
   [_menuObject setAutoenablesItems:NO];
@@ -120,6 +134,93 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
     if (menu->items.size()) {
       NSMenu* subMenu = [self MCCreateSubMenu:title parentMenu:*menu submenus:menuList.submenus];
       [_menuObject setSubmenu:subMenu forItem:menuItem];
+    }
+  }
+
+  [self addPortMenu];
+}
+
+- (void)addPortMenu {
+  NSMenuItem* portItem = [[NSMenuItem alloc] initWithTitle:@"Port" action:NULL keyEquivalent:@""];
+  [_menuObject addItem:portItem];
+  NSMenu* portMenu = [[NSMenu alloc] initWithTitle:@"Port"];
+  [portMenu setAutoenablesItems:NO];
+  portMenu.delegate = self;
+
+  const struct {
+    const char* title;
+    SDL_ScaleMode mode;
+  } filters[] = {
+      {"Filter: Pixel Art", SDL_SCALEMODE_PIXELART},
+      {"Filter: Linear", SDL_SCALEMODE_LINEAR},
+      {"Filter: Nearest", SDL_SCALEMODE_NEAREST},
+  };
+  for (const auto& f : filters) {
+    NSMenuItem* item = [portMenu addItemWithTitle:[NSString stringWithUTF8String:f.title]
+                                           action:@selector(MCHandleFilter:)
+                                    keyEquivalent:@""];
+    [item setTarget:self];
+    [item setTag:(NSInteger)f.mode];
+  }
+
+  [portMenu addItem:[NSMenuItem separatorItem]];
+  NSMenuItem* scaleItem = [[NSMenuItem alloc] initWithTitle:@"Scale" action:NULL keyEquivalent:@""];
+  [portMenu addItem:scaleItem];
+  NSMenu* scaleMenu = [[NSMenu alloc] initWithTitle:@"Scale"];
+  [scaleMenu setAutoenablesItems:NO];
+  scaleMenu.delegate = self;
+  const struct {
+    const char* title;
+    int w;
+    int h;
+  } scales[] = {
+      {"1x", 800, 600},
+      {"1.5x", 1200, 900},
+      {"2x", 1600, 1200},
+      {"2.5x", 2000, 1500},
+      {"3x", 2400, 1800},
+  };
+  for (const auto& s : scales) {
+    NSMenuItem* item = [scaleMenu addItemWithTitle:[NSString stringWithUTF8String:s.title]
+                                            action:@selector(MCHandleScale:)
+                                     keyEquivalent:@""];
+    [item setTarget:self];
+    [item setTag:(NSInteger)((s.w << 16) | s.h)];
+  }
+  [portMenu setSubmenu:scaleMenu forItem:scaleItem];
+
+  [portMenu addItem:[NSMenuItem separatorItem]];
+  NSMenuItem* aspectItem = [portMenu addItemWithTitle:@"Lock Aspect Ratio"
+                                               action:@selector(MCHandleAspectLock:)
+                                        keyEquivalent:@""];
+  [aspectItem setTarget:self];
+
+  [portMenu addItem:[NSMenuItem separatorItem]];
+  // TODO: Potential color correction.
+  NSMenuItem* gammaItem = [portMenu addItemWithTitle:@"Color Correction"
+                                              action:nil
+                                       keyEquivalent:@""];
+  gammaItem.enabled = NO;
+
+  [_menuObject setSubmenu:portMenu forItem:portItem];
+}
+
+- (void)menuNeedsUpdate:(NSMenu*)menu {
+  int currentMode = WM_GetScaleMode();
+  BOOL fullscreen = WM_IsFullscreen() ? YES : NO;
+  int curW = 0, curH = 0;
+  WM_GetWindowSize(&curW, &curH);
+  for (NSMenuItem* item in menu.itemArray) {
+    if (item.action == @selector(MCHandleFilter:)) {
+      item.state = ((int)item.tag == currentMode) ? NSControlStateValueOn : NSControlStateValueOff;
+    } else if (item.action == @selector(MCHandleScale:)) {
+      int w = (int)(item.tag >> 16);
+      int h = (int)(item.tag & 0xFFFF);
+      item.enabled = (!fullscreen && WM_SizeFits(w, h)) ? YES : NO;
+      item.state = (!fullscreen && curW == w && curH == h) ? NSControlStateValueOn : NSControlStateValueOff;
+    } else if (item.action == @selector(MCHandleAspectLock:)) {
+      item.enabled = !fullscreen;
+      item.state = WM_GetAspectLocked() ? NSControlStateValueOn : NSControlStateValueOff;
     }
   }
 }

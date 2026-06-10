@@ -224,6 +224,7 @@ set(SOURCES
     src/Font.cpp
     src/MemoryManager.cpp
     src/MenuManager.cpp
+    src/PortPrefs.cpp
     src/QuickDraw.cpp
     src/ResourceManager.cpp
     src/SDLHelpers.cpp
