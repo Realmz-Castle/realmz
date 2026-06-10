@@ -4,10 +4,114 @@
 #include <memory>
 #include <phosg/Strings.hh>
 
+#include "../PortMenu.hpp"
 #include "./WinMenuController.hpp"
 #include <utility>
 
+// Backend bridge for the Port menu. These are defined in WindowManager.cpp and
+// declared in MenuController.h; they are repeated here so this low-level file can
+// stay free of the heavier MenuManager/ResourceFile headers it otherwise avoids.
+extern "C" {
+int WM_GetScaleMode(void);
+void WM_SetScaleMode(int mode);
+void WM_SetWindowSize(int w, int h);
+int WM_SizeFits(int w, int h);
+void WM_GetWindowSize(int* w, int* h);
+int WM_IsFullscreen(void);
+int WM_GetAspectLocked(void);
+void WM_SetAspectLocked(int locked);
+}
+
 static phosg::PrefixedLogger wmc_log("[WinMenuController] ");
+
+// Command IDs for the Port menu. They sit in a reserved high range so they never
+// collide with the packed (menu_id, item_id) identifiers the game's own menus use,
+// which top out at 0x7F7F because menu_id and item_id are each a single byte.
+static constexpr WORD PORT_FILTER_BASE = 0xE000; // + filter index
+static constexpr WORD PORT_SCALE_BASE = 0xE010; // + scale index
+static constexpr WORD PORT_ASPECT_LOCK = 0xE020;
+static constexpr WORD PORT_CMD_MIN = PORT_FILTER_BASE;
+static constexpr WORD PORT_CMD_MAX = 0xE0FF;
+
+static bool IsPortCommand(WORD cmd) {
+  return (cmd >= PORT_CMD_MIN) && (cmd <= PORT_CMD_MAX);
+}
+
+// Builds the Port menu and appends it to the given menu bar. Mirrors the layout of
+// the macOS Port menu (filters, a Scale submenu, an aspect-lock toggle, and a
+// disabled color-correction placeholder).
+static void BuildPortMenu(HMENU menubar) {
+  HMENU port_menu = CreatePopupMenu();
+
+  WORD id = PORT_FILTER_BASE;
+  for (const auto& filter : kPortFilters) {
+    AppendMenu(port_menu, MF_STRING, id++, filter.title);
+  }
+
+  AppendMenu(port_menu, MF_SEPARATOR, 0, nullptr);
+
+  HMENU scale_menu = CreatePopupMenu();
+  id = PORT_SCALE_BASE;
+  for (const auto& scale : kPortScales) {
+    AppendMenu(scale_menu, MF_STRING, id++, scale.title);
+  }
+  AppendMenu(port_menu, MF_POPUP, reinterpret_cast<UINT_PTR>(scale_menu), "Scale");
+
+  AppendMenu(port_menu, MF_SEPARATOR, 0, nullptr);
+  AppendMenu(port_menu, MF_STRING, PORT_ASPECT_LOCK, "Lock Aspect Ratio");
+
+  AppendMenu(port_menu, MF_SEPARATOR, 0, nullptr);
+  // TODO: Potential color correction.
+  AppendMenu(port_menu, MF_STRING | MF_GRAYED, 0, "Color Correction");
+
+  AppendMenu(menubar, MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(port_menu), "Port");
+}
+
+// Refreshes the checkmarks and enabled state of the Port menu items in the given
+// popup. Called from WM_INITMENUPOPUP so the state is current each time the menu (or
+// its Scale submenu) opens, the same role the menuNeedsUpdate delegate plays on macOS.
+static void UpdatePortMenuState(HMENU menu) {
+  if (!menu) {
+    return;
+  }
+  int current_mode = WM_GetScaleMode();
+  bool fullscreen = WM_IsFullscreen() != 0;
+  int cur_w = 0, cur_h = 0;
+  WM_GetWindowSize(&cur_w, &cur_h);
+
+  int count = GetMenuItemCount(menu);
+  for (int pos = 0; pos < count; pos++) {
+    UINT cmd = GetMenuItemID(menu, pos);
+    if (!IsPortCommand(static_cast<WORD>(cmd))) {
+      continue;
+    }
+    if ((cmd >= PORT_FILTER_BASE) && (cmd < PORT_FILTER_BASE + kPortFilterCount)) {
+      bool on = static_cast<int>(kPortFilters[cmd - PORT_FILTER_BASE].mode) == current_mode;
+      CheckMenuItem(menu, pos, MF_BYPOSITION | (on ? MF_CHECKED : MF_UNCHECKED));
+    } else if ((cmd >= PORT_SCALE_BASE) && (cmd < PORT_SCALE_BASE + kPortScaleCount)) {
+      const auto& scale = kPortScales[cmd - PORT_SCALE_BASE];
+      bool fits = !fullscreen && (WM_SizeFits(scale.width, scale.height) != 0);
+      EnableMenuItem(menu, pos, MF_BYPOSITION | (fits ? MF_ENABLED : MF_GRAYED));
+      bool on = !fullscreen && (cur_w == scale.width) && (cur_h == scale.height);
+      CheckMenuItem(menu, pos, MF_BYPOSITION | (on ? MF_CHECKED : MF_UNCHECKED));
+    } else if (cmd == PORT_ASPECT_LOCK) {
+      EnableMenuItem(menu, pos, MF_BYPOSITION | (fullscreen ? MF_GRAYED : MF_ENABLED));
+      CheckMenuItem(menu, pos, MF_BYPOSITION | (WM_GetAspectLocked() ? MF_CHECKED : MF_UNCHECKED));
+    }
+  }
+}
+
+// Routes a Port menu command to the cross-platform window backend.
+static void HandlePortCommand(WORD cmd) {
+  if ((cmd >= PORT_FILTER_BASE) && (cmd < PORT_FILTER_BASE + kPortFilterCount)) {
+    WM_SetScaleMode(static_cast<int>(kPortFilters[cmd - PORT_FILTER_BASE].mode));
+  } else if ((cmd >= PORT_SCALE_BASE) && (cmd < PORT_SCALE_BASE + kPortScaleCount)) {
+    const auto& scale = kPortScales[cmd - PORT_SCALE_BASE];
+    WM_SetWindowSize(scale.width, scale.height);
+  } else if (cmd == PORT_ASPECT_LOCK) {
+    WM_SetAspectLocked(!WM_GetAspectLocked());
+  }
+}
 
 // Static variable to keep the original window proc
 static WNDPROC g_OldWndProc = nullptr;
@@ -66,7 +170,17 @@ std::pair<int16_t, int16_t> FindMenuItemByKeyEquivalent(char ch) {
 }
 
 LRESULT CALLBACK RealmzWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+  if (msg == WM_INITMENUPOPUP) {
+    UpdatePortMenuState(reinterpret_cast<HMENU>(wParam));
+    return CallWindowProc(g_OldWndProc, hwnd, msg, wParam, lParam);
+  }
+
   if (msg == WM_COMMAND) {
+    WORD cmd = LOWORD(wParam);
+    if (IsPortCommand(cmd)) {
+      HandlePortCommand(cmd);
+      return 0;
+    }
     if (menuCallback != nullptr) {
       auto identifier_pair = UnpackMenuIdentifier(wParam);
       menuCallback(identifier_pair.first, identifier_pair.second);
@@ -120,6 +234,12 @@ void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list,
 
   auto wind_handle = get_window_handle(sdl_window);
 
+  // Capture the current logical size so it can be reapplied after the menu bar is
+  // attached (see the note below). Reapplying the current size rather than a fixed
+  // 800x600 keeps a scale chosen from the Port menu from being reset on the next sync.
+  int client_w = 800, client_h = 600;
+  SDL_GetWindowSize(sdl_window, &client_w, &client_h);
+
   HMENU win_menu = CreateMenu();
   MENUINFO win_menu_info = MENUINFO{
       .cbSize = sizeof(MENUINFO),
@@ -167,6 +287,8 @@ void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list,
     InsertMenuItem(win_menu, menu->menu_id, FALSE, &item_info);
   }
 
+  BuildPortMenu(win_menu);
+
   auto old_menu = GetMenu(wind_handle);
   SetMenu(wind_handle, win_menu);
   HookWndProc(wind_handle);
@@ -181,9 +303,10 @@ void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list,
   // client area of the window, not the full window size inclusive of the menu bar. Since we have to
   // bypass SDL to create the menu directly via the Windows API, it seems that SDL doesn't know that
   // the rendering of the menu bar has shrunk the client area. So, a quick call to SDL_SetWindowSize is
-  // enough to force SDL to realize the menu bar now exists and to expand the window to ensure that the
-  // client area is the full 800x600.
-  SDL_SetWindowSize(sdl_window, 800, 600);
+  // enough to force SDL to realize the menu bar now exists and to expand the window so the client area
+  // is the full size it expects. Reapply the size captured above rather than a fixed 800x600 so a
+  // scale picked from the Port menu survives a menu re-sync.
+  SDL_SetWindowSize(sdl_window, client_w, client_h);
 }
 
 int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu) {
