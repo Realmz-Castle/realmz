@@ -104,6 +104,8 @@ private:
   SDL_ScaleMode scale_mode = SDL_SCALEMODE_PIXELART;
   bool aspect_locked = true;
   int gamma_idx = 0;
+  int windowed_w = 800;
+  int windowed_h = 600;
 
   WindowManager();
 
@@ -163,7 +165,7 @@ public:
   void get_window_size(int* w, int* h) const;
   bool is_fullscreen() const;
 
-  void save_prefs() const;
+  void save_prefs();
 
 private:
   void print_window_stack() const;

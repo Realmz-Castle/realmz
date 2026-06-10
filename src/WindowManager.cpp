@@ -951,6 +951,8 @@ void WindowManager::create_sdl_window() {
   this->scale_mode = prefs.scale_mode;
   this->aspect_locked = prefs.aspect_locked;
   this->gamma_idx = prefs.gamma_idx;
+  this->windowed_w = prefs.window_w;
+  this->windowed_h = prefs.window_h;
 
   this->sdl_window = sdl_make_shared(SDL_CreateWindow("Realmz", prefs.window_w, prefs.window_h, SDL_WINDOW_RESIZABLE));
   if (!this->sdl_window) {
@@ -1337,14 +1339,16 @@ bool WindowManager::is_fullscreen() const {
   return (SDL_GetWindowFlags(this->sdl_window.get()) & SDL_WINDOW_FULLSCREEN) != 0;
 }
 
-void WindowManager::save_prefs() const {
+void WindowManager::save_prefs() {
   PortPrefs prefs;
   prefs.scale_mode = this->scale_mode;
   prefs.aspect_locked = this->aspect_locked;
   prefs.gamma_idx = this->gamma_idx;
-  if (this->sdl_window) {
-    SDL_GetWindowSize(this->sdl_window.get(), &prefs.window_w, &prefs.window_h);
+  if (this->sdl_window && !this->is_fullscreen()) {
+    SDL_GetWindowSize(this->sdl_window.get(), &this->windowed_w, &this->windowed_h);
   }
+  prefs.window_w = this->windowed_w;
+  prefs.window_h = this->windowed_h;
   save_port_prefs(prefs);
 }
 
