@@ -9,6 +9,7 @@
 #include <SDL3/SDL_events.h>
 #include <time.h>
 
+#include "PortControls.h"
 #include "ResourceManager.h"
 #include "SoundManager.h"
 #include "WindowManager.h"
@@ -99,6 +100,7 @@ int32_t DragGrayRgn(RgnHandle theRgn, Point startPt, const Rect* boundsRect, con
 }
 
 void ExitToShell(void) {
+  WM_SavePrefs();
   exit(EXIT_SUCCESS);
 }
 

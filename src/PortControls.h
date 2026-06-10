@@ -16,6 +16,7 @@ int WM_GetAspectLocked(void);
 void WM_SetAspectLocked(int locked);
 int WM_GetGammaIdx(void);
 void WM_SetGammaIdx(int idx);
+void WM_SavePrefs(void);
 
 #ifdef __cplusplus
 }

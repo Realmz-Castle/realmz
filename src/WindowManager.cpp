@@ -4,6 +4,10 @@
 #include "PortMenu.hpp"
 #include "PortPrefs.hpp"
 
+#ifdef __APPLE__
+#include "macos/WindowAspect.h"
+#endif
+
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_properties.h>
 #include <cmath>
@@ -958,8 +962,9 @@ void WindowManager::create_sdl_window() {
   if (!this->sdl_window) {
     throw std::runtime_error(std::format("Could not create SDL window: {}", SDL_GetError()));
   }
-  // 4:3 enforced by snap_aspect() on resize, not SDL_SetWindowAspectRatio (crashes macOS fullscreen exit; SDL #14229, notourbug).
-
+  if (this->aspect_locked) {
+    SDL_SetWindowAspectRatio(this->sdl_window.get(), 800.0f / 600.0f, 800.0f / 600.0f);
+  }
   SDL_Renderer* renderer = SDL_CreateRenderer(this->sdl_window.get(), nullptr);
   if (!renderer) {
     throw std::runtime_error(std::format("Could not create window renderer: {}", SDL_GetError()));
@@ -1285,21 +1290,27 @@ void WindowManager::set_scale_mode(SDL_ScaleMode mode) {
   this->save_prefs();
 }
 
-void WindowManager::snap_aspect() {
-  if (!this->sdl_window || !this->aspect_locked || this->is_fullscreen()) {
-    return;
-  }
-  int w = 0, h = 0;
-  SDL_GetWindowSize(this->sdl_window.get(), &w, &h);
-  int snapped_h = (w * 600 + 400) / 800;
-  if (snapped_h != h) {
-    SDL_SetWindowSize(this->sdl_window.get(), w, snapped_h);
-  }
-}
-
 void WindowManager::set_aspect_locked(bool locked) {
   this->aspect_locked = locked;
-  this->snap_aspect();
+  if (this->sdl_window) {
+    if (locked) {
+      int w = 0, h = 0;
+      SDL_GetWindowSize(this->sdl_window.get(), &w, &h);
+      int snapped_h = (w * 600 + 400) / 800;
+      if (snapped_h != h && !this->is_fullscreen()) {
+        SDL_SetWindowSize(this->sdl_window.get(), w, snapped_h);
+      }
+      if (!this->is_fullscreen()) {
+        SDL_SetWindowAspectRatio(this->sdl_window.get(), 800.0f / 600.0f, 800.0f / 600.0f);
+      }
+    } else {
+#ifdef __APPLE__
+      MacResetWindowAspect(this->sdl_window.get());
+#else
+      SDL_SetWindowAspectRatio(this->sdl_window.get(), 0.0f, 0.0f);
+#endif
+    }
+  }
   this->save_prefs();
 }
 
@@ -1399,6 +1410,10 @@ extern "C" int WM_GetGammaIdx(void) {
 
 extern "C" void WM_SetGammaIdx(int idx) {
   WindowManager::instance().set_gamma_idx(idx);
+}
+
+extern "C" void WM_SavePrefs(void) {
+  WindowManager::instance().save_prefs();
 }
 
 void WindowManager::on_debug_signal() {

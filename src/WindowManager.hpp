@@ -156,7 +156,6 @@ public:
   int get_gamma_idx() const { return this->gamma_idx; }
   void set_gamma_idx(int idx);
 
-  void snap_aspect();
   bool get_aspect_locked() const { return this->aspect_locked; }
   void set_aspect_locked(bool locked);
 

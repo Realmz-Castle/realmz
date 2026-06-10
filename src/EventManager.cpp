@@ -426,9 +426,6 @@ protected:
         exit(EXIT_SUCCESS);
         break;
       case SDL_EVENT_WINDOW_RESIZED:
-        WindowManager::instance().snap_aspect();
-        WindowManager::instance().recomposite_all();
-        break;
       case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
       case SDL_EVENT_WINDOW_EXPOSED:
         WindowManager::instance().recomposite_all();

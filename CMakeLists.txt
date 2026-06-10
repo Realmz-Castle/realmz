@@ -242,8 +242,8 @@ set(realmz_lib_LINK_LIBRARIES
 )
 
 if(APPLE)
-    list(APPEND SOURCES src/macos/MenuController.mm)
-    set_source_files_properties(src/macos/MenuController.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    list(APPEND SOURCES src/macos/MenuController.mm src/macos/WindowAspect.mm)
+    set_source_files_properties(src/macos/MenuController.mm src/macos/WindowAspect.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
     list(APPEND realmz_lib_LINK_LIBRARIES
         "-framework Foundation"
         "-framework Cocoa"
