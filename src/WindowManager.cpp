@@ -1,5 +1,6 @@
 #include "WindowManager.hpp"
 
+#include "PortControls.h"
 #include "PortMenu.hpp"
 #include "PortPrefs.hpp"
 

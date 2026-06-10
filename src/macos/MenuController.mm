@@ -1,13 +1,12 @@
 #import "../MenuController.h"
+#import "../PortControls.h"
+#import "../PortMenu.hpp"
 #import <Cocoa/Cocoa.h>
 #import <Foundation/Foundation.h>
 #include <cstddef>
 #include <cstdint>
 #include <objc/NSObject.h>
 #include <phosg/Image.hh>
-#include <SDL3/SDL_surface.h>
-
-#include "../PortMenu.hpp"
 
 NSMenu* MCCreateMenu(const MenuList& menuList);
 NSMenu* MCCreateSubMenu(NSString* title, const Menu& menuRes, const std::list<std::shared_ptr<Menu>> submenus);
@@ -158,15 +157,7 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   NSMenu* filterMenu = [[NSMenu alloc] initWithTitle:@"Filter"];
   [filterMenu setAutoenablesItems:NO];
   filterMenu.delegate = self;
-  const struct {
-    const char* title;
-    SDL_ScaleMode mode;
-  } filters[] = {
-      {"Pixel Art", SDL_SCALEMODE_PIXELART},
-      {"Linear", SDL_SCALEMODE_LINEAR},
-      {"Nearest", SDL_SCALEMODE_NEAREST},
-  };
-  for (const auto& f : filters) {
+  for (const auto& f : kPortFilters) {
     NSMenuItem* item = [filterMenu addItemWithTitle:[NSString stringWithUTF8String:f.title]
                                              action:@selector(MCHandleFilter:)
                                       keyEquivalent:@""];
@@ -180,23 +171,12 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   NSMenu* scaleMenu = [[NSMenu alloc] initWithTitle:@"Scale"];
   [scaleMenu setAutoenablesItems:NO];
   scaleMenu.delegate = self;
-  const struct {
-    const char* title;
-    int w;
-    int h;
-  } scales[] = {
-      {"1x", 800, 600},
-      {"1.5x", 1200, 900},
-      {"2x", 1600, 1200},
-      {"2.5x", 2000, 1500},
-      {"3x", 2400, 1800},
-  };
-  for (const auto& s : scales) {
+  for (const auto& s : kPortScales) {
     NSMenuItem* item = [scaleMenu addItemWithTitle:[NSString stringWithUTF8String:s.title]
                                             action:@selector(MCHandleScale:)
                                      keyEquivalent:@""];
     [item setTarget:self];
-    [item setTag:(NSInteger)((s.w << 16) | s.h)];
+    [item setTag:(NSInteger)((s.width << 16) | s.height)];
   }
   [portMenu setSubmenu:scaleMenu forItem:scaleItem];
 

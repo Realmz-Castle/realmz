@@ -4,25 +4,10 @@
 #include <memory>
 #include <phosg/Strings.hh>
 
+#include "../PortControls.h"
 #include "../PortMenu.hpp"
 #include "./WinMenuController.hpp"
 #include <utility>
-
-// Backend bridge for the Port menu. These are defined in WindowManager.cpp and
-// declared in MenuController.h; they are repeated here so this low-level file can
-// stay free of the heavier MenuManager/ResourceFile headers it otherwise avoids.
-extern "C" {
-int WM_GetScaleMode(void);
-void WM_SetScaleMode(int mode);
-void WM_SetWindowSize(int w, int h);
-int WM_SizeFits(int w, int h);
-void WM_GetWindowSize(int* w, int* h);
-int WM_IsFullscreen(void);
-int WM_GetAspectLocked(void);
-void WM_SetAspectLocked(int locked);
-int WM_GetGammaIdx(void);
-void WM_SetGammaIdx(int idx);
-}
 
 static phosg::PrefixedLogger wmc_log("[WinMenuController] ");
 
