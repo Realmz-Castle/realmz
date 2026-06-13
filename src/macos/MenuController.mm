@@ -7,6 +7,8 @@
 #include <phosg/Image.hh>
 #include <SDL3/SDL_surface.h>
 
+#include "../PortMenu.hpp"
+
 NSMenu* MCCreateMenu(const MenuList& menuList);
 NSMenu* MCCreateSubMenu(NSString* title, const Menu& menuRes, const std::list<std::shared_ptr<Menu>> submenus);
 
@@ -122,6 +124,10 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   WM_SetAspectLocked(!WM_GetAspectLocked());
 }
 
+- (IBAction)MCHandleGamma:(id)sender {
+  WM_SetGammaIdx((int)[sender tag]);
+}
+
 - (void)MCCreateMenu:(const MenuList&)menuList {
   _menuObject = [[NSMenu alloc] initWithTitle:@"Realmz"];
   [_menuObject setAutoenablesItems:NO];
@@ -200,11 +206,19 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   [aspectItem setTarget:self];
 
   [portMenu addItem:[NSMenuItem separatorItem]];
-  // TODO: Potential color correction.
-  NSMenuItem* gammaItem = [portMenu addItemWithTitle:@"Color Correction"
-                                              action:nil
-                                       keyEquivalent:@""];
-  gammaItem.enabled = NO;
+  NSMenuItem* gammaItem = [[NSMenuItem alloc] initWithTitle:@"Color Correction" action:NULL keyEquivalent:@""];
+  [portMenu addItem:gammaItem];
+  NSMenu* gammaMenu = [[NSMenu alloc] initWithTitle:@"Color Correction"];
+  [gammaMenu setAutoenablesItems:NO];
+  gammaMenu.delegate = self;
+  for (int i = 0; i < kPortGammaCount; i++) {
+    NSMenuItem* item = [gammaMenu addItemWithTitle:[NSString stringWithUTF8String:kPortGammaOptions[i].title]
+                                           action:@selector(MCHandleGamma:)
+                                    keyEquivalent:@""];
+    [item setTarget:self];
+    [item setTag:(NSInteger)i];
+  }
+  [portMenu setSubmenu:gammaMenu forItem:gammaItem];
 
   [_menuObject setSubmenu:portMenu forItem:portItem];
 }
@@ -225,6 +239,8 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
     } else if (item.action == @selector(MCHandleAspectLock:)) {
       item.enabled = !fullscreen;
       item.state = WM_GetAspectLocked() ? NSControlStateValueOn : NSControlStateValueOff;
+    } else if (item.action == @selector(MCHandleGamma:)) {
+      item.state = ((int)item.tag == WM_GetGammaIdx()) ? NSControlStateValueOn : NSControlStateValueOff;
     }
   }
 }

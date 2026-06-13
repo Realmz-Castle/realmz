@@ -103,6 +103,7 @@ private:
   bool recomposite_enabled = true;
   SDL_ScaleMode scale_mode = SDL_SCALEMODE_PIXELART;
   bool aspect_locked = true;
+  int gamma_idx = 0;
 
   WindowManager();
 
@@ -149,6 +150,9 @@ public:
 
   SDL_ScaleMode get_scale_mode() const { return this->scale_mode; }
   void set_scale_mode(SDL_ScaleMode mode);
+
+  int get_gamma_idx() const { return this->gamma_idx; }
+  void set_gamma_idx(int idx);
 
   void snap_aspect();
   bool get_aspect_locked() const { return this->aspect_locked; }

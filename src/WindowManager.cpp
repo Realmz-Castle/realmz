@@ -1,11 +1,14 @@
 #include "WindowManager.hpp"
 
+#include "PortMenu.hpp"
 #include "PortPrefs.hpp"
 
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_properties.h>
+#include <cmath>
 #include <memory>
 #include <stdexcept>
+#include <vector>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
@@ -946,6 +949,7 @@ void WindowManager::create_sdl_window() {
   PortPrefs prefs = load_port_prefs();
   this->scale_mode = prefs.scale_mode;
   this->aspect_locked = prefs.aspect_locked;
+  this->gamma_idx = prefs.gamma_idx;
 
   this->sdl_window = sdl_make_shared(SDL_CreateWindow("Realmz", prefs.window_w, prefs.window_h, SDL_WINDOW_RESIZABLE));
   if (!this->sdl_window) {
@@ -1190,8 +1194,34 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
         wm_log.info_f("Writing debug{}.bmp", debug_number);
         phosg::save_file(std::format("debug{}.bmp", debug_number++), this->screen_port.data.serialize(phosg::ImageFormat::WINDOWS_BITMAP));
       }
+      // Apply gamma correction if enabled. The correction treats Mac content as
+      // 1.8-gamma-encoded and remaps it for the chosen target display gamma.
+      std::vector<uint32_t> gamma_pixels;
+      const void* surface_data = this->screen_port.data.get_data();
+      float gdisplay = kPortGammaOptions[this->gamma_idx].display_gamma;
+      if (gdisplay > 0.0f) {
+        uint8_t lut[256];
+        float exp = 1.8f / gdisplay;
+        lut[0] = 0;
+        for (int i = 1; i < 255; i++) {
+          lut[i] = static_cast<uint8_t>(std::round(255.0f * std::pow(i / 255.0f, exp)));
+        }
+        lut[255] = 255;
+        size_t n = static_cast<size_t>(w) * h;
+        gamma_pixels.resize(n);
+        const uint32_t* src = static_cast<const uint32_t*>(surface_data);
+        for (size_t i = 0; i < n; i++) {
+          uint32_t p = src[i];
+          gamma_pixels[i] =
+              (static_cast<uint32_t>(lut[(p >> 24) & 0xFF]) << 24) |
+              (static_cast<uint32_t>(lut[(p >> 16) & 0xFF]) << 16) |
+              (static_cast<uint32_t>(lut[(p >>  8) & 0xFF]) <<  8) |
+              (p & 0xFF);
+        }
+        surface_data = gamma_pixels.data();
+      }
       auto surface = sdl_make_unique(SDL_CreateSurfaceFrom(
-          w, h, SDL_PIXELFORMAT_RGBA8888, this->screen_port.data.get_data(), 4 * this->screen_port.data.get_width()));
+          w, h, SDL_PIXELFORMAT_RGBA8888, const_cast<void*>(surface_data), 4 * w));
       if (!surface) {
         wm_log.error_f("Could not create surface: {}", SDL_GetError());
       } else {
@@ -1310,10 +1340,20 @@ void WindowManager::save_prefs() const {
   PortPrefs prefs;
   prefs.scale_mode = this->scale_mode;
   prefs.aspect_locked = this->aspect_locked;
+  prefs.gamma_idx = this->gamma_idx;
   if (this->sdl_window) {
     SDL_GetWindowSize(this->sdl_window.get(), &prefs.window_w, &prefs.window_h);
   }
   save_port_prefs(prefs);
+}
+
+void WindowManager::set_gamma_idx(int idx) {
+  if (idx < 0 || idx >= kPortGammaCount || idx == this->gamma_idx) {
+    return;
+  }
+  this->gamma_idx = idx;
+  this->recomposite_all();
+  this->save_prefs();
 }
 
 extern "C" int WM_GetScaleMode(void) {
@@ -1346,6 +1386,14 @@ extern "C" int WM_GetAspectLocked(void) {
 
 extern "C" void WM_SetAspectLocked(int locked) {
   WindowManager::instance().set_aspect_locked(locked != 0);
+}
+
+extern "C" int WM_GetGammaIdx(void) {
+  return WindowManager::instance().get_gamma_idx();
+}
+
+extern "C" void WM_SetGammaIdx(int idx) {
+  WindowManager::instance().set_gamma_idx(idx);
 }
 
 void WindowManager::on_debug_signal() {

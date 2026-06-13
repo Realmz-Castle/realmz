@@ -18,6 +18,8 @@ void WM_GetWindowSize(int* w, int* h);
 int WM_IsFullscreen(void);
 int WM_GetAspectLocked(void);
 void WM_SetAspectLocked(int locked);
+int WM_GetGammaIdx(void);
+void WM_SetGammaIdx(int idx);
 
 #ifdef __cplusplus
 }

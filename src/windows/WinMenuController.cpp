@@ -20,6 +20,8 @@ void WM_GetWindowSize(int* w, int* h);
 int WM_IsFullscreen(void);
 int WM_GetAspectLocked(void);
 void WM_SetAspectLocked(int locked);
+int WM_GetGammaIdx(void);
+void WM_SetGammaIdx(int idx);
 }
 
 static phosg::PrefixedLogger wmc_log("[WinMenuController] ");
@@ -30,6 +32,7 @@ static phosg::PrefixedLogger wmc_log("[WinMenuController] ");
 static constexpr WORD PORT_FILTER_BASE = 0xE000; // + filter index
 static constexpr WORD PORT_SCALE_BASE = 0xE010; // + scale index
 static constexpr WORD PORT_ASPECT_LOCK = 0xE020;
+static constexpr WORD PORT_GAMMA_BASE = 0xE030; // + gamma index
 static constexpr WORD PORT_CMD_MIN = PORT_FILTER_BASE;
 static constexpr WORD PORT_CMD_MAX = 0xE0FF;
 
@@ -58,9 +61,14 @@ static void BuildPortMenu(HMENU menubar) {
   AppendMenu(port_menu, MF_POPUP, reinterpret_cast<UINT_PTR>(scale_menu), "Scale");
   AppendMenu(port_menu, MF_STRING, PORT_ASPECT_LOCK, "Lock Aspect Ratio");
 
+  HMENU gamma_menu = CreatePopupMenu();
+  WORD gid = PORT_GAMMA_BASE;
+  for (const auto& g : kPortGammaOptions) {
+    AppendMenu(gamma_menu, MF_STRING, gid++, g.title);
+  }
+
   AppendMenu(port_menu, MF_SEPARATOR, 0, nullptr);
-  // TODO: Potential color correction.
-  AppendMenu(port_menu, MF_STRING | MF_GRAYED, 0, "Color Correction");
+  AppendMenu(port_menu, MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(gamma_menu), "Color Correction");
 
   AppendMenu(menubar, MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(port_menu), "Port");
 }
@@ -95,6 +103,9 @@ static void UpdatePortMenuState(HMENU menu) {
     } else if (cmd == PORT_ASPECT_LOCK) {
       EnableMenuItem(menu, pos, MF_BYPOSITION | (fullscreen ? MF_GRAYED : MF_ENABLED));
       CheckMenuItem(menu, pos, MF_BYPOSITION | (WM_GetAspectLocked() ? MF_CHECKED : MF_UNCHECKED));
+    } else if ((cmd >= PORT_GAMMA_BASE) && (cmd < PORT_GAMMA_BASE + kPortGammaCount)) {
+      bool on = static_cast<int>(cmd - PORT_GAMMA_BASE) == WM_GetGammaIdx();
+      CheckMenuItem(menu, pos, MF_BYPOSITION | (on ? MF_CHECKED : MF_UNCHECKED));
     }
   }
 }
@@ -108,6 +119,8 @@ static void HandlePortCommand(WORD cmd) {
     WM_SetWindowSize(scale.width, scale.height);
   } else if (cmd == PORT_ASPECT_LOCK) {
     WM_SetAspectLocked(!WM_GetAspectLocked());
+  } else if ((cmd >= PORT_GAMMA_BASE) && (cmd < PORT_GAMMA_BASE + kPortGammaCount)) {
+    WM_SetGammaIdx(static_cast<int>(cmd - PORT_GAMMA_BASE));
   }
 }
 

@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <string>
 
+#include "PortMenu.hpp"
+
 #include <phosg/Filesystem.hh>
 #include <phosg/JSON.hh>
 #include <phosg/Strings.hh>
@@ -70,6 +72,7 @@ PortPrefs load_port_prefs() {
     prefs.window_h = std::clamp(static_cast<int>(root.get_int("window_h", prefs.window_h)), MIN_DIM, MAX_H);
     prefs.scale_mode = scale_mode_for_name(root.get_string("filter", name_for_scale_mode(prefs.scale_mode)));
     prefs.aspect_locked = root.get_bool("aspect_locked", prefs.aspect_locked);
+    prefs.gamma_idx = std::clamp(static_cast<int>(root.get_int("gamma_idx", prefs.gamma_idx)), 0, kPortGammaCount - 1);
   } catch (const std::exception& e) {
     prefs_log.warning_f("Could not parse {} ({}); using defaults", path, e.what());
     return PortPrefs{};
@@ -91,6 +94,7 @@ void save_port_prefs(const PortPrefs& prefs) {
   root.emplace("window_h", static_cast<int64_t>(prefs.window_h));
   root.emplace("filter", name_for_scale_mode(prefs.scale_mode));
   root.emplace("aspect_locked", prefs.aspect_locked);
+  root.emplace("gamma_idx", static_cast<int64_t>(prefs.gamma_idx));
 
   try {
     phosg::save_file(path, root.serialize());

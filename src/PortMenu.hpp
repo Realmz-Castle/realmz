@@ -33,3 +33,21 @@ inline constexpr PortScaleOption kPortScales[] = {
 
 inline constexpr int kPortFilterCount = sizeof(kPortFilters) / sizeof(kPortFilters[0]);
 inline constexpr int kPortScaleCount = sizeof(kPortScales) / sizeof(kPortScales[0]);
+
+// Gamma correction options for the Color Correction submenu.
+// display_gamma = 0 means off (no correction).
+// Otherwise the correction applied is pow(v/255, 1.8/display_gamma) per channel,
+// treating Mac source as 1.8-gamma content and converting to the given display gamma.
+struct PortGammaOption {
+  const char* title;
+  float display_gamma;
+};
+
+inline constexpr PortGammaOption kPortGammaOptions[] = {
+    {"Off",  0.0f},
+    {"2.0",  2.0f},
+    {"2.2",  2.2f},
+    {"2.59", 2.59f},
+};
+
+inline constexpr int kPortGammaCount = sizeof(kPortGammaOptions) / sizeof(kPortGammaOptions[0]);
