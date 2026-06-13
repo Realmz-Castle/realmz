@@ -47,7 +47,7 @@ inline constexpr PortGammaOption kPortGammaOptions[] = {
     {"Off",  0.0f},
     {"2.0",  2.0f},
     {"2.2",  2.2f},
-    {"2.59", 2.59f},
+    {"2.59 (SheepShaver)", 2.59f},
 };
 
 inline constexpr int kPortGammaCount = sizeof(kPortGammaOptions) / sizeof(kPortGammaOptions[0]);
