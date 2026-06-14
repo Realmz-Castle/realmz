@@ -946,7 +946,8 @@ WindowManager::WindowManager() = default;
 WindowManager::~WindowManager() = default;
 
 static bool window_pos_on_screen(int x, int y, int w, int h) {
-  if (x == SDL_WINDOWPOS_CENTERED || y == SDL_WINDOWPOS_CENTERED) {
+  if (SDL_WINDOWPOS_ISCENTERED(x) || SDL_WINDOWPOS_ISUNDEFINED(x) ||
+      SDL_WINDOWPOS_ISCENTERED(y) || SDL_WINDOWPOS_ISUNDEFINED(y)) {
     return false;
   }
   SDL_Rect win{x, y, w, h};
@@ -1369,6 +1370,12 @@ bool WindowManager::is_fullscreen() const {
   return (SDL_GetWindowFlags(this->sdl_window.get()) & SDL_WINDOW_FULLSCREEN) != 0;
 }
 
+void WindowManager::note_window_moved() {
+  if (this->sdl_window && !this->is_fullscreen()) {
+    SDL_GetWindowPosition(this->sdl_window.get(), &this->windowed_x, &this->windowed_y);
+  }
+}
+
 void WindowManager::save_prefs() {
   PortPrefs prefs;
   prefs.scale_mode = this->scale_mode;
@@ -1376,7 +1383,6 @@ void WindowManager::save_prefs() {
   prefs.gamma_idx = this->gamma_idx;
   if (this->sdl_window && !this->is_fullscreen()) {
     SDL_GetWindowSize(this->sdl_window.get(), &this->windowed_w, &this->windowed_h);
-    SDL_GetWindowPosition(this->sdl_window.get(), &this->windowed_x, &this->windowed_y);
   }
   prefs.window_w = this->windowed_w;
   prefs.window_h = this->windowed_h;

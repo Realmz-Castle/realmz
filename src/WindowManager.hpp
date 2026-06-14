@@ -166,6 +166,8 @@ public:
   void get_window_size(int* w, int* h) const;
   bool is_fullscreen() const;
 
+  void note_window_moved();
+
   void save_prefs();
 
 private:

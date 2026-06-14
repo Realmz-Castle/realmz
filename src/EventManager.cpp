@@ -430,6 +430,9 @@ protected:
       case SDL_EVENT_WINDOW_EXPOSED:
         WindowManager::instance().recomposite_all();
         break;
+      case SDL_EVENT_WINDOW_MOVED:
+        WindowManager::instance().note_window_moved();
+        break;
       case SDL_EVENT_KEY_DOWN:
       case SDL_EVENT_KEY_UP: {
         em_log.info_f("{} mod={:04X} key={:08X}",

@@ -94,8 +94,11 @@ void save_port_prefs(const PortPrefs& prefs) {
   phosg::JSON root = phosg::JSON::dict();
   root.emplace("window_w", static_cast<int64_t>(prefs.window_w));
   root.emplace("window_h", static_cast<int64_t>(prefs.window_h));
-  root.emplace("window_x", static_cast<int64_t>(prefs.window_x));
-  root.emplace("window_y", static_cast<int64_t>(prefs.window_y));
+  if (!SDL_WINDOWPOS_ISCENTERED(prefs.window_x) && !SDL_WINDOWPOS_ISUNDEFINED(prefs.window_x) &&
+      !SDL_WINDOWPOS_ISCENTERED(prefs.window_y) && !SDL_WINDOWPOS_ISUNDEFINED(prefs.window_y)) {
+    root.emplace("window_x", static_cast<int64_t>(prefs.window_x));
+    root.emplace("window_y", static_cast<int64_t>(prefs.window_y));
+  }
   root.emplace("filter", name_for_scale_mode(prefs.scale_mode));
   root.emplace("aspect_locked", prefs.aspect_locked);
   root.emplace("gamma_idx", static_cast<int64_t>(prefs.gamma_idx));
