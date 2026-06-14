@@ -1223,30 +1223,35 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
         phosg::save_file(std::format("debug{}.bmp", debug_number++), this->screen_port.data.serialize(phosg::ImageFormat::WINDOWS_BITMAP));
       }
       // Apply gamma correction if enabled. The correction treats Mac content as
-      // 1.8-gamma-encoded and remaps it for the chosen target display gamma.
-      std::vector<uint32_t> gamma_pixels;
+      // 1.8-gamma-encoded and remaps it for the chosen target display gamma. The
+      // lookup table is rebuilt only when the gamma option changes, and the pixel
+      // buffer is reused, so an enabled gamma adds only the per-pixel remap (not a
+      // table rebuild and a full-frame allocation) to each present.
       const void* surface_data = this->screen_port.data.get_data();
       float gdisplay = kPortGammaOptions[this->gamma_idx].display_gamma;
       if (gdisplay > 0.0f) {
-        uint8_t lut[256];
-        float exp = 1.8f / gdisplay;
-        lut[0] = 0;
-        for (int i = 1; i < 255; i++) {
-          lut[i] = static_cast<uint8_t>(std::round(255.0f * std::pow(i / 255.0f, exp)));
+        if (this->gamma_lut_idx != this->gamma_idx) {
+          float exp = 1.8f / gdisplay;
+          this->gamma_lut[0] = 0;
+          for (int i = 1; i < 255; i++) {
+            this->gamma_lut[i] = static_cast<uint8_t>(std::round(255.0f * std::pow(i / 255.0f, exp)));
+          }
+          this->gamma_lut[255] = 255;
+          this->gamma_lut_idx = this->gamma_idx;
         }
-        lut[255] = 255;
+        const uint8_t* lut = this->gamma_lut;
         size_t n = static_cast<size_t>(w) * h;
-        gamma_pixels.resize(n);
+        this->gamma_scratch.resize(n);
         const uint32_t* src = static_cast<const uint32_t*>(surface_data);
         for (size_t i = 0; i < n; i++) {
           uint32_t p = src[i];
-          gamma_pixels[i] =
+          this->gamma_scratch[i] =
               (static_cast<uint32_t>(lut[(p >> 24) & 0xFF]) << 24) |
               (static_cast<uint32_t>(lut[(p >> 16) & 0xFF]) << 16) |
               (static_cast<uint32_t>(lut[(p >>  8) & 0xFF]) <<  8) |
               (p & 0xFF);
         }
-        surface_data = gamma_pixels.data();
+        surface_data = this->gamma_scratch.data();
       }
       auto surface = sdl_make_unique(SDL_CreateSurfaceFrom(
           w, h, SDL_PIXELFORMAT_RGBA8888, const_cast<void*>(surface_data), 4 * w));

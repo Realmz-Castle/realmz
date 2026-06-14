@@ -108,6 +108,12 @@ private:
   int windowed_h = 600;
   int windowed_x = SDL_WINDOWPOS_CENTERED;
   int windowed_y = SDL_WINDOWPOS_CENTERED;
+  // Cached gamma correction state, so the present path does not rebuild the LUT
+  // or reallocate the pixel buffer every frame. The LUT is rebuilt only when
+  // gamma_idx changes; the scratch buffer is reused across presents.
+  int gamma_lut_idx = -1;
+  uint8_t gamma_lut[256] = {};
+  std::vector<uint32_t> gamma_scratch;
 
   WindowManager();
 
