@@ -945,6 +945,20 @@ void Window::remove_text_edit(std::shared_ptr<DialogItem> item) {
 WindowManager::WindowManager() = default;
 WindowManager::~WindowManager() = default;
 
+static bool window_pos_on_screen(int x, int y, int w, int h) {
+  if (x == SDL_WINDOWPOS_CENTERED || y == SDL_WINDOWPOS_CENTERED) {
+    return false;
+  }
+  SDL_Rect win{x, y, w, h};
+  SDL_DisplayID display = SDL_GetDisplayForRect(&win);
+  SDL_Rect bounds;
+  if (!display || !SDL_GetDisplayUsableBounds(display, &bounds)) {
+    return false;
+  }
+  SDL_Rect overlap;
+  return SDL_GetRectIntersection(&win, &bounds, &overlap);
+}
+
 void WindowManager::create_sdl_window() {
   wm_log.debug_f("WindowManager::create_sdl_window()");
 
@@ -957,10 +971,15 @@ void WindowManager::create_sdl_window() {
   this->gamma_idx = prefs.gamma_idx;
   this->windowed_w = prefs.window_w;
   this->windowed_h = prefs.window_h;
+  this->windowed_x = prefs.window_x;
+  this->windowed_y = prefs.window_y;
 
   this->sdl_window = sdl_make_shared(SDL_CreateWindow("Realmz", prefs.window_w, prefs.window_h, SDL_WINDOW_RESIZABLE));
   if (!this->sdl_window) {
     throw std::runtime_error(std::format("Could not create SDL window: {}", SDL_GetError()));
+  }
+  if (window_pos_on_screen(this->windowed_x, this->windowed_y, prefs.window_w, prefs.window_h)) {
+    SDL_SetWindowPosition(this->sdl_window.get(), this->windowed_x, this->windowed_y);
   }
   if (this->aspect_locked) {
     SDL_SetWindowAspectRatio(this->sdl_window.get(), 800.0f / 600.0f, 800.0f / 600.0f);
@@ -1357,9 +1376,12 @@ void WindowManager::save_prefs() {
   prefs.gamma_idx = this->gamma_idx;
   if (this->sdl_window && !this->is_fullscreen()) {
     SDL_GetWindowSize(this->sdl_window.get(), &this->windowed_w, &this->windowed_h);
+    SDL_GetWindowPosition(this->sdl_window.get(), &this->windowed_x, &this->windowed_y);
   }
   prefs.window_w = this->windowed_w;
   prefs.window_h = this->windowed_h;
+  prefs.window_x = this->windowed_x;
+  prefs.window_y = this->windowed_y;
   save_port_prefs(prefs);
 }
 

@@ -70,6 +70,8 @@ PortPrefs load_port_prefs() {
     auto root = phosg::JSON::parse(data);
     prefs.window_w = std::clamp(static_cast<int>(root.get_int("window_w", prefs.window_w)), MIN_DIM, MAX_W);
     prefs.window_h = std::clamp(static_cast<int>(root.get_int("window_h", prefs.window_h)), MIN_DIM, MAX_H);
+    prefs.window_x = static_cast<int>(root.get_int("window_x", prefs.window_x));
+    prefs.window_y = static_cast<int>(root.get_int("window_y", prefs.window_y));
     prefs.scale_mode = scale_mode_for_name(root.get_string("filter", name_for_scale_mode(prefs.scale_mode)));
     prefs.aspect_locked = root.get_bool("aspect_locked", prefs.aspect_locked);
     prefs.gamma_idx = std::clamp(static_cast<int>(root.get_int("gamma_idx", prefs.gamma_idx)), 0, kPortGammaCount - 1);
@@ -92,6 +94,8 @@ void save_port_prefs(const PortPrefs& prefs) {
   phosg::JSON root = phosg::JSON::dict();
   root.emplace("window_w", static_cast<int64_t>(prefs.window_w));
   root.emplace("window_h", static_cast<int64_t>(prefs.window_h));
+  root.emplace("window_x", static_cast<int64_t>(prefs.window_x));
+  root.emplace("window_y", static_cast<int64_t>(prefs.window_y));
   root.emplace("filter", name_for_scale_mode(prefs.scale_mode));
   root.emplace("aspect_locked", prefs.aspect_locked);
   root.emplace("gamma_idx", static_cast<int64_t>(prefs.gamma_idx));

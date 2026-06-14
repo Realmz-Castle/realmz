@@ -106,6 +106,8 @@ private:
   int gamma_idx = 0;
   int windowed_w = 800;
   int windowed_h = 600;
+  int windowed_x = SDL_WINDOWPOS_CENTERED;
+  int windowed_y = SDL_WINDOWPOS_CENTERED;
 
   WindowManager();
 
