@@ -51,3 +51,13 @@ inline constexpr PortGammaOption kPortGammaOptions[] = {
 };
 
 inline constexpr int kPortGammaCount = sizeof(kPortGammaOptions) / sizeof(kPortGammaOptions[0]);
+
+enum PortCmdKind {
+  PortCmdFilter = 0,
+  PortCmdScale,
+  PortCmdAspectLock,
+  PortCmdGamma,
+};
+
+void PortMenu_Apply(PortCmdKind kind, int index);
+void PortMenu_ItemState(PortCmdKind kind, int index, int* checked, int* enabled);

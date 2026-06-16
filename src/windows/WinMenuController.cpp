@@ -4,7 +4,6 @@
 #include <memory>
 #include <phosg/Strings.hh>
 
-#include "../PortControls.h"
 #include "../PortMenu.hpp"
 #include "./WinMenuController.hpp"
 #include <utility>
@@ -23,6 +22,25 @@ static constexpr WORD PORT_CMD_MAX = 0xE0FF;
 
 static bool IsPortCommand(WORD cmd) {
   return (cmd >= PORT_CMD_MIN) && (cmd <= PORT_CMD_MAX);
+}
+
+static bool PortCommandKindIndex(WORD cmd, PortCmdKind* kind, int* index) {
+  if ((cmd >= PORT_FILTER_BASE) && (cmd < PORT_FILTER_BASE + kPortFilterCount)) {
+    *kind = PortCmdFilter;
+    *index = cmd - PORT_FILTER_BASE;
+  } else if ((cmd >= PORT_SCALE_BASE) && (cmd < PORT_SCALE_BASE + kPortScaleCount)) {
+    *kind = PortCmdScale;
+    *index = cmd - PORT_SCALE_BASE;
+  } else if (cmd == PORT_ASPECT_LOCK) {
+    *kind = PortCmdAspectLock;
+    *index = 0;
+  } else if ((cmd >= PORT_GAMMA_BASE) && (cmd < PORT_GAMMA_BASE + kPortGammaCount)) {
+    *kind = PortCmdGamma;
+    *index = cmd - PORT_GAMMA_BASE;
+  } else {
+    return false;
+  }
+  return true;
 }
 
 // Builds the Port menu and appends it to the given menu bar. Mirrors the layout of
@@ -65,47 +83,27 @@ static void UpdatePortMenuState(HMENU menu) {
   if (!menu) {
     return;
   }
-  int current_mode = WM_GetScaleMode();
-  bool fullscreen = WM_IsFullscreen() != 0;
-  int cur_w = 0, cur_h = 0;
-  WM_GetWindowSize(&cur_w, &cur_h);
-
   int count = GetMenuItemCount(menu);
   for (int pos = 0; pos < count; pos++) {
     UINT cmd = GetMenuItemID(menu, pos);
-    if (!IsPortCommand(static_cast<WORD>(cmd))) {
+    PortCmdKind kind;
+    int index;
+    if (!PortCommandKindIndex(static_cast<WORD>(cmd), &kind, &index)) {
       continue;
     }
-    if ((cmd >= PORT_FILTER_BASE) && (cmd < PORT_FILTER_BASE + kPortFilterCount)) {
-      bool on = static_cast<int>(kPortFilters[cmd - PORT_FILTER_BASE].mode) == current_mode;
-      CheckMenuItem(menu, pos, MF_BYPOSITION | (on ? MF_CHECKED : MF_UNCHECKED));
-    } else if ((cmd >= PORT_SCALE_BASE) && (cmd < PORT_SCALE_BASE + kPortScaleCount)) {
-      const auto& scale = kPortScales[cmd - PORT_SCALE_BASE];
-      bool fits = !fullscreen && (WM_SizeFits(scale.width, scale.height) != 0);
-      EnableMenuItem(menu, pos, MF_BYPOSITION | (fits ? MF_ENABLED : MF_GRAYED));
-      bool on = !fullscreen && (cur_w == scale.width) && (cur_h == scale.height);
-      CheckMenuItem(menu, pos, MF_BYPOSITION | (on ? MF_CHECKED : MF_UNCHECKED));
-    } else if (cmd == PORT_ASPECT_LOCK) {
-      EnableMenuItem(menu, pos, MF_BYPOSITION | (fullscreen ? MF_GRAYED : MF_ENABLED));
-      CheckMenuItem(menu, pos, MF_BYPOSITION | (WM_GetAspectLocked() ? MF_CHECKED : MF_UNCHECKED));
-    } else if ((cmd >= PORT_GAMMA_BASE) && (cmd < PORT_GAMMA_BASE + kPortGammaCount)) {
-      bool on = static_cast<int>(cmd - PORT_GAMMA_BASE) == WM_GetGammaIdx();
-      CheckMenuItem(menu, pos, MF_BYPOSITION | (on ? MF_CHECKED : MF_UNCHECKED));
-    }
+    int checked = 0, enabled = 1;
+    PortMenu_ItemState(kind, index, &checked, &enabled);
+    EnableMenuItem(menu, pos, MF_BYPOSITION | (enabled ? MF_ENABLED : MF_GRAYED));
+    CheckMenuItem(menu, pos, MF_BYPOSITION | (checked ? MF_CHECKED : MF_UNCHECKED));
   }
 }
 
 // Routes a Port menu command to the cross-platform window backend.
 static void HandlePortCommand(WORD cmd) {
-  if ((cmd >= PORT_FILTER_BASE) && (cmd < PORT_FILTER_BASE + kPortFilterCount)) {
-    WM_SetScaleMode(static_cast<int>(kPortFilters[cmd - PORT_FILTER_BASE].mode));
-  } else if ((cmd >= PORT_SCALE_BASE) && (cmd < PORT_SCALE_BASE + kPortScaleCount)) {
-    const auto& scale = kPortScales[cmd - PORT_SCALE_BASE];
-    WM_SetWindowSize(scale.width, scale.height);
-  } else if (cmd == PORT_ASPECT_LOCK) {
-    WM_SetAspectLocked(!WM_GetAspectLocked());
-  } else if ((cmd >= PORT_GAMMA_BASE) && (cmd < PORT_GAMMA_BASE + kPortGammaCount)) {
-    WM_SetGammaIdx(static_cast<int>(cmd - PORT_GAMMA_BASE));
+  PortCmdKind kind;
+  int index;
+  if (PortCommandKindIndex(cmd, &kind, &index)) {
+    PortMenu_Apply(kind, index);
   }
 }
 

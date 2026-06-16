@@ -1,5 +1,4 @@
 #import "../MenuController.h"
-#import "../PortControls.h"
 #import "../PortMenu.hpp"
 #import <Cocoa/Cocoa.h>
 #import <Foundation/Foundation.h>
@@ -110,21 +109,9 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   callback([identifier menuID], [identifier itemID]);
 }
 
-- (IBAction)MCHandleFilter:(id)sender {
-  WM_SetScaleMode((int)[sender tag]);
-}
-
-- (IBAction)MCHandleScale:(id)sender {
+- (IBAction)MCHandlePortItem:(id)sender {
   NSInteger tag = [sender tag];
-  WM_SetWindowSize((int)(tag >> 16), (int)(tag & 0xFFFF));
-}
-
-- (IBAction)MCHandleAspectLock:(id)sender {
-  WM_SetAspectLocked(!WM_GetAspectLocked());
-}
-
-- (IBAction)MCHandleGamma:(id)sender {
-  WM_SetGammaIdx((int)[sender tag]);
+  PortMenu_Apply((PortCmdKind)(tag / 256), (int)(tag % 256));
 }
 
 - (void)MCCreateMenu:(const MenuList&)menuList {
@@ -157,12 +144,12 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   NSMenu* filterMenu = [[NSMenu alloc] initWithTitle:@"Filter"];
   [filterMenu setAutoenablesItems:NO];
   filterMenu.delegate = self;
-  for (const auto& f : kPortFilters) {
-    NSMenuItem* item = [filterMenu addItemWithTitle:[NSString stringWithUTF8String:f.title]
-                                             action:@selector(MCHandleFilter:)
+  for (int i = 0; i < kPortFilterCount; i++) {
+    NSMenuItem* item = [filterMenu addItemWithTitle:[NSString stringWithUTF8String:kPortFilters[i].title]
+                                             action:@selector(MCHandlePortItem:)
                                       keyEquivalent:@""];
     [item setTarget:self];
-    [item setTag:(NSInteger)f.mode];
+    [item setTag:(NSInteger)(PortCmdFilter * 256 + i)];
   }
   [portMenu setSubmenu:filterMenu forItem:filteringItem];
 
@@ -171,19 +158,20 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   NSMenu* scaleMenu = [[NSMenu alloc] initWithTitle:@"Scale"];
   [scaleMenu setAutoenablesItems:NO];
   scaleMenu.delegate = self;
-  for (const auto& s : kPortScales) {
-    NSMenuItem* item = [scaleMenu addItemWithTitle:[NSString stringWithUTF8String:s.title]
-                                            action:@selector(MCHandleScale:)
+  for (int i = 0; i < kPortScaleCount; i++) {
+    NSMenuItem* item = [scaleMenu addItemWithTitle:[NSString stringWithUTF8String:kPortScales[i].title]
+                                            action:@selector(MCHandlePortItem:)
                                      keyEquivalent:@""];
     [item setTarget:self];
-    [item setTag:(NSInteger)((s.width << 16) | s.height)];
+    [item setTag:(NSInteger)(PortCmdScale * 256 + i)];
   }
   [portMenu setSubmenu:scaleMenu forItem:scaleItem];
 
   NSMenuItem* aspectItem = [portMenu addItemWithTitle:@"Lock Aspect Ratio"
-                                               action:@selector(MCHandleAspectLock:)
+                                               action:@selector(MCHandlePortItem:)
                                         keyEquivalent:@""];
   [aspectItem setTarget:self];
+  [aspectItem setTag:(NSInteger)(PortCmdAspectLock * 256)];
 
   [portMenu addItem:[NSMenuItem separatorItem]];
   NSMenuItem* gammaItem = [[NSMenuItem alloc] initWithTitle:@"Color Correction" action:NULL keyEquivalent:@""];
@@ -193,10 +181,10 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   gammaMenu.delegate = self;
   for (int i = 0; i < kPortGammaCount; i++) {
     NSMenuItem* item = [gammaMenu addItemWithTitle:[NSString stringWithUTF8String:kPortGammaOptions[i].title]
-                                           action:@selector(MCHandleGamma:)
+                                           action:@selector(MCHandlePortItem:)
                                     keyEquivalent:@""];
     [item setTarget:self];
-    [item setTag:(NSInteger)i];
+    [item setTag:(NSInteger)(PortCmdGamma * 256 + i)];
   }
   [portMenu setSubmenu:gammaMenu forItem:gammaItem];
 
@@ -204,24 +192,15 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
 }
 
 - (void)menuNeedsUpdate:(NSMenu*)menu {
-  int currentMode = WM_GetScaleMode();
-  BOOL fullscreen = WM_IsFullscreen() ? YES : NO;
-  int curW = 0, curH = 0;
-  WM_GetWindowSize(&curW, &curH);
   for (NSMenuItem* item in menu.itemArray) {
-    if (item.action == @selector(MCHandleFilter:)) {
-      item.state = ((int)item.tag == currentMode) ? NSControlStateValueOn : NSControlStateValueOff;
-    } else if (item.action == @selector(MCHandleScale:)) {
-      int w = (int)(item.tag >> 16);
-      int h = (int)(item.tag & 0xFFFF);
-      item.enabled = (!fullscreen && WM_SizeFits(w, h)) ? YES : NO;
-      item.state = (!fullscreen && curW == w && curH == h) ? NSControlStateValueOn : NSControlStateValueOff;
-    } else if (item.action == @selector(MCHandleAspectLock:)) {
-      item.enabled = !fullscreen;
-      item.state = WM_GetAspectLocked() ? NSControlStateValueOn : NSControlStateValueOff;
-    } else if (item.action == @selector(MCHandleGamma:)) {
-      item.state = ((int)item.tag == WM_GetGammaIdx()) ? NSControlStateValueOn : NSControlStateValueOff;
+    if (item.action != @selector(MCHandlePortItem:)) {
+      continue;
     }
+    NSInteger tag = item.tag;
+    int checked = 0, enabled = 1;
+    PortMenu_ItemState((PortCmdKind)(tag / 256), (int)(tag % 256), &checked, &enabled);
+    item.enabled = enabled ? YES : NO;
+    item.state = checked ? NSControlStateValueOn : NSControlStateValueOff;
   }
 }
 

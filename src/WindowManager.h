@@ -77,6 +77,7 @@ typedef CWindowPtr WindowPtr, DialogPtr, WindowRef;
 typedef Handle ControlHandle, DialogItemHandle;
 
 void WindowManager_Init(void);
+void WM_SavePrefs(void);
 WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPtr behind);
 void WindowManager_DrawDialog(WindowPtr theWindow);
 void WindowManager_DisposeWindow(WindowPtr theWindow);

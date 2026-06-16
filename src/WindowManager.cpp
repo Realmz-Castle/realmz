@@ -1,6 +1,5 @@
 #include "WindowManager.hpp"
 
-#include "PortControls.h"
 #include "PortMenu.hpp"
 #include "PortPrefs.hpp"
 
@@ -1403,46 +1402,6 @@ void WindowManager::set_gamma_idx(int idx) {
   this->gamma_idx = idx;
   this->recomposite_all();
   this->save_prefs();
-}
-
-extern "C" int WM_GetScaleMode(void) {
-  return static_cast<int>(WindowManager::instance().get_scale_mode());
-}
-
-extern "C" void WM_SetScaleMode(int mode) {
-  WindowManager::instance().set_scale_mode(static_cast<SDL_ScaleMode>(mode));
-}
-
-extern "C" void WM_SetWindowSize(int w, int h) {
-  WindowManager::instance().set_window_size(w, h);
-}
-
-extern "C" int WM_SizeFits(int w, int h) {
-  return WindowManager::instance().size_fits(w, h) ? 1 : 0;
-}
-
-extern "C" void WM_GetWindowSize(int* w, int* h) {
-  WindowManager::instance().get_window_size(w, h);
-}
-
-extern "C" int WM_IsFullscreen(void) {
-  return WindowManager::instance().is_fullscreen() ? 1 : 0;
-}
-
-extern "C" int WM_GetAspectLocked(void) {
-  return WindowManager::instance().get_aspect_locked() ? 1 : 0;
-}
-
-extern "C" void WM_SetAspectLocked(int locked) {
-  WindowManager::instance().set_aspect_locked(locked != 0);
-}
-
-extern "C" int WM_GetGammaIdx(void) {
-  return WindowManager::instance().get_gamma_idx();
-}
-
-extern "C" void WM_SetGammaIdx(int idx) {
-  WindowManager::instance().set_gamma_idx(idx);
 }
 
 extern "C" void WM_SavePrefs(void) {
