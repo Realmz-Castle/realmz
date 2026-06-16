@@ -2,6 +2,10 @@
 
 #include <SDL3/SDL_surface.h>
 
+inline constexpr int kLogicalWidth = 800;
+inline constexpr int kLogicalHeight = 600;
+inline constexpr float kLogicalAspect = static_cast<float>(kLogicalWidth) / static_cast<float>(kLogicalHeight);
+
 // Cross-platform definition of the contents of the "Port" menu. The menu UI is
 // built natively on each platform (Cocoa on macOS, the Win32 menu API on
 // Windows), but the option lists live here so both platforms stay in sync.

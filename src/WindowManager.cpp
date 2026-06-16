@@ -962,9 +962,6 @@ static bool window_pos_on_screen(int x, int y, int w, int h) {
 void WindowManager::create_sdl_window() {
   wm_log.debug_f("WindowManager::create_sdl_window()");
 
-  static constexpr int logical_w = 800;
-  static constexpr int logical_h = 600;
-
   PortPrefs prefs = load_port_prefs();
   this->scale_mode = prefs.scale_mode;
   this->aspect_locked = prefs.aspect_locked;
@@ -982,15 +979,15 @@ void WindowManager::create_sdl_window() {
     SDL_SetWindowPosition(this->sdl_window.get(), this->windowed_x, this->windowed_y);
   }
   if (this->aspect_locked) {
-    SDL_SetWindowAspectRatio(this->sdl_window.get(), 800.0f / 600.0f, 800.0f / 600.0f);
+    SDL_SetWindowAspectRatio(this->sdl_window.get(), kLogicalAspect, kLogicalAspect);
   }
   SDL_Renderer* renderer = SDL_CreateRenderer(this->sdl_window.get(), nullptr);
   if (!renderer) {
     throw std::runtime_error(std::format("Could not create window renderer: {}", SDL_GetError()));
   }
-  SDL_SetRenderLogicalPresentation(renderer, logical_w, logical_h, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+  SDL_SetRenderLogicalPresentation(renderer, kLogicalWidth, kLogicalHeight, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
-  this->screen_port.resize(logical_w, logical_h);
+  this->screen_port.resize(kLogicalWidth, kLogicalHeight);
   this->recomposite_all();
 }
 
@@ -1320,12 +1317,12 @@ void WindowManager::set_aspect_locked(bool locked) {
     if (locked) {
       int w = 0, h = 0;
       SDL_GetWindowSize(this->sdl_window.get(), &w, &h);
-      int snapped_h = (w * 600 + 400) / 800;
+      int snapped_h = (w * kLogicalHeight + kLogicalWidth / 2) / kLogicalWidth;
       if (snapped_h != h && !this->is_fullscreen()) {
         SDL_SetWindowSize(this->sdl_window.get(), w, snapped_h);
       }
       if (!this->is_fullscreen()) {
-        SDL_SetWindowAspectRatio(this->sdl_window.get(), 800.0f / 600.0f, 800.0f / 600.0f);
+        SDL_SetWindowAspectRatio(this->sdl_window.get(), kLogicalAspect, kLogicalAspect);
       }
     } else {
 #ifdef __APPLE__
