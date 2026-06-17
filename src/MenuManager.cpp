@@ -287,8 +287,19 @@ int32_t PopUpMenuSelect(MenuHandle menu, int16_t top, int16_t left, int16_t popU
   auto properties = SDL_GetWindowProperties(sdl_window.get());
   auto nsWindow = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
 
+  int16_t win_top = top;
+  int16_t win_left = left;
+  if (auto* renderer = SDL_GetRenderer(sdl_window.get())) {
+    float window_x = 0.0f;
+    float window_y = 0.0f;
+    if (SDL_RenderCoordinatesToWindow(renderer, left, top, &window_x, &window_y)) {
+      win_left = static_cast<int16_t>(SDL_lroundf(window_x));
+      win_top = static_cast<int16_t>(SDL_lroundf(window_y));
+    }
+  }
+
   result = -1;
-  MCCreatePopupMenu(nsWindow, m, {top, left}, &popupCallback);
+  MCCreatePopupMenu(nsWindow, m, {win_top, win_left}, &popupCallback);
 
   // Wait for either an item to be selected and fire the callback to modify result, or for
   // the menu to be closed without a selection, which will fire the callback with 0 as the result.

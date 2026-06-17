@@ -1138,11 +1138,20 @@ void WindowManager::on_dialog_item_focus_changed() {
     const auto& window_rect = this->top_window->port.portRect;
     const auto& item_rect = this->top_window->focused_item->rect;
 
+    float left = window_rect.left + item_rect.left;
+    float top = window_rect.top + item_rect.top;
+    float right = window_rect.left + item_rect.right;
+    float bottom = window_rect.top + item_rect.bottom;
+    if (auto* renderer = SDL_GetRenderer(this->sdl_window.get())) {
+      SDL_RenderCoordinatesToWindow(renderer, left, top, &left, &top);
+      SDL_RenderCoordinatesToWindow(renderer, right, bottom, &right, &bottom);
+    }
+
     SDL_Rect rect;
-    rect.x = window_rect.left + item_rect.left;
-    rect.y = window_rect.top + item_rect.top;
-    rect.w = item_rect.right - item_rect.left;
-    rect.h = item_rect.bottom - item_rect.top;
+    rect.x = static_cast<int>(SDL_lroundf(left));
+    rect.y = static_cast<int>(SDL_lroundf(top));
+    rect.w = static_cast<int>(SDL_lroundf(right - left));
+    rect.h = static_cast<int>(SDL_lroundf(bottom - top));
     if (!SDL_SetTextInputArea(this->sdl_window.get(), &rect, 0)) {
       wm_log.error_f("Could not create text area: {}", SDL_GetError());
     }

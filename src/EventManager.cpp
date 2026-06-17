@@ -364,7 +364,13 @@ public:
   }
 
   void move_mouse_to(const Point& pt) {
-    SDL_WarpMouseInWindow(WindowManager::instance().get_sdl_window().get(), pt.h, pt.v);
+    auto sdl_window = WindowManager::instance().get_sdl_window();
+    float window_x = pt.h;
+    float window_y = pt.v;
+    if (auto* renderer = SDL_GetRenderer(sdl_window.get())) {
+      SDL_RenderCoordinatesToWindow(renderer, pt.h, pt.v, &window_x, &window_y);
+    }
+    SDL_WarpMouseInWindow(sdl_window.get(), window_x, window_y);
     this->mouse_loc = pt;
   }
 
