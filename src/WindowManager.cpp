@@ -2035,18 +2035,6 @@ void TEUpdateStyled(const Rect& r, StyledTextEdit* ste) {
     ste->prerendered = std::make_unique<phosg::ImageRGBA8888N>(
         bm_font.wrap_and_render_text<phosg::PixelFormat::RGBA8888_NATIVE>(
             ste->text, ste->layout_rect.right - ste->layout_rect.left, 0, 0x000000FF, ste->align));
-    // TODO: There is apparently a bug that causes the background not to be
-    // erased properly, so the text renders over itself as it scrolls and
-    // quickly becomes unreadable. To work around this, we add a background to
-    // the text that's sort of parchment-colored (in keeping with the game's
-    // theme), but it'd be nice to fix this and restore the original behavior.
-    for (size_t y = 0; y < ste->prerendered->get_height(); y++) {
-      for (size_t x = 0; x < ste->prerendered->get_width(); x++) {
-        if (!phosg::get_a(ste->prerendered->read(x, y))) {
-          ste->prerendered->write(x, y, 0xF3E5ABFF);
-        }
-      }
-    }
   }
   auto* port = CCGrafPort::as_port(qd.thePort);
   if (!port) {
@@ -2056,7 +2044,7 @@ void TEUpdateStyled(const Rect& r, StyledTextEdit* ste) {
         port->ref(), ste->layout_rect.left, ste->layout_rect.top, ste->layout_rect.right, ste->layout_rect.bottom,
         ste->view_rect.left, ste->view_rect.top, ste->view_rect.right, ste->view_rect.bottom);
     port->erase_rect(ste->view_rect);
-    port->data.copy_from(
+    port->data.copy_from_with_blend(
         *ste->prerendered,
         ste->view_rect.left,
         ste->view_rect.top,
