@@ -303,7 +303,7 @@ void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list,
   SDL_SetWindowSize(sdl_window, client_w, client_h);
 }
 
-int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu) {
+int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu, int window_x, int window_y) {
   auto wind_handle = get_window_handle(sdl_window);
 
   HMENU popupMenu = CreatePopupMenu();
@@ -315,11 +315,12 @@ int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu) {
     AppendMenu(popupMenu, (item.enabled ? MF_ENABLED : 0) | MF_STRING, i, name);
   }
 
-  // TrackPopupMenu displays the menu in screen coordinates, not window coordinates. Rather
-  // thank require the caller to convert the mouse position from local to global coordinates,
-  // it's easier to just get the mouse position fresh right here.
-  POINT pt;
-  GetCursorPos(&pt);
+  // TrackPopupMenu displays the menu in screen coordinates. The caller hands us the requested
+  // position in window (client-area) coordinates, already converted from the game's logical
+  // render space, so convert client -> screen here to anchor the menu where the caller asked
+  // rather than wherever the cursor happens to be.
+  POINT pt{window_x, window_y};
+  ClientToScreen(wind_handle, &pt);
 
   int result = TrackPopupMenu(popupMenu,
       TPM_RETURNCMD | TPM_RIGHTBUTTON,

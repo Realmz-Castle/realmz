@@ -51,6 +51,7 @@ void MCCreatePopupMenu(
     void (*callback)(int16_t, int16_t)) {
   auto sdl_window = WindowManager::instance().get_sdl_window();
   auto m = win_menu_from_menu(menu);
-  auto result = WinCreatePopupMenu(sdl_window.get(), m);
+  // loc is {top, left} = {y, x} in window coordinates.
+  auto result = WinCreatePopupMenu(sdl_window.get(), m, loc.second, loc.first);
   callback(m->menu_id, result);
 }

@@ -28,4 +28,4 @@ struct WinMenuList {
 };
 
 void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list, void (*callback)(int16_t, int16_t));
-int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu);
+int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu, int window_x, int window_y);
