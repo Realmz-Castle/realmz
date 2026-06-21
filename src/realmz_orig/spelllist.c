@@ -54,16 +54,23 @@ short spelllist(short who, short special) {
     {
       if (who < 9) {
         if ((c[who].armor[2]) || (c[who].armor[15])) {
+          short fumbleditem;
           temp = c[who].armor[2];
           if (!temp)
             temp = c[who].armor[15];
-          for (fumloop = 0; fumloop <= c[who].numitems; fumloop++) {
+          /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+           * Guard fumbled item drops against inventory and fumble queue bounds.
+           */
+          for (fumloop = 0; (fumloop < c[who].numitems) && (fumloop < 30); fumloop++) {
             if (c[who].items[fumloop].id == temp) {
+              if (fumtotal >= 20)
+                goto donefumble;
+              fumbleditem = c[who].items[fumloop].id;
               if (removeitem(who, fumloop, FALSE, FALSE)) {
                 sound(-10121);
                 sound(-10123);
-                fumque[fumtotal++] = c[who].items[fumloop].id;
-                dropitem(who, c[who].items[fumloop].id, fumloop, TRUE, TRUE);
+                fumque[fumtotal++] = fumbleditem;
+                dropitem(who, fumbleditem, fumloop, TRUE, TRUE);
                 c[who].armor[2] = c[who].weaponnum = 0;
                 goto donefumble;
               }

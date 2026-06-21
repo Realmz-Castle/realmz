@@ -367,13 +367,20 @@ startover:
           if ((q[up] < 9) && (q[up] > -1)) {
             if (c[charup].armor[2]) /**** fumble weapon ****/
             {
-              for (fumloop = 0; fumloop <= c[charup].numitems; fumloop++) {
+              short fumbleditem;
+              /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+               * Guard fumbled item drops against inventory and fumble queue bounds.
+               */
+              for (fumloop = 0; (fumloop < c[charup].numitems) && (fumloop < 30); fumloop++) {
                 if (c[charup].items[fumloop].id == c[charup].armor[2]) {
+                  if (fumtotal >= 20)
+                    goto donefumble;
+                  fumbleditem = c[charup].items[fumloop].id;
                   if (removeitem(charup, fumloop, FALSE, FALSE)) {
                     sound(-10121);
                     sound(-10123);
-                    fumque[fumtotal++] = c[charup].items[fumloop].id;
-                    dropitem(charup, c[charup].items[fumloop].id, fumloop, TRUE, FALSE);
+                    fumque[fumtotal++] = fumbleditem;
+                    dropitem(charup, fumbleditem, fumloop, TRUE, FALSE);
                     c[charup].armor[2] = c[charup].weaponnum = 0;
                     combatupdate2(charup);
                     goto donefumble;

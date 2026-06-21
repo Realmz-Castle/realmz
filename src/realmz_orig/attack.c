@@ -204,13 +204,20 @@ moveon:
 
     if ((templong > 50 && templong < 60) && (c[chare].armor[2])) /**** fumble weapon ****/
     {
-      for (fumloop = 0; fumloop <= c[chare].numitems; fumloop++) {
+      short fumbleditem;
+      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+       * Guard fumbled item drops against inventory and fumble queue bounds.
+       */
+      for (fumloop = 0; (fumloop < c[chare].numitems) && (fumloop < 30); fumloop++) {
         if (c[chare].items[fumloop].id == c[chare].armor[2]) {
+          if (fumtotal >= 20)
+            goto donefumble;
+          fumbleditem = c[chare].items[fumloop].id;
           if (removeitem(chare, fumloop, FALSE, FALSE)) {
             sound(-10121);
             sound(-10123);
-            fumque[fumtotal++] = c[chare].items[fumloop].id;
-            dropitem(chare, c[chare].items[fumloop].id, fumloop, TRUE, FALSE);
+            fumque[fumtotal++] = fumbleditem;
+            dropitem(chare, fumbleditem, fumloop, TRUE, FALSE);
             c[chare].armor[2] = c[chare].weaponnum = 0;
             warn(114);
             success = FALSE;
