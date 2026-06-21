@@ -1009,12 +1009,12 @@ startover:
 
       case 91: /***** Drop all equipment ****/
         for (loop = 0; loop <= charnum; loop++) {
-          itemcount = -1;
-          while (c[loop].numitems) {
-            itemcount++;
-            removeitem(loop, itemcount, FALSE, TRUE);
-            dropitem(loop, c[loop].items[1].id, 0, 141, TRUE);
-          }
+          /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+           * The original loop advanced itemcount, then dropped slot 0 using
+           * slot 1's id. Drop slot 0 repeatedly so remove/drop stay in sync.
+           */
+          while (c[loop].numitems)
+            dropitem(loop, c[loop].items[0].id, 0, 141, TRUE);
         }
 
         shortupdate(0);
