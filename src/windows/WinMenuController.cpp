@@ -308,7 +308,9 @@ int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu, in
   for (const auto& item : menu->items) {
     i++;
     auto name = item.name.c_str();
-    AppendMenu(popupMenu, (item.enabled ? MF_ENABLED : 0) | MF_STRING, i, name);
+    // MF_ENABLED is 0, so a disabled item must be flagged with MF_GRAYED; passing 0
+    // would leave it enabled and clickable (e.g. party members who can't use an item).
+    AppendMenu(popupMenu, (item.enabled ? MF_ENABLED : MF_GRAYED) | MF_STRING, i, name);
   }
 
   // TrackPopupMenu displays the menu in screen coordinates. The caller hands us the requested
