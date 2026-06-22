@@ -3,6 +3,7 @@
 #include <SDL3/SDL_filesystem.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <string>
 
 #include "PortMenu.hpp"
@@ -15,7 +16,8 @@
 
 static phosg::PrefixedLogger prefs_log("[PortPrefs] ", DEFAULT_LOG_LEVEL);
 
-static constexpr int MIN_DIM = 1;
+static constexpr int MIN_W = kLogicalWidth;
+static constexpr int MIN_H = kLogicalHeight;
 static constexpr int MAX_W = kLogicalWidth * 4;
 static constexpr int MAX_H = kLogicalHeight * 4;
 
@@ -49,6 +51,22 @@ static SDL_ScaleMode scale_mode_for_name(const std::string& name) {
   return SDL_SCALEMODE_PIXELART;
 }
 
+static double gamma_value_for_idx(int idx) {
+  if (idx < 0 || idx >= kPortGammaCount) {
+    return kPortGammaOptions[0].display_gamma;
+  }
+  return kPortGammaOptions[idx].display_gamma;
+}
+
+static int gamma_idx_for_value(double value) {
+  for (int i = 0; i < kPortGammaCount; ++i) {
+    if (kPortGammaOptions[i].display_gamma == value) {
+      return i;
+    }
+  }
+  return 0;
+}
+
 PortPrefs load_port_prefs() {
   PortPrefs prefs;
 
@@ -68,13 +86,13 @@ PortPrefs load_port_prefs() {
 
   try {
     auto root = phosg::JSON::parse(data);
-    prefs.window_w = std::clamp(static_cast<int>(root.get_int("window_w", prefs.window_w)), MIN_DIM, MAX_W);
-    prefs.window_h = std::clamp(static_cast<int>(root.get_int("window_h", prefs.window_h)), MIN_DIM, MAX_H);
+    prefs.window_w = std::clamp(static_cast<int>(root.get_int("window_w", prefs.window_w)), MIN_W, MAX_W);
+    prefs.window_h = std::clamp(static_cast<int>(root.get_int("window_h", prefs.window_h)), MIN_H, MAX_H);
     prefs.window_x = static_cast<int>(root.get_int("window_x", prefs.window_x));
     prefs.window_y = static_cast<int>(root.get_int("window_y", prefs.window_y));
     prefs.scale_mode = scale_mode_for_name(root.get_string("filter", name_for_scale_mode(prefs.scale_mode)));
     prefs.aspect_locked = root.get_bool("aspect_locked", prefs.aspect_locked);
-    prefs.gamma_idx = std::clamp(static_cast<int>(root.get_int("gamma_idx", prefs.gamma_idx)), 0, kPortGammaCount - 1);
+    prefs.gamma_idx = gamma_idx_for_value(root.get_float("gamma", gamma_value_for_idx(prefs.gamma_idx)));
   } catch (const std::exception& e) {
     prefs_log.warning_f("Could not parse {} ({}); using defaults", path, e.what());
     return PortPrefs{};
@@ -101,11 +119,17 @@ void save_port_prefs(const PortPrefs& prefs) {
   }
   root.emplace("filter", name_for_scale_mode(prefs.scale_mode));
   root.emplace("aspect_locked", prefs.aspect_locked);
-  root.emplace("gamma_idx", static_cast<int64_t>(prefs.gamma_idx));
+  root.emplace("gamma", gamma_value_for_idx(prefs.gamma_idx));
 
+  std::string tmp_path = path + ".tmp";
   try {
-    phosg::save_file(path, root.serialize());
+    phosg::save_file(tmp_path, root.serialize());
+    if (std::rename(tmp_path.c_str(), path.c_str()) != 0) {
+      std::remove(tmp_path.c_str());
+      prefs_log.warning_f("Could not rename {} to {}", tmp_path, path);
+    }
   } catch (const std::exception& e) {
-    prefs_log.warning_f("Could not write {} ({})", path, e.what());
+    std::remove(tmp_path.c_str());
+    prefs_log.warning_f("Could not write {} ({})", tmp_path, e.what());
   }
 }

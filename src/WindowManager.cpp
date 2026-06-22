@@ -956,7 +956,11 @@ static bool window_pos_on_screen(int x, int y, int w, int h) {
     return false;
   }
   SDL_Rect overlap;
-  return SDL_GetRectIntersection(&win, &bounds, &overlap);
+  if (!SDL_GetRectIntersection(&win, &bounds, &overlap)) {
+    return false;
+  }
+  static constexpr int kMinVisible = 80;
+  return overlap.w >= kMinVisible && overlap.h >= kMinVisible;
 }
 
 void WindowManager::create_sdl_window() {

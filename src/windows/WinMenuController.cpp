@@ -45,7 +45,7 @@ static bool PortCommandKindIndex(WORD cmd, PortCmdKind* kind, int* index) {
 
 // Builds the Port menu and appends it to the given menu bar. Mirrors the layout of
 // the macOS Port menu (filters, a Scale submenu, an aspect-lock toggle, and a
-// disabled color-correction placeholder).
+// Color Correction submenu).
 static void BuildPortMenu(HMENU menubar) {
   HMENU port_menu = CreatePopupMenu();
 
