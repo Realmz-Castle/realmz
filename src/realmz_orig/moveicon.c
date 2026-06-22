@@ -27,7 +27,7 @@ void itemcost(short mode) /****** 1 = sell, else buy ****/
 void moveicon(void) {
   float charge1, charge2 = 0;
   short valu, max, tempshop;
-  Rect iconpict, iconnp, iconop, iconstore, store, storebg;
+  Rect iconpict, iconnp, iconop, iconstore, store;
   Point oldpoint;
   Boolean empty = 0;
   Boolean doupdateshop = 0;
@@ -36,8 +36,16 @@ void moveicon(void) {
   short leftvalue, temp;
   struct itemattr tempitem;
   Boolean baditem = 0;
-  Boolean haveold = 0;
   int index;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(akelsall): storebg is the source rect for gbuff2, which holds the screen
+   * pixels currently hidden under the dragged icon; haveold tracks whether we have
+   * a previous icon position to restore. These support drawing the dragged icon
+   * opaquely without smearing (see the larger comment below).
+   */
+  Rect storebg;
+  Boolean haveold = 0;
+  /* *** END CHANGES *** */
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
    * NOTE(danapplegate): It seems that the global screen buffer was directly accessible. We've
    * updated the implementation here to achieve a similar effect with our in-memory screen buffer.
@@ -276,7 +284,8 @@ void moveicon(void) {
 
   OffsetRect(&iconpict, GlobalLeft, GlobalTop);
 
-  /* Save a pristine copy of the icon (including its white list background) into
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(akelsall): Save a pristine copy of the icon (including its white list background) into
    * gedge. The dragged icon is always drawn from this copy, so it never re-reads
    * overlapping screen pixels (which used to smear copies of the icon when
    * dragging near its source) and stays opaque on top of whatever is behind it.
