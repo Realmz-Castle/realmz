@@ -6,8 +6,8 @@
 #include "PortMenu.hpp"
 
 struct PortPrefs {
-  int window_w = kLogicalWidth;
-  int window_h = kLogicalHeight;
+  int window_w = kLogicalWindowWidth;
+  int window_h = kLogicalWindowHeight;
   int window_x = SDL_WINDOWPOS_CENTERED;
   int window_y = SDL_WINDOWPOS_CENTERED;
   SDL_ScaleMode scale_mode = SDL_SCALEMODE_PIXELART;

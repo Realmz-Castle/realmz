@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "PortMenu.hpp"
 #include "QuickDraw.hpp"
 #include "SDLHelpers.hpp"
 
@@ -104,8 +105,8 @@ private:
   SDL_ScaleMode scale_mode = SDL_SCALEMODE_PIXELART;
   bool aspect_locked = true;
   int gamma_idx = 0;
-  int windowed_w = 800;
-  int windowed_h = 600;
+  int windowed_w = kLogicalWindowWidth;
+  int windowed_h = kLogicalWindowHeight;
   int windowed_x = SDL_WINDOWPOS_CENTERED;
   int windowed_y = SDL_WINDOWPOS_CENTERED;
   // Cached gamma correction state, so the present path does not rebuild the LUT

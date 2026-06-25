@@ -989,9 +989,9 @@ void WindowManager::create_sdl_window() {
   if (!renderer) {
     throw std::runtime_error(std::format("Could not create window renderer: {}", SDL_GetError()));
   }
-  SDL_SetRenderLogicalPresentation(renderer, kLogicalWidth, kLogicalHeight, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+  SDL_SetRenderLogicalPresentation(renderer, kLogicalWindowWidth, kLogicalWindowHeight, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
-  this->screen_port.resize(kLogicalWidth, kLogicalHeight);
+  this->screen_port.resize(kLogicalWindowWidth, kLogicalWindowHeight);
   this->recomposite_all();
 }
 
@@ -1330,7 +1330,7 @@ void WindowManager::set_aspect_locked(bool locked) {
     if (locked) {
       int w = 0, h = 0;
       SDL_GetWindowSize(this->sdl_window.get(), &w, &h);
-      int snapped_h = (w * kLogicalHeight + kLogicalWidth / 2) / kLogicalWidth;
+      int snapped_h = (w * kLogicalWindowHeight + kLogicalWindowWidth / 2) / kLogicalWindowWidth;
       if (snapped_h != h && !this->is_fullscreen()) {
         SDL_SetWindowSize(this->sdl_window.get(), w, snapped_h);
       }

@@ -16,10 +16,10 @@
 
 static phosg::PrefixedLogger prefs_log("[PortPrefs] ", DEFAULT_LOG_LEVEL);
 
-static constexpr int MIN_W = kLogicalWidth;
-static constexpr int MIN_H = kLogicalHeight;
-static constexpr int MAX_W = kLogicalWidth * 4;
-static constexpr int MAX_H = kLogicalHeight * 4;
+static constexpr int MIN_W = kLogicalWindowWidth;
+static constexpr int MIN_H = kLogicalWindowHeight;
+static constexpr int MAX_W = kLogicalWindowWidth * 4;
+static constexpr int MAX_H = kLogicalWindowHeight * 4;
 
 static std::string prefs_path() {
   char* base = SDL_GetPrefPath("Fantasoft", "Realmz");
