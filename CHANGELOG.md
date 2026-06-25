@@ -1,3 +1,23 @@
+## [v8.1.0-beta3](https://github.com/Realmz-Castle/realmz/releases/tag/v8.1.0-beta3)
+
+- Throttle key repeats to avoid sluggish gameplay. by @jpetrie in #201
+- Configure Windows Installer Build Target by @danapplegate in #205
+- fix multiple issues; closes #116 #151 #153 #154 #166 #203 by @fuzziqersoftware in #207
+- Use userdata directory for preferences file by @danapplegate in #204
+- fix MCSync getting slower after playing for a while by @fuzziqersoftware in #209
+- eliminate Data CD file by @fuzziqersoftware in #208
+- fix location of type indicators on spell selection window by @fuzziqersoftware in #215
+- update Sword Lands scenarios to latest versions by @fuzziqersoftware in #216
+- implement menu item enabled state in popups by @fuzziqersoftware in #217
+- fix long vs. int32_t in save file format by @fuzziqersoftware in #214
+- use enums for character, monster, and party conditions; closes #210, closes #212 by @fuzziqersoftware in #213
+- fix multiple minor/rare issues by @fuzziqersoftware in #218
+- save storeditems flag in save file by @fuzziqersoftware in #220
+- fix fumble command edge case in battle by @fuzziqersoftware in #221
+- Fix Windows Cross-Compilation Build by @danapplegate in #222
+- fix hang in Name modal on Generate New Character by @chromancer in #224
+- Show bundled characters in party select, fix resulting Data CD crash by @chromancer in #225
+
 ## [v8.1.0-beta2](https://github.com/Realmz-Castle/realmz/releases/tag/v8.1.0-beta2)
 
 - Add CMake presets for macOS by @jpetrie in #167
