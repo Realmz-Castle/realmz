@@ -260,8 +260,8 @@ set(RESOURCE_FILES
     bundle/AppIcon.icns
     "resources/Black Chancery.ttf"
     "resources/Black Chancery Bold.ttf"
-    "resources/Inter/InterVariable.ttf"
     "resources/ChicagoFLF.ttf"
+    "vendored/Inter/InterVariable.ttf"
 )
 set_source_files_properties(${RESOURCE_FILES} PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources
@@ -335,6 +335,13 @@ if(NOT WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(Realmz PRIVATE -fsanitize=address)
     target_link_options(Realmz PRIVATE -fsanitize=address)
 endif()
+
+# Ensure the files that Realmz needs exist next to the executable.
+add_custom_command(TARGET Realmz POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/resources" "$<TARGET_FILE_DIR:Realmz>"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/base/Realmz" "$<TARGET_FILE_DIR:Realmz>"
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/vendored/Inter/InterVariable.ttf" "$<TARGET_FILE_DIR:Realmz>"
+)
 
 set(TEST_EXECUTABLES "GraphicsTest")
 foreach(TEST_EXECUTABLE ${TEST_EXECUTABLES})
