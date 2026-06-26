@@ -71,12 +71,10 @@ static void UpdatePortMenuState(HMENU menu) {
   }
 }
 
-// Routes a Port menu command to the cross-platform window backend.
 static void HandlePortCommand(WORD cmd) {
   PortMenu_Apply(cmd - PORT_CMD_BASE);
 }
 
-// Static variable to keep the original window proc
 static WNDPROC g_OldWndProc = nullptr;
 
 // Callback to invoke with clicked menu items. Should be a pointer to a function that
@@ -189,18 +187,15 @@ HWND get_window_handle(SDL_Window* sdl_window) {
 }
 
 void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list, void (*callback)(int16_t, int16_t)) {
-  // Update current menu click callback function
   menuCallback = callback;
-
-  // Store the current menu list for keyboard shortcut lookup
   current_menu_list = menu_list;
 
   auto wind_handle = get_window_handle(sdl_window);
 
   // Capture the current logical size so it can be reapplied after the menu bar is
-  // attached (see the note below). Reapplying the current size rather than a fixed
-  // 800x600 keeps a scale chosen from the Port menu from being reset on the next sync.
-  int client_w = 800, client_h = 600;
+  // attached (see the note below). Reapplying the current size rather than the fixed
+  // logical default keeps a scale chosen from the Port menu from being reset on the next sync.
+  int client_w = kLogicalWindowWidth, client_h = kLogicalWindowHeight;
   SDL_GetWindowSize(sdl_window, &client_w, &client_h);
 
   HMENU win_menu = CreateMenu();
@@ -267,8 +262,8 @@ void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list,
   // bypass SDL to create the menu directly via the Windows API, it seems that SDL doesn't know that
   // the rendering of the menu bar has shrunk the client area. So, a quick call to SDL_SetWindowSize is
   // enough to force SDL to realize the menu bar now exists and to expand the window so the client area
-  // is the full size it expects. Reapply the size captured above rather than a fixed 800x600 so a
-  // scale picked from the Port menu survives a menu re-sync.
+  // is the full size it expects. Reapply the size captured above rather than the fixed logical
+  // default so a scale picked from the Port menu survives a menu re-sync.
   SDL_SetWindowSize(sdl_window, client_w, client_h);
 }
 

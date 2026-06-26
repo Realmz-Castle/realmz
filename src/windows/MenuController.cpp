@@ -35,7 +35,7 @@ void MCSync(std::shared_ptr<MenuList> menuList, void (*callback)(int16_t, int16_
 
   auto win_menu_list = std::make_shared<WinMenuList>();
 
-  auto menus = std::transform(
+  std::transform(
       menuList->menus.begin(),
       menuList->menus.end(),
       std::back_inserter(win_menu_list->menus),
