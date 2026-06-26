@@ -28,7 +28,7 @@ inline constexpr PortFilterOption kPortFilters[] = {
 };
 
 inline constexpr PortScaleOption kPortScales[] = {
-    {"1x", 800, 600},
+    {"1x (Default)", 800, 600},
     {"1.5x", 1200, 900},
     {"2x", 1600, 1200},
     {"2.5x", 2000, 1500},
@@ -56,12 +56,11 @@ inline constexpr PortGammaOption kPortGammaOptions[] = {
 
 inline constexpr int kPortGammaCount = sizeof(kPortGammaOptions) / sizeof(kPortGammaOptions[0]);
 
-enum PortCmdKind {
-  PortCmdFilter = 0,
-  PortCmdScale,
-  PortCmdAspectLock,
-  PortCmdGamma,
-};
+inline constexpr int kPortFilterId = 0;
+inline constexpr int kPortScaleId = kPortFilterId + kPortFilterCount;
+inline constexpr int kPortAspectLockId = kPortScaleId + kPortScaleCount;
+inline constexpr int kPortGammaId = kPortAspectLockId + 1;
+inline constexpr int kPortItemCount = kPortGammaId + kPortGammaCount;
 
-void PortMenu_Apply(PortCmdKind kind, int index);
-void PortMenu_ItemState(PortCmdKind kind, int index, int* checked, int* enabled);
+void PortMenu_Apply(int id);
+void PortMenu_ItemState(int id, int* checked, int* enabled);

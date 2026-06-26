@@ -3,6 +3,8 @@
 #include <SDL3/SDL_filesystem.h>
 
 #include <algorithm>
+#include <cassert>
+#include <cmath>
 #include <cstdio>
 #include <string>
 
@@ -52,19 +54,21 @@ static SDL_ScaleMode scale_mode_for_name(const std::string& name) {
 }
 
 static double gamma_value_for_idx(int idx) {
-  if (idx < 0 || idx >= kPortGammaCount) {
-    return kPortGammaOptions[0].display_gamma;
-  }
+  assert(idx >= 0 && idx < kPortGammaCount);
   return kPortGammaOptions[idx].display_gamma;
 }
 
 static int gamma_idx_for_value(double value) {
-  for (int i = 0; i < kPortGammaCount; ++i) {
-    if (kPortGammaOptions[i].display_gamma == value) {
-      return i;
+  int best = 0;
+  for (int i = 1; i < kPortGammaCount; ++i) {
+    if (std::abs(kPortGammaOptions[i].display_gamma - value) < std::abs(kPortGammaOptions[best].display_gamma - value)) {
+      best = i;
     }
   }
-  return 0;
+  if (kPortGammaOptions[best].display_gamma != value) {
+    prefs_log.warning_f("Unknown gamma value {}; using nearest ({})", value, kPortGammaOptions[best].display_gamma);
+  }
+  return best;
 }
 
 PortPrefs load_port_prefs() {

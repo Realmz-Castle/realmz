@@ -13,34 +13,12 @@ static phosg::PrefixedLogger wmc_log("[WinMenuController] ");
 // Command IDs for the Port menu. They sit in a reserved high range so they never
 // collide with the packed (menu_id, item_id) identifiers the game's own menus use,
 // which top out at 0x7F7F because menu_id and item_id are each a single byte.
-static constexpr WORD PORT_FILTER_BASE = 0xE000; // + filter index
-static constexpr WORD PORT_SCALE_BASE = 0xE010; // + scale index
-static constexpr WORD PORT_ASPECT_LOCK = 0xE020;
-static constexpr WORD PORT_GAMMA_BASE = 0xE030; // + gamma index
-static constexpr WORD PORT_CMD_MIN = PORT_FILTER_BASE;
+static constexpr WORD PORT_CMD_BASE = 0xE000;
+static constexpr WORD PORT_CMD_MIN = PORT_CMD_BASE;
 static constexpr WORD PORT_CMD_MAX = 0xE0FF;
 
 static bool IsPortCommand(WORD cmd) {
   return (cmd >= PORT_CMD_MIN) && (cmd <= PORT_CMD_MAX);
-}
-
-static bool PortCommandKindIndex(WORD cmd, PortCmdKind* kind, int* index) {
-  if ((cmd >= PORT_FILTER_BASE) && (cmd < PORT_FILTER_BASE + kPortFilterCount)) {
-    *kind = PortCmdFilter;
-    *index = cmd - PORT_FILTER_BASE;
-  } else if ((cmd >= PORT_SCALE_BASE) && (cmd < PORT_SCALE_BASE + kPortScaleCount)) {
-    *kind = PortCmdScale;
-    *index = cmd - PORT_SCALE_BASE;
-  } else if (cmd == PORT_ASPECT_LOCK) {
-    *kind = PortCmdAspectLock;
-    *index = 0;
-  } else if ((cmd >= PORT_GAMMA_BASE) && (cmd < PORT_GAMMA_BASE + kPortGammaCount)) {
-    *kind = PortCmdGamma;
-    *index = cmd - PORT_GAMMA_BASE;
-  } else {
-    return false;
-  }
-  return true;
 }
 
 // Builds the Port menu and appends it to the given menu bar. Mirrors the layout of
@@ -50,24 +28,21 @@ static void BuildPortMenu(HMENU menubar) {
   HMENU port_menu = CreatePopupMenu();
 
   HMENU filter_menu = CreatePopupMenu();
-  WORD id = PORT_FILTER_BASE;
-  for (const auto& filter : kPortFilters) {
-    AppendMenu(filter_menu, MF_STRING, id++, filter.title);
+  for (int i = 0; i < kPortFilterCount; i++) {
+    AppendMenu(filter_menu, MF_STRING, PORT_CMD_BASE + kPortFilterId + i, kPortFilters[i].title);
   }
   AppendMenu(port_menu, MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(filter_menu), "Filter");
 
   HMENU scale_menu = CreatePopupMenu();
-  id = PORT_SCALE_BASE;
-  for (const auto& scale : kPortScales) {
-    AppendMenu(scale_menu, MF_STRING, id++, scale.title);
+  for (int i = 0; i < kPortScaleCount; i++) {
+    AppendMenu(scale_menu, MF_STRING, PORT_CMD_BASE + kPortScaleId + i, kPortScales[i].title);
   }
   AppendMenu(port_menu, MF_POPUP, reinterpret_cast<UINT_PTR>(scale_menu), "Scale");
-  AppendMenu(port_menu, MF_STRING, PORT_ASPECT_LOCK, "Lock Aspect Ratio");
+  AppendMenu(port_menu, MF_STRING, PORT_CMD_BASE + kPortAspectLockId, "Lock Aspect Ratio");
 
   HMENU gamma_menu = CreatePopupMenu();
-  WORD gid = PORT_GAMMA_BASE;
-  for (const auto& g : kPortGammaOptions) {
-    AppendMenu(gamma_menu, MF_STRING, gid++, g.title);
+  for (int i = 0; i < kPortGammaCount; i++) {
+    AppendMenu(gamma_menu, MF_STRING, PORT_CMD_BASE + kPortGammaId + i, kPortGammaOptions[i].title);
   }
 
   AppendMenu(port_menu, MF_SEPARATOR, 0, nullptr);
@@ -86,13 +61,11 @@ static void UpdatePortMenuState(HMENU menu) {
   int count = GetMenuItemCount(menu);
   for (int pos = 0; pos < count; pos++) {
     UINT cmd = GetMenuItemID(menu, pos);
-    PortCmdKind kind;
-    int index;
-    if (!PortCommandKindIndex(static_cast<WORD>(cmd), &kind, &index)) {
+    if (!IsPortCommand(static_cast<WORD>(cmd))) {
       continue;
     }
     int checked = 0, enabled = 1;
-    PortMenu_ItemState(kind, index, &checked, &enabled);
+    PortMenu_ItemState(cmd - PORT_CMD_BASE, &checked, &enabled);
     EnableMenuItem(menu, pos, MF_BYPOSITION | (enabled ? MF_ENABLED : MF_GRAYED));
     CheckMenuItem(menu, pos, MF_BYPOSITION | (checked ? MF_CHECKED : MF_UNCHECKED));
   }
@@ -100,11 +73,7 @@ static void UpdatePortMenuState(HMENU menu) {
 
 // Routes a Port menu command to the cross-platform window backend.
 static void HandlePortCommand(WORD cmd) {
-  PortCmdKind kind;
-  int index;
-  if (PortCommandKindIndex(cmd, &kind, &index)) {
-    PortMenu_Apply(kind, index);
-  }
+  PortMenu_Apply(cmd - PORT_CMD_BASE);
 }
 
 // Static variable to keep the original window proc

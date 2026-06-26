@@ -110,8 +110,7 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
 }
 
 - (IBAction)MCHandlePortItem:(id)sender {
-  NSInteger tag = [sender tag];
-  PortMenu_Apply((PortCmdKind)(tag / 256), (int)(tag % 256));
+  PortMenu_Apply((int)[sender tag]);
 }
 
 - (void)MCCreateMenu:(const MenuList&)menuList {
@@ -149,7 +148,7 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
                                              action:@selector(MCHandlePortItem:)
                                       keyEquivalent:@""];
     [item setTarget:self];
-    [item setTag:(NSInteger)(PortCmdFilter * 256 + i)];
+    [item setTag:(NSInteger)(kPortFilterId + i)];
   }
   [portMenu setSubmenu:filterMenu forItem:filteringItem];
 
@@ -163,7 +162,7 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
                                             action:@selector(MCHandlePortItem:)
                                      keyEquivalent:@""];
     [item setTarget:self];
-    [item setTag:(NSInteger)(PortCmdScale * 256 + i)];
+    [item setTag:(NSInteger)(kPortScaleId + i)];
   }
   [portMenu setSubmenu:scaleMenu forItem:scaleItem];
 
@@ -171,7 +170,7 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
                                                action:@selector(MCHandlePortItem:)
                                         keyEquivalent:@""];
   [aspectItem setTarget:self];
-  [aspectItem setTag:(NSInteger)(PortCmdAspectLock * 256)];
+  [aspectItem setTag:(NSInteger)kPortAspectLockId];
 
   [portMenu addItem:[NSMenuItem separatorItem]];
   NSMenuItem* gammaItem = [[NSMenuItem alloc] initWithTitle:@"Color Correction" action:NULL keyEquivalent:@""];
@@ -184,7 +183,7 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
                                            action:@selector(MCHandlePortItem:)
                                     keyEquivalent:@""];
     [item setTarget:self];
-    [item setTag:(NSInteger)(PortCmdGamma * 256 + i)];
+    [item setTag:(NSInteger)(kPortGammaId + i)];
   }
   [portMenu setSubmenu:gammaMenu forItem:gammaItem];
 
@@ -196,9 +195,8 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
     if (item.action != @selector(MCHandlePortItem:)) {
       continue;
     }
-    NSInteger tag = item.tag;
     int checked = 0, enabled = 1;
-    PortMenu_ItemState((PortCmdKind)(tag / 256), (int)(tag % 256), &checked, &enabled);
+    PortMenu_ItemState((int)item.tag, &checked, &enabled);
     item.enabled = enabled ? YES : NO;
     item.state = checked ? NSControlStateValueOn : NSControlStateValueOff;
   }

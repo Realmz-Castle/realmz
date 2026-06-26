@@ -419,8 +419,7 @@ protected:
     em_log.debug_f("Enqueued event (what={}, message=0x{:08X}, when=0x{:08X}, where=(h={}, v={}), modifiers=0x{:04X})", name_for_event_type(ev.what), ev.message, ev.when, ev.where.h, ev.where.v, ev.modifiers);
   }
 
-  void enqueue_sdl_event(const SDL_Event& e_in) {
-    SDL_Event e = e_in;
+  void enqueue_sdl_event(SDL_Event e) {
     if (auto* renderer = SDL_GetRenderer(WindowManager::instance().get_sdl_window().get())) {
       SDL_ConvertEventToRenderCoordinates(renderer, &e);
     }
