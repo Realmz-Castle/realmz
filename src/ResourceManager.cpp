@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <memory>
 #include <stddef.h>
-#include <stdint.h>
 #include <stdexcept>
 #include <string>
 
@@ -25,57 +24,6 @@
 
 static int16_t resError = noErr;
 static phosg::PrefixedLogger rm_log("[ResourceManager] ");
-
-static uint16_t read_u16b(const std::string& data, size_t offset) {
-  return (static_cast<uint16_t>(static_cast<uint8_t>(data.at(offset))) << 8) |
-      static_cast<uint8_t>(data.at(offset + 1));
-}
-
-static uint32_t read_u32b(const std::string& data, size_t offset) {
-  return (static_cast<uint32_t>(static_cast<uint8_t>(data.at(offset))) << 24) |
-      (static_cast<uint32_t>(static_cast<uint8_t>(data.at(offset + 1))) << 16) |
-      (static_cast<uint32_t>(static_cast<uint8_t>(data.at(offset + 2))) << 8) |
-      static_cast<uint8_t>(data.at(offset + 3));
-}
-
-static std::string resource_fork_data_for_host_file(const std::string& host_filename, const std::string& data) {
-  static constexpr uint32_t APPLEDOUBLE_MAGIC = 0x00051607;
-  static constexpr uint32_t APPLEDOUBLE_VERSION_2 = 0x00020000;
-  static constexpr uint32_t APPLEDOUBLE_RESOURCE_FORK_ENTRY_ID = 2;
-  static constexpr size_t APPLEDOUBLE_ENTRY_TABLE_OFFSET = 26;
-  static constexpr size_t APPLEDOUBLE_ENTRY_SIZE = 12;
-
-  if (data.size() < APPLEDOUBLE_ENTRY_TABLE_OFFSET ||
-      read_u32b(data, 0) != APPLEDOUBLE_MAGIC ||
-      read_u32b(data, 4) != APPLEDOUBLE_VERSION_2) {
-    return data;
-  }
-
-  const uint16_t entry_count = read_u16b(data, 24);
-  const size_t entry_table_size = static_cast<size_t>(entry_count) * APPLEDOUBLE_ENTRY_SIZE;
-  if (APPLEDOUBLE_ENTRY_TABLE_OFFSET + entry_table_size > data.size()) {
-    throw std::runtime_error("truncated AppleDouble entry table");
-  }
-
-  for (size_t z = 0; z < entry_count; z++) {
-    const size_t entry_offset = APPLEDOUBLE_ENTRY_TABLE_OFFSET + (z * APPLEDOUBLE_ENTRY_SIZE);
-    const uint32_t entry_id = read_u32b(data, entry_offset);
-    const uint32_t fork_offset = read_u32b(data, entry_offset + 4);
-    const uint32_t fork_length = read_u32b(data, entry_offset + 8);
-    if (entry_id == APPLEDOUBLE_RESOURCE_FORK_ENTRY_ID) {
-      if (fork_offset > data.size() || fork_length > data.size() - fork_offset) {
-        throw std::runtime_error("AppleDouble resource fork entry is out of range");
-      }
-      rm_log.info_f("Extracted AppleDouble resource fork from {} (offset={}, length={})",
-          host_filename.c_str(),
-          fork_offset,
-          fork_length);
-      return data.substr(fork_offset, fork_length);
-    }
-  }
-
-  throw std::runtime_error("AppleDouble file has no resource fork entry");
-}
 
 class ResourceManager {
 public:
@@ -403,9 +351,15 @@ static ResourceManager rm;
 // Classic Mac OS API implementation
 
 std::string host_resource_filename_for_host_filename(const std::string& host_path, bool allow_missing = false) {
-  std::string full_path = host_path + ".rsrc";
-  if (allow_missing || std::filesystem::is_regular_file(full_path)) {
-    return full_path;
+  if (allow_missing) {
+    return host_path + ".rsrc";
+  }
+
+  for (const auto* extension : {".rsrc", ".rsf"}) {
+    std::string full_path = host_path + extension;
+    if (std::filesystem::is_regular_file(full_path)) {
+      return full_path;
+    }
   }
 
   return "";
@@ -454,8 +408,14 @@ int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
     }
 
     std::string data = phosg::load_file(host_filename);
-    auto rf = std::make_shared<ResourceDASM::ResourceFile>(
-        ResourceDASM::parse_resource_fork(resource_fork_data_for_host_file(host_filename, data)));
+    std::shared_ptr<ResourceDASM::ResourceFile> rf;
+    try {
+      rf = std::make_shared<ResourceDASM::ResourceFile>(
+          ResourceDASM::parse_applesingle_appledouble_resource_fork(data));
+      rm_log.info_f("Loaded AppleSingle/AppleDouble resource fork from {}", host_filename.c_str());
+    } catch (const std::runtime_error&) {
+      rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
+    }
     bool writable = (permission == fsCurPerm) || (permission > fsRdPerm);
     int16_t ret = rm.use(host_filename, rf, writable);
     rm_log.info_f("Loaded {} with reference number {} ({} with permission {})",
