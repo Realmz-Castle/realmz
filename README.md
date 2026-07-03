@@ -26,13 +26,12 @@ On Windows, you can either use the installer wizard for automatic installation, 
 
 # Contributing
 
-Pull requests are welcome. Please keep the following in mind as you author changes:
+Pull requests are welcome. Please review the [Contributing Guide](https://github.com/Realmz-Castle/realmz?tab=contributing-ov-file) in full, but to summarize:
 
- - When modifying code under `src/realmz_org`, please include comments detailing changes from the original
-   implementation ([example](https://github.com/Realmz-Castle/realmz/blob/fc143ecb7d54b1f7be3ff7e714fea450297b8bb9/src/realmz_orig/warn.c#L61)).
- - Gameplay-affecting bug fixes should focus on original intent as defined by the game's manual or the context of the
-   surrounding code (#180).
- - Changes that address code readability (e.g., adding named constants for magic numbers) are welcome (#183).
+- Only PRs that advance the project's goals of preservation and authenticity will be accepted.
+- AI-assisted code is acceptable, but must be human reviewed by you before you submit for maintainer review.
+- When modifying code under `src/realmz_org`, please include comments indicating the changes from the original
+  implementation ([example](https://github.com/Realmz-Castle/realmz/blob/fc143ecb7d54b1f7be3ff7e714fea450297b8bb9/src/realmz_orig/warn.c#L61)).
 
 ## Building on Mac
 
