@@ -15,12 +15,13 @@ Considering the above project goals, some examples of proposed changes that woul
 - Porting the game to more platforms (Linux, WebAssembly, mobile, etc.)
 - Restoring original functionality (such as music playback)
 - Compensating for modern systems (high-resolution mode for high-DPI displays, gamma or color balancing)
+- Changes that improve code readability, such as named constants (e.g. [#183](https://github.com/Realmz-Castle/realmz/issues/183))
 - Fixing crashes
 - Graphics changes that bring the UI closer to that of the last officially released versions for Macintosh and Windows
 - Improvements to the non-original code (all of the C++/Objective-C code)
-- Game logic fixes **that restore the clear original intent**. See #180 for further discussion. For example:
-  - Fixing inconsistent use of monster, PC, or item attributes (e.g. #192)
-  - Fixing obvious programming errors (e.g. #188)
+- Game logic fixes **that restore the clear original intent**. See [#180](https://github.com/Realmz-Castle/realmz/issues/180) for further discussion. For example:
+  - Fixing inconsistent use of monster, PC, or item attributes (e.g. [#192](https://github.com/Realmz-Castle/realmz/pull/192))
+  - Fixing obvious programming errors (e.g. [#188](https://github.com/Realmz-Castle/realmz/pull/188))
   - Fixing logic to match the described behavior from item, class, monster, or scenario data, or the manual
 
 ### Examples of Changes Considered Out of Scope
@@ -41,7 +42,7 @@ If you have a proposed set of changes, please fork the repo, push your changes t
 - Include a detailed PR description that outlines what the changes do and why they advance the goals of the project.
 - If the PR addresses an issue, please link to the issue in either the PR title or description.
 - AI-assisted code is allowed, however, you must first review it for conciseness and correctness. The maintainers reserve the right to peremptorily reject low-quality or overly verbose generated PRs.
-- Any changes made to the original Realmz C code in the `src/realmz_orig` directory must be indicated by surrounding them with comments in the following format:
+- Any changes made to the original Realmz C code in the `src/realmz_orig` directory must be indicated by surrounding them with comments in the following format. An [example](https://github.com/Realmz-Castle/realmz/blob/fc143ecb7d54b1f7be3ff7e714fea450297b8bb9/src/realmz_orig/warn.c#L61).
 
 ```
     /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
