@@ -889,7 +889,10 @@ void combatchoice(void) {
 
                 itemRect.top = temptemp * 50;
                 itemRect.bottom = itemRect.top + 50;
-                itemRect.left = 330;
+                /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+                 * NOTE(chromancer): Added missing leftshift here.
+                 * Another portrait press animation was off target. */
+                itemRect.left = 330 + leftshift;
                 itemRect.right = itemRect.left + 50;
 
                 ploticon3(129, itemRect);

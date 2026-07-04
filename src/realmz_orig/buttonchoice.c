@@ -501,7 +501,10 @@ moveon:
     charselectnew = point.v / 50;
     itemRect.top = charselectnew * 50;
     itemRect.bottom = itemRect.top + 50;
-    itemRect.left = 330;
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(chromancer): Added missing leftshifts where noted inline.
+     * These caused portrait feedback anims to be drawn too far left. */
+    itemRect.left = 330 + leftshift; // Missing leftshift.
     itemRect.right = itemRect.left + 50;
     ploticon3(129, itemRect);
     sound(141);
@@ -518,7 +521,7 @@ moveon:
       charselectnew = point.v / 50;
       itemRect.top = charselectnew * 50;
       itemRect.bottom = itemRect.top + 50;
-      itemRect.left = 330;
+      itemRect.left = 330 + leftshift; // Missing leftshift, as above.
       itemRect.right = itemRect.left + 50;
       ploticon3(130, itemRect);
     }
