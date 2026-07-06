@@ -221,6 +221,9 @@ public:
   // Create a new control from a resource. This implements the GetNewControl syscall.
   static std::shared_ptr<Control> from_CNTL(int16_t cntl_resource_id) {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_CNTL, cntl_resource_id);
+    if (!data_handle) {
+      throw std::runtime_error(std::format("CNTL resource {} not found", cntl_resource_id));
+    }
     auto def = ResourceDASM::ResourceFile::decode_CNTL(*data_handle, GetHandleSize(data_handle));
     Rect bounds = copy_rect(def.bounds);
     return Control::make_shared(cntl_resource_id, bounds, def.value, def.min, def.max, def.proc_id, def.visible, def.title);
@@ -374,6 +377,9 @@ public:
   // Create a list of dialog items from a DITL resource
   static std::vector<std::shared_ptr<DialogItem>> from_DITL(int16_t ditl_resource_id) {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_DITL, ditl_resource_id);
+    if (!data_handle) {
+      throw std::runtime_error(std::format("DITL resource {} not found", ditl_resource_id));
+    }
     auto defs = ResourceDASM::ResourceFile::decode_DITL(*data_handle, GetHandleSize(data_handle));
 
     std::vector<std::shared_ptr<DialogItem>> ret;
@@ -1745,6 +1751,9 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
 
   if (is_dialog) {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_DLOG, res_id);
+    if (!data_handle) {
+      throw std::runtime_error(std::format("DLOG resource {} not found", res_id));
+    }
     auto dlog = ResourceDASM::ResourceFile::decode_DLOG(*data_handle, GetHandleSize(data_handle));
     bounds.left = dlog.bounds.x1;
     bounds.right = dlog.bounds.x2;
@@ -1759,6 +1768,9 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
 
   } else {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_WIND, res_id);
+    if (!data_handle) {
+      throw std::runtime_error(std::format("WIND resource {} not found", res_id));
+    }
     auto wind = ResourceDASM::ResourceFile::decode_WIND(*data_handle, GetHandleSize(data_handle));
     bounds.left = wind.bounds.x1;
     bounds.right = wind.bounds.x2;

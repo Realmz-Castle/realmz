@@ -48,6 +48,9 @@ Font load_font(int16_t font_id) {
     return bm_renderers_by_id.at(font_id);
   } catch (const std::out_of_range&) {
     auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_FONT, font_id);
+    if (!data_handle) {
+      throw std::out_of_range(std::format("FONT resource {} not found", font_id));
+    }
     auto decoded =
         std::make_shared<ResourceDASM::ResourceFile::DecodedFontResource>(
             ResourceDASM::ResourceFile::decode_FONT_only(

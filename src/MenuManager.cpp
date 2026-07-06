@@ -25,6 +25,9 @@ public:
     if (!this->res_id_to_menu.contains(res_id)) {
       mm_log.info_f("Loading MENU:{} from resource forks", res_id);
       auto handle = GetResource(ResourceDASM::RESOURCE_TYPE_MENU, res_id);
+      if (!handle) {
+        throw std::out_of_range("MENU resource not found");
+      }
       auto decoded_menu = ResourceFile::decode_MENU(*handle, GetHandleSize(handle));
       auto menu = std::make_shared<Menu>(Menu(decoded_menu));
       this->res_id_to_menu.emplace(res_id, menu);
@@ -158,6 +161,9 @@ static MenuManager mm;
 Handle GetNewMBar(int16_t menuBarID) {
   mm_log.info_f("Loading MBAR:{} from resource forks", menuBarID);
   auto handle = GetResource(ResourceDASM::RESOURCE_TYPE_MBAR, menuBarID);
+  if (!handle) {
+    throw std::out_of_range("MBAR resource not found");
+  }
   mm.load_menu_list(handle);
   return handle;
 }

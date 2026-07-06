@@ -814,6 +814,9 @@ void RGBForeColor(const RGBColor* color) {
 
 CIconHandle GetCIcon(uint16_t iconID) {
   auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_cicn, iconID);
+  if (!data_handle) {
+    throw std::runtime_error(std::format("cicn resource {} not found", iconID));
+  }
   auto decoded_cicn = ResourceDASM::ResourceFile::decode_cicn(*data_handle, GetHandleSize(data_handle));
 
   CIconHandle h = NewHandleTyped<CIcon>();
@@ -1177,6 +1180,9 @@ CCrsrHandle GetCCursor(uint16_t resource_id) {
   cursor.resource_id = resource_id;
 
   auto data_handle = GetResource(ResourceDASM::RESOURCE_TYPE_crsr, resource_id);
+  if (!data_handle) {
+    throw std::runtime_error(std::format("crsr resource {} not found", resource_id));
+  }
   cursor.decoded = std::make_shared<ResourceDASM::ResourceFile::DecodedColorCursorResource>(
       ResourceDASM::ResourceFile::decode_crsr(*data_handle, GetHandleSize(data_handle)));
 
