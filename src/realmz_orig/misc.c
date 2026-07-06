@@ -1210,7 +1210,10 @@ short savevs(short which, short who) {
       special /= 6;
       if (temp <= special + spelladjust)
         return (TRUE);
-    } else {
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * Monster save and spellimmune arrays only store classes 0-5.
+     */
+    } else if ((which > -1) && (which < 6)) {
       if ((temp <= monster[who - 10].save[which] + spelladjust) || (monster[who - 10].spellimmune[which]))
         return (TRUE);
       if ((monster[who - 10].type[1]) && ((which == 5) || (which == 4) || (which == 0)))
