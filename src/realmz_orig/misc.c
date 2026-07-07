@@ -1211,7 +1211,14 @@ short savevs(short which, short who) {
       if (temp <= special + spelladjust)
         return (TRUE);
     } else {
-      if ((temp <= monster[who - 10].save[which] + spelladjust) || (monster[who - 10].spellimmune[which]))
+      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+       * NOTE(chromancer) Monster save and spellimmune arrays are indexed differently,
+       * so two checks are required to use the correct values in data and avoid out-of-bounds
+       * reads that cause incorrect save and immunity calcs.
+       */
+      if ((which < 6) && (monster[who - 10].spellimmune[which]))
+        return (TRUE);
+      if ((which > 0) && (temp <= monster[who - 10].save[which - 1] + spelladjust))
         return (TRUE);
       if ((monster[who - 10].type[1]) && ((which == 5) || (which == 4) || (which == 0)))
         return (TRUE);
