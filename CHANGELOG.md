@@ -1,9 +1,3 @@
-## Unreleased
-
-- Show the selected level in the Windows Volume, Speed and Music menus by rendering item marks.
-  - CHANGED FROM ORIGINAL IMPLEMENTATION: native Windows menus have no "mixed" state, so every
-    nonzero mark glyph (19 diamond, -41 dash) collapses to a single checkmark.
-
 ## [v8.1.0-beta2](https://github.com/Realmz-Castle/realmz/releases/tag/v8.1.0-beta2)
 
 - Add CMake presets for macOS by @jpetrie in #167
