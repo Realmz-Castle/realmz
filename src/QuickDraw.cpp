@@ -818,13 +818,20 @@ CIconHandle GetCIcon(uint16_t iconID) {
 
   CIconHandle h = NewHandleTyped<CIcon>();
   (*h)->iconData = NewHandleWithData(decoded_cicn.image.get_data(), decoded_cicn.image.get_data_size());
-  (*h)->bitmapData = NewHandleWithData(decoded_cicn.bitmap.get_data(), decoded_cicn.bitmap.get_data_size());
+  // The monochrome bitmap is optional and absent for most cicn resources; when
+  // it is missing decode_cicn returns an empty bitmap. Leave bitmapData null in
+  // that case so PlotCIconBitmap knows there is nothing to draw.
+  (*h)->bitmapData = decoded_cicn.bitmap.get_data_size()
+      ? NewHandleWithData(decoded_cicn.bitmap.get_data(), decoded_cicn.bitmap.get_data_size())
+      : nullptr;
   (*h)->iconPMap.bounds = Rect{
       0,
       0,
       static_cast<int16_t>(decoded_cicn.image.get_height()),
       static_cast<int16_t>(decoded_cicn.image.get_width())};
   (*h)->iconPMap.pixelSize = 32;
+  // iconBMap.bounds tracks the color image size because the game reads it for
+  // layout; it stays valid even when there is no monochrome bitmap.
   (*h)->iconBMap.bounds = (*h)->iconPMap.bounds;
   return h;
 }
@@ -858,11 +865,15 @@ OSErr PlotCIcon(const Rect* r, CIconHandle icon) {
 }
 
 OSErr PlotCIconBitmap(const Rect* r, CIconHandle icon) {
+  auto& port = current_port();
+  port.log.debug_f("PlotCIconBitmap({{x0={}, y0={}, x1={}, y1={}}}, {:p})", r->left, r->top, r->right, r->bottom, static_cast<void*>(icon));
+  // The cicn may have no monochrome bitmap, in which case there is nothing to draw.
+  if ((*icon)->bitmapData == nullptr) {
+    return noErr;
+  }
   auto bounds = (*icon)->iconBMap.bounds;
   int w = bounds.right - bounds.left;
   int h = bounds.bottom - bounds.top;
-  auto& port = current_port();
-  port.log.debug_f("PlotCIconBitmap({{x0={}, y0={}, x1={}, y1={}}}, {:p})", r->left, r->top, r->right, r->bottom, static_cast<void*>(icon));
   port.draw_ga11_data(*((*icon)->bitmapData), w, h, *r);
   WindowManager::instance().recomposite_from_window(port);
   return noErr;
