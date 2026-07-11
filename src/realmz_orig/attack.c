@@ -43,12 +43,12 @@ short attack(short chare, short mon) {
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
    * NOTE(chromancer) Against apparent original intent, the source implementation did not
    * correctly account for damage or to-hit bonuses from equipped items or weapons.
-   * See inline comments 1, 2 and 3.
+   * See inline comments 1, 2, 3, and 4.
    */
   equippedbonus = 0; // 1: Sum over character's items for all granted to-hit.
-  for (t = 0; (t < c[chare].numitems) && (t < 30); t++)
-    if (c[chare].items[t].equip) {
-      loaditem(c[chare].items[t].id);
+  for (t = 0; (t < character.numitems) && (t < 30); t++)
+    if (character.items[t].equip) {
+      loaditem(character.items[t].id);
       equippedbonus += item.damage;
     }
 
@@ -102,11 +102,12 @@ short attack(short chare, short mon) {
         whichcond = item.sp3;
       }
     }
-  }
+  } else
+    loaditem(0); // 3: Load null item to avoid passing results of our loop to later checks.
 
 moveon:
   att += (50 + character.tohit + 20 * behind);
-  att += 5 * equippedbonus; // 3: Add to-hit bonus here, reachable for armed, unarmed, and COND_ANIMATED paths.
+  att += 5 * equippedbonus; // 4: Add to-hit bonus here, reachable for armed, unarmed, and COND_ANIMATED paths.
   if (character.condition[COND_TANGLED])
     att -= abs(character.condition[COND_TANGLED]); /*** tangled ***/
   if (character.condition[COND_STRONG])
