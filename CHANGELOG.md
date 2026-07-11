@@ -1,9 +1,3 @@
-## Unreleased
-
-- Clean up the item-grab sparkle on the post-fight treasure screen. The sparkle erases itself with XOR ovals that no longer cancel exactly here (the port's ovals are antialiased), leaving stray coloured pixels in the emptied cell, including past the right edge of the grid where the sparkle spills beyond its cell. The area it reaches is now repainted from the item list afterward so it no longer leaves leftovers behind.
-- Stop dropping clicks made in quick succession on the treasure screen. The event loop no longer pauses between clicks while items are still queued, and grabbing items in quick succession skips the per-item pickup flourish, so rapid clicking is no longer held up waiting for each animation to finish.
-- Stop the text blip from sounding when the cursor leaves the treasure area in the larger window layouts. The item preview drawn while hovering an item was clearing the flag that keeps that sound quiet during the treasure screen.
-
 ## [v8.1.0-beta2](https://github.com/Realmz-Castle/realmz/releases/tag/v8.1.0-beta2)
 
 - Add CMake presets for macOS by @jpetrie in #167
