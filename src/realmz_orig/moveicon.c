@@ -292,7 +292,8 @@ void moveicon(void) {
    * gbuff2 holds the screen pixels currently hidden under the icon so they can
    * be restored as the icon moves. Each move modifies the screen buffer directly
    * rather than a window, so nothing presents it automatically; we push the
-   * buffer to the window after each step so the icon is visible while dragging. */
+   * buffer to the window after each step so the icon is visible while dragging. 
+   */
   CopyBits(src, dst, &iconpict, &store, 0, NIL);
   do {
     GetMouse(&point);
