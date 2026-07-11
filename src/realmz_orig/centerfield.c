@@ -31,8 +31,17 @@ void centerfield(short x, short y) {
 
   if (newx > 75)
     x -= (newx - 75);
-  if (newy > 76)
-    y -= (newy - 76);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Clamp fieldy at 77 rather than 76 so the last row of the field can be
+   * scrolled into view. The look window shows 15 columns by 13 rows, so the
+   * bottom visible row is fieldy + 12; stopping fieldy at 76 left row 89
+   * unreachable while the fieldx clamp of 75 already allowed column 89.
+   * centerpict clamps at 75 and 77 for the same window, which is the pattern
+   * followed here. The redraw loop below bounds its indices to the field, so
+   * the extra row it scans past the window stays in range. */
+  if (newy > 77)
+    y -= (newy - 77);
+  /* *** END CHANGES *** */
 
   fieldx += (x - 7);
   fieldy += (y - 6);
@@ -55,13 +64,24 @@ void centerfield(short x, short y) {
   ForeColor(blackColor);
   BackColor(whiteColor);
 
-  for (tt = fieldy; tt < fieldy + 14; tt++) // Myriad (+11)
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Stop both loops at the edge of the field. They scan 16 columns by 14 rows
+   * starting at fieldx, fieldy, one more than the 15 by 13 the look window can
+   * show, so the last column and row are drawn outside lookrect and never
+   * reach the screen. With fieldx at its clamp of 75 the column loop ran to
+   * t == 90, and field is short[90][90], so field[90][tt] read past the end of
+   * the array into the globals that follow it. Whatever was there became
+   * tempicon, and any value from 0 to 999 was then treated as a body id: an
+   * in-range field cell only ever holds terrain (1000 and up) or a real body
+   * id (0 to maxloop-1), never anything between. That is where the stray id
+   * came from that made bq[tempicon] = TRUE overwrite the stack. */
+  for (tt = fieldy; (tt < fieldy + 14) && (tt < 90); tt++) // Myriad (+11)
   {
     icon.top += 32;
     icon.bottom += 32;
     icon.left = -32;
     icon.right = 0;
-    for (t = fieldx; t < fieldx + 16; t++) // Myriad (+11)
+    for (t = fieldx; (t < fieldx + 16) && (t < 90); t++) // Myriad (+11)
     {
       icon.left += 32;
       icon.right += 32;
@@ -85,11 +105,11 @@ void centerfield(short x, short y) {
         /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
          * Bound the body id before using it to index bq and the body arrays.
          * bq is char[maxloop] and only body ids 0..maxloop-1 are valid (party
-         * 0..8, monsters 10..10+maxmon-1). A stray field cell holding maxloop
-         * or more made bq[tempicon] = TRUE write past the end of bq on the
-         * stack, corrupting a saved register and crashing later in the same
-         * combat turn. The redraw loop below already bounds its index with
-         * t < maxloop; match it here so an out-of-range id is skipped. */
+         * 0..8, monsters 10..10+maxmon-1), so any larger id writes past the end
+         * of bq on the stack. Bounding the loops above stops the field read
+         * that produced such an id, and the redraw loop below already bounds
+         * its index with t < maxloop; keep the write to bq in range too, since
+         * a bad id from any other source would smash the stack here. */
         if (tempicon < maxloop) {
           bodyground(tempicon, 1);
           bq[tempicon] = TRUE;
