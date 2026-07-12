@@ -475,7 +475,11 @@ back:
 
         updateinfo:
 
-          type = abs(spellinfo.damagetype - 1);
+          /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+           * NOTE(chromancer): Original spellinfo panel had wrong order of ops.
+           * Corrected to use proper index for charm and mental types.
+           */
+          type = abs(spellinfo.damagetype) - 1;
           DrawPicture(non, &typerect);
 
           if ((type > -1) && (type < 6)) {
