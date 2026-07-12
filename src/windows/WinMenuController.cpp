@@ -19,6 +19,8 @@ static constexpr char kPopupDiamondMark = 19;
 static constexpr size_t kPopupMarkBitmapSize = 13;
 static constexpr int kPopupMarkRadius = 3;
 static constexpr uint32_t kOpaqueBlackPixel = 0xFF000000;
+static constexpr uint32_t kOpaqueWhitePixel = 0xFFFFFFFF;
+static constexpr uint32_t kTransparentPixel = 0x00000000;
 
 // QuickDraw.hpp declares Mac QuickDraw APIs whose names collide with Win32 headers here.
 phosg::ImageRGBA8888N DecodeCIconImage(int16_t iconID);
@@ -182,7 +184,7 @@ static HBITMAP CreateBitmapForMenuIcon(int16_t icon_id) {
   }
 }
 
-static HBITMAP CreatePopupMenuMarkBitmap(bool draw_mark) {
+static HBITMAP CreatePopupMenuMarkBitmap(bool draw_mark, uint32_t background) {
   constexpr size_t center_x = kPopupMarkBitmapSize / 2;
   constexpr size_t center_y = kPopupMarkBitmapSize / 2;
 
@@ -191,6 +193,8 @@ static HBITMAP CreatePopupMenuMarkBitmap(bool draw_mark) {
   if (!bitmap) {
     return NULL;
   }
+
+  std::fill(pixels, pixels + (kPopupMarkBitmapSize * kPopupMarkBitmapSize), background);
 
   if (!draw_mark) {
     return bitmap;
@@ -426,19 +430,31 @@ int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu, in
 
   std::vector<HBITMAP> owned_bitmaps;
   // The blank unchecked bitmap keeps icon columns aligned when only some rows are marked.
-  HBITMAP checked_bitmap = has_marked_item ? CreatePopupMenuMarkBitmap(true) : NULL;
-  HBITMAP unchecked_bitmap = has_marked_item ? CreatePopupMenuMarkBitmap(false) : NULL;
-  if (checked_bitmap) {
-    owned_bitmaps.emplace_back(checked_bitmap);
-  }
-  if (unchecked_bitmap) {
-    owned_bitmaps.emplace_back(unchecked_bitmap);
+  // Disabled rows need their own pair with an opaque background: Windows draws the mark
+  // bitmap of a grayed item through a path that ignores the alpha channel, so a transparent
+  // bitmap (black in every pixel) comes out as a solid gray block in the mark column.
+  // Indexed by [enabled][marked]; a row can be both grayed and marked, since the item's
+  // owner is marked even when they cannot use it.
+  HBITMAP mark_bitmaps[2][2] = {};
+  if (has_marked_item) {
+    for (int enabled = 0; enabled < 2; enabled++) {
+      uint32_t background = enabled ? kTransparentPixel : kOpaqueWhitePixel;
+      for (int marked = 0; marked < 2; marked++) {
+        HBITMAP bitmap = CreatePopupMenuMarkBitmap(marked, background);
+        mark_bitmaps[enabled][marked] = bitmap;
+        if (bitmap) {
+          owned_bitmaps.emplace_back(bitmap);
+        }
+      }
+    }
   }
 
   int i{0};
   for (const auto& item : menu->items) {
     i++;
     bool marked = IsPopupMenuItemMarked(item);
+    HBITMAP checked_bitmap = mark_bitmaps[item.enabled ? 1 : 0][1];
+    HBITMAP unchecked_bitmap = mark_bitmaps[item.enabled ? 1 : 0][0];
     HBITMAP item_bitmap = CreateBitmapForMenuIcon(item.icon_id);
     if (item_bitmap) {
       owned_bitmaps.emplace_back(item_bitmap);
