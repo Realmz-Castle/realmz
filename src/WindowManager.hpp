@@ -28,8 +28,12 @@ private:
   std::vector<std::shared_ptr<DialogItem>> control_items;
   std::vector<std::shared_ptr<DialogItem>> text_items;
   std::shared_ptr<DialogItem> focused_item;
+  bool text_caret_visible = false;
+  uint64_t text_caret_next_toggle = 0;
   std::shared_ptr<Window> window_below;
   std::shared_ptr<Window> window_above;
+
+  void reset_text_caret();
 
   Window(
       const std::string& title,
@@ -71,7 +75,9 @@ public:
   void add_dialog_item(std::shared_ptr<DialogItem> item);
   CCGrafPort& get_port();
   std::shared_ptr<DialogItem> get_focused_item();
+  bool is_text_caret_visible() const;
   void set_focused_item(std::shared_ptr<DialogItem> item);
+  void idle_text_caret();
   void handle_text_input(const std::string& text, std::shared_ptr<DialogItem> item);
   void delete_char(std::shared_ptr<DialogItem> item);
   void erase_and_render();
