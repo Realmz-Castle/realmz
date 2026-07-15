@@ -222,7 +222,11 @@ void showmap(short mapnumber) {
   else
     loadland(dunglevel, TRUE);
 
-  flashmessage((StringPtr) "Click Mouse", 350, 100, 0, 30005);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Keep the map prompt over the status panel in the enlarged layout.
+   */
+  flashmessage((StringPtr) "Click Mouse", 350 + leftshift, 100, 0, 30005);
+  /* *** END CHANGES *** */
 
   xy(0);
   DisposeDialog(show);
