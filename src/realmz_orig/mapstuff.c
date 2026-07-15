@@ -57,7 +57,13 @@ void showmap(short mapnumber) {
   FILE* fp = NULL;
   DialogRef show;
   Boolean tag = FALSE;
-  Rect temprect;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Track the centered generated land-map presentation.
+   */
+  Rect temprect, margin;
+  Rect maprect;
+  Boolean centeredgeneratedmap = FALSE;
+  /* *** END CHANGES *** */
   short oldview, t, tt, temp, tempisdung;
 
   tempisdung = indung;
@@ -92,6 +98,15 @@ void showmap(short mapnumber) {
   } else {
     int enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(iSynic): Center generated land maps at their Classic 320x320 size.
+     */
+    SetRect(&maprect, 0, 0, 320, 320);
+    OffsetRect(&maprect, lookrect.left + ((lookrect.right - lookrect.left) - 320) / 2,
+        lookrect.top + ((lookrect.bottom - lookrect.top) - 320) / 2);
+    centeredgeneratedmap = !themap.isdungeon;
+    /* *** END CHANGES *** */
+
     temp = 320 / themap.iconsize;
     if (temp * themap.iconsize < 320)
       temp++;
@@ -115,7 +130,12 @@ void showmap(short mapnumber) {
     temprect.top = temprect.left = 0;
     temprect.right = temprect.bottom = themap.iconsize;
 
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(iSynic): Place generated land-map tiles within the centered map rect.
+     */
     if (!indung) {
+      PaintRect(&lookrect);
+      OffsetRect(&temprect, maprect.left, maprect.top);
       for (t = themap.starty; t < temp + themap.starty; t++) {
         for (tt = themap.startx; tt < themap.startx + temp; tt++) {
           fastplotmap(field[tt][t], temprect);
@@ -123,7 +143,9 @@ void showmap(short mapnumber) {
         }
         OffsetRect(&temprect, -(themap.iconsize * temp), themap.iconsize);
       }
-    } else {
+    }
+    /* *** END CHANGES *** */
+    else {
       SetPort(GetWindowPort(look));
       ForeColor(blackColor);
       BackColor(whiteColor);
@@ -164,6 +186,13 @@ void showmap(short mapnumber) {
           InsetRect(&temprect, -((32 - themap.iconsize) / 2), -((32 - themap.iconsize) / 2));
         }
 
+        /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+         * NOTE(iSynic): Keep authored overlay icons aligned with the centered land map.
+         */
+        if (centeredgeneratedmap)
+          OffsetRect(&temprect, maprect.left, maprect.top);
+        /* *** END CHANGES *** */
+
         if (iconhand) {
           PlotCIcon(&temprect, iconhand);
           DisposeCIcon(iconhand);
@@ -191,10 +220,43 @@ void showmap(short mapnumber) {
         icon.right = icon.left + 64;
         icon.bottom = icon.top + 64;
 
+        /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+         * NOTE(iSynic): Keep the party marker aligned with the centered land map.
+         */
+        if (centeredgeneratedmap)
+          OffsetRect(&icon, maprect.left, maprect.top);
+        /* *** END CHANGES *** */
+
         ploticon3(138, icon);
       }
     }
   }
+
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Crop generated land maps to their centered 320x320 presentation.
+   */
+  if (centeredgeneratedmap) {
+    ForeColor(blackColor);
+
+    margin = lookrect;
+    margin.right = maprect.left;
+    PaintRect(&margin);
+
+    margin = lookrect;
+    margin.left = maprect.right;
+    PaintRect(&margin);
+
+    margin = maprect;
+    margin.top = lookrect.top;
+    margin.bottom = maprect.top;
+    PaintRect(&margin);
+
+    margin = maprect;
+    margin.top = maprect.bottom;
+    margin.bottom = lookrect.bottom;
+    PaintRect(&margin);
+  }
+  /* *** END CHANGES *** */
 
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
    * NOTE(iSynic): Use the large-screen map note dialog and match the spell
