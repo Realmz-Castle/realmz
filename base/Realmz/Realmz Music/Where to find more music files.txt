@@ -1,0 +1,9 @@
+Modern Realmz currently supports standard MOD music files.
+
+The known legacy MADG version of Outdoor Music is recognized and played using
+the bundled MOD version. Other MAD/MADG, MIDI, S3M, XM, IT, MTM, MED, and
+PlayerPRO music formats are not currently supported.
+
+Compatible MOD files can be found at:
+
+https://modarchive.org/

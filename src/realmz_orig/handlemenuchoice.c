@@ -1,5 +1,6 @@
 #include "realmzbuild.h"
 #include "variables.h"
+#include "MusicManager.h"
 
 /*************************************************************
                                 RedrawAllRealmz
@@ -25,6 +26,11 @@ Free all necessary before quitting, stop music, clear temporary files
 <= 0 si not quit, 1 si quit
 ***********************************************************/
 void DoFreeBeforeQuit(void) {
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Stop SDL music playback before shutting down the audio device.
+   */
+  RealmzMusicStop();
+  /* *** END CHANGES *** */
   MyrRemove(":Data Files:Data I1");
   MyrRemove(":Data Files:Data I2");
   MyrRemove(":Data Files:CTD3");
@@ -373,7 +379,11 @@ short HandleMenuChoice(void) {
         SetItemMark(gSound, theItem, 19);
 
         musicvolume = theItem - 12;
-        // MADDriver->VolGlobal = musicvolume * 9;
+        /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+         * NOTE(iSynic): Apply the existing music-volume preference to the SDL
+         * music stream.
+         */
+        RealmzMusicSetVolume(musicvolume);
       }
 
       savepref();

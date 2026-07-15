@@ -3,6 +3,43 @@
 
 /*********************** updatemusic *****************/
 void updatemusic(void) {
+  short playlist;
+
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Restore the playlist selection used by the surviving music
+   * call sites.
+   */
+  if (incombat)
+    playlist = 11;
+  else if (incamp)
+    playlist = 9;
+  else if (initems)
+    playlist = 6;
+  else if (inbooty)
+    playlist = 7;
+  else if (indung)
+    playlist = 2;
+  else if (lastpix == 3)
+    playlist = 4;
+  else if (lastpix == 5)
+    playlist = 12;
+  else if (lastpix == 6)
+    playlist = 15;
+  else if (lastpix == 7)
+    playlist = 16;
+  else if (lastpix == 8)
+    playlist = 17;
+  else if (lastpix == 9)
+    playlist = 13;
+  else if (lastpix == 10)
+    playlist = 14;
+  else if ((lastpix >= 0) && (lastpix < 20) && basescale[lastpix])
+    playlist = 3;
+  else
+    playlist = 1;
+
+  music(playlist);
+  /* *** END CHANGES *** */
 }
 
 /*********************** centerpict *****************************/
