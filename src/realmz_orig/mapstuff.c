@@ -56,9 +56,8 @@ void fastplotmap(short id, Rect destrect) {
 void showmap(short mapnumber) {
   FILE* fp = NULL;
   DialogRef show;
-  Boolean tag = FALSE;
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-   * NOTE(iSynic): Track the centered native-size map presentation.
+   * NOTE(iSynic): Track the centered Classic 320x320 map presentation.
    */
   PicHandle picture = NIL;
   Rect temprect, margin;
@@ -119,9 +118,9 @@ void showmap(short mapnumber) {
     int enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
     /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-     * NOTE(iSynic): Center generated land maps at their Classic 320x320 size.
+     * NOTE(iSynic): Center generated maps at their Classic 320x320 size.
      */
-    centeredmapcontent = !themap.isdungeon;
+    centeredmapcontent = TRUE;
     /* *** END CHANGES *** */
 
     temp = 320 / themap.iconsize;
@@ -163,6 +162,10 @@ void showmap(short mapnumber) {
     }
     /* *** END CHANGES *** */
     else {
+      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+       * NOTE(iSynic): Center the Classic 320x320 dungeon map in the enlarged game viewport.
+       */
+      Rect dungeonSource;
       SetPort(GetWindowPort(look));
       ForeColor(blackColor);
       BackColor(whiteColor);
@@ -171,7 +174,16 @@ void showmap(short mapnumber) {
       xy(1);
       editon = FALSE;
       SetPort(GetWindowPort(look));
-      tag = TRUE;
+
+      SetRect(&dungeonSource, 0, 0, 320, 320);
+      ForeColor(blackColor);
+      PaintRect(&lookrect);
+      {
+        BitMap* src = GetPortBitMapForCopyBits(gbuff2);
+        BitMap* dst = GetPortBitMapForCopyBits(GetWindowPort(look));
+        CopyBits(src, dst, &dungeonSource, &maprect, 0, NIL);
+      }
+      /* *** END CHANGES *** */
     }
 
     for (t = 0; t < 10; t++) {
