@@ -58,8 +58,9 @@ void showmap(short mapnumber) {
   DialogRef show;
   Boolean tag = FALSE;
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-   * NOTE(iSynic): Track the centered generated land-map presentation.
+   * NOTE(iSynic): Track the centered native-size map presentation.
    */
+  PicHandle picture = NIL;
   Rect temprect, margin;
   Rect maprect;
   Boolean centeredgeneratedmap = FALSE;
@@ -86,15 +87,31 @@ void showmap(short mapnumber) {
     movie(themap.show, 129, 0);
     goto out;
   } else if (themap.pictid) {
-    itemRect = lookrect;
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(iSynic): Center picture-backed maps at native size unless the map defines a draw rect.
+     */
     SetPort(GetWindowPort(look));
-    if ((themap.rect[2]) || (themap.rect[3])) {
-      itemRect.top = themap.rect[0];
-      itemRect.left = themap.rect[1];
-      itemRect.bottom = themap.rect[2];
-      itemRect.right = themap.rect[3];
+    picture = GetPicture(themap.pictid);
+    if (picture) {
+      itemRect = (**picture).picFrame;
+      OffsetRect(&itemRect, -itemRect.left, -itemRect.top);
+
+      ForeColor(blackColor);
+      PaintRect(&lookrect);
+
+      if ((themap.rect[2]) || (themap.rect[3])) {
+        itemRect.top = themap.rect[0];
+        itemRect.left = themap.rect[1];
+        itemRect.bottom = themap.rect[2];
+        itemRect.right = themap.rect[3];
+      } else {
+        OffsetRect(&itemRect, lookrect.left + ((lookrect.right - lookrect.left) - itemRect.right) / 2,
+            lookrect.top + ((lookrect.bottom - lookrect.top) - itemRect.bottom) / 2);
+      }
+
+      DrawPicture(picture, &itemRect);
     }
-    pict(themap.pictid, itemRect);
+    /* *** END CHANGES *** */
   } else {
     int enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
