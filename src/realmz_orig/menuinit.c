@@ -2,6 +2,73 @@
 #include "realmzbuild.h"
 #include "variables.h"
 
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(iSynic): Restore the Music menu removed during the 8.0 conversion.
+ */
+static void restoremusicmenu(void) {
+  static const char* const items[] = {
+      "How To Alter Music",
+      "-",
+      "Currently Playing",
+      "No Music Selected",
+      "-",
+      "Toggle Music Playlist",
+      "Outdoors",
+      "Dungeons",
+      "Indoor",
+      "Caves",
+      "Create PC",
+      "Items",
+      "Treasure",
+      "Shop",
+      "Camp",
+      "Temples",
+      "Battles",
+      "Outdoors (Desert)",
+      "Outdoors (Swamp)",
+      "Outdoors (Snow)",
+      "Custom 1 (Used In Divinity Scenarios)",
+      "Custom 2 (Used In Divinity Scenarios)",
+      "Custom 3 (Used In Divinity Scenarios)",
+      "Currently Not Used",
+      "Currently Not Used",
+      "Currently Not Used",
+  };
+  short item;
+
+  if (CountMItems(musicmenu) == 1) {
+    SetMenuItemText(musicmenu, 1, (StringPtr) "\pPlay/Stop Music");
+    for (item = 0; item < 26; item++)
+      MyrAppendMenu(musicmenu, (Ptr)items[item]);
+  }
+  InsertMenu(musicmenu, 0);
+}
+/* *** END CHANGES *** */
+
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(iSynic): Restore the Music Volume items removed during the 8.0 conversion.
+ */
+static void restoremusicvolumemenu(void) {
+  static const char* const items[] = {
+      "-",
+      ">>> Music Volume <<<",
+      "Let me listen to my hard drive spin.",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "Damage my eardrums, I'm an impetuous youth!",
+  };
+  short item;
+
+  if (CountMItems(gSound) == 9)
+    for (item = 0; item < 10; item++)
+      MyrAppendMenu(gSound, (Ptr)items[item]);
+}
+/* *** END CHANGES *** */
+
 /***************************** MenuInit ********************************/
 void MenuInit(void) {
   short menucounter;
@@ -27,8 +94,14 @@ void MenuInit(void) {
   prefer = GetMenuHandle(137);
   gNPC = GetMenuHandle(146);
   musicmenu = GetMenuHandle(145);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Restore the Classic Music and Music Volume menus.
+   */
+  restoremusicmenu();
 
   gSound = GetMenu(135);
+  restoremusicvolumemenu();
+  /* *** END CHANGES *** */
   InsertMenu(gSound, -1);
 
   gSpeed = GetMenu(134);
@@ -67,7 +140,11 @@ void MenuInit(void) {
   for (t = 0; t < 20; t++)
     SetItemMark(musicmenu, t + 8, 19);
 
-  CheckItem(musicmenu, 1, 1 - nomusic);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Synchronize the restored Music menu with playback state.
+   */
+  syncmusicmenu();
+  /* *** END CHANGES *** */
 
   if (!divine) {
     currentscenario = 10;

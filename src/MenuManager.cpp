@@ -88,6 +88,21 @@ public:
     this->cur_menu_list->submenus.emplace_back(menu);
   }
 
+  void insert_menu(MenuHandle handle, int16_t before_id) {
+    auto menu = this->get_menu(handle);
+    for (auto it = this->cur_menu_list->menus.begin(); it != this->cur_menu_list->menus.end(); it++) {
+      if ((*it)->menu_id == menu->menu_id) {
+        *it = menu;
+        return;
+      }
+      if ((*it)->menu_id == before_id) {
+        this->cur_menu_list->menus.insert(it, menu);
+        return;
+      }
+    }
+    this->cur_menu_list->menus.emplace_back(menu);
+  }
+
   void sync(void) {
     if (this->cur_menu_list != nullptr) {
       MCSync(this->cur_menu_list, &PushMenuEvent);
@@ -182,12 +197,11 @@ void SetMenuBar(Handle menuList) {
 }
 
 void InsertMenu(MenuHandle theMenu, int16_t beforeID) {
-  if (beforeID != -1) {
-    mm_log.error_f("Called InsertMenu on a non sub-menu");
-    return;
+  if (beforeID == -1) {
+    mm.insert_submenu(theMenu);
+  } else {
+    mm.insert_menu(theMenu, beforeID);
   }
-
-  mm.insert_submenu(theMenu);
 }
 
 void GetMenuItemText(MenuHandle theMenu, uint16_t item, Str255 itemString) {

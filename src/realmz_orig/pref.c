@@ -752,6 +752,11 @@ backup:
   else
     updatemusic();
   /* *** END CHANGES *** */
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Synchronize the restored Music menu with the preference.
+   */
+  syncmusicmenu();
+  /* *** END CHANGES *** */
 
   GetDialogItem(preferwindow, 29, &itemType, &itemHandle, &itemRect);
   usenpc = GetControlValue((ControlHandle)itemHandle);

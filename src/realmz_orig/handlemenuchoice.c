@@ -384,10 +384,41 @@ short HandleMenuChoice(void) {
          * music stream.
          */
         RealmzMusicSetVolume(musicvolume);
+        /* *** END CHANGES *** */
       }
 
       savepref();
 
+      break;
+
+    case 145: /********* music menu **********/
+      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+       * NOTE(iSynic): Restore the Classic Music menu controls.
+       */
+      if (theItem == 1) {
+        Stopmusic = !Stopmusic;
+        if (Stopmusic)
+          music(0);
+        else
+          updatemusic();
+        syncmusicmenu();
+      } else if (theItem == 2) {
+        in();
+        movie(1152, 128, 0);
+        goto updateaftermovie;
+      } else if (twixt(theItem, 8, 27)) {
+        short playlist = theItem - 7;
+
+        musictoggle[playlist - 1] = (musictoggle[playlist - 1] + 1) % 3;
+        if (!musictoggle[playlist - 1])
+          SetItemMark(musicmenu, theItem, 0);
+        else if (musictoggle[playlist - 1] == 1)
+          SetItemMark(musicmenu, theItem, 19);
+        else
+          SetItemMark(musicmenu, theItem, -41);
+        updatemusic();
+      }
+      /* *** END CHANGES *** */
       break;
 
     case 137: /*********  preferences **************/
