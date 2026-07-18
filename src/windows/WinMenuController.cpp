@@ -1,14 +1,34 @@
 #include "errhandlingapi.h"
 #include "windef.h"
+#include "wingdi.h"
 #include "winuser.h"
+#include <algorithm>
+#include <cstdint>
+#include <exception>
 #include <memory>
+#include <phosg/Image.hh>
 #include <phosg/Strings.hh>
+#include <vector>
 
 #include "../PortMenu.hpp"
 #include "./WinMenuController.hpp"
 #include <utility>
 
 static phosg::PrefixedLogger wmc_log("[WinMenuController] ");
+static constexpr char kPopupDiamondMark = 19;
+static constexpr size_t kPopupMarkGutterWidth = 12;
+static constexpr int kPopupMarkRadius = 3;
+static constexpr uint32_t kPopupMarkPixel = 0xFF000000;
+static constexpr uint32_t kPopupMixedMarkPixel = 0xFF808080;
+
+enum class PopupMenuMark {
+  None,
+  Checked,
+  Mixed,
+};
+
+// QuickDraw.hpp declares Mac QuickDraw APIs whose names collide with Win32 headers here.
+phosg::ImageRGBA8888N DecodeCIconImage(int16_t iconID);
 
 // Command IDs for the Port menu. They sit in a reserved high range so they never
 // collide with the packed (menu_id, item_id) identifiers the game's own menus use,
@@ -98,6 +118,127 @@ WORD PackMenuIdentifier(int8_t menu_id, int8_t item_id) {
 // Returns a pair with the menu_id and item_id from a packed wParam
 std::pair<int16_t, int16_t> UnpackMenuIdentifier(WORD wParam) {
   return {(wParam >> 8) & 0x00FF, wParam & 0x00FF};
+}
+
+static HBITMAP CreateMenuBitmap(size_t width, size_t height, uint32_t** pixels_out) {
+  BITMAPINFO bitmap_info = BITMAPINFO{
+      .bmiHeader = {
+          .biSize = sizeof(BITMAPINFOHEADER),
+          .biWidth = static_cast<LONG>(width),
+          .biHeight = -static_cast<LONG>(height),
+          .biPlanes = 1,
+          .biBitCount = 32,
+          .biCompression = BI_RGB}};
+
+  void* pixels = nullptr;
+  HBITMAP bitmap = CreateDIBSection(NULL, &bitmap_info, DIB_RGB_COLORS, &pixels, NULL, 0);
+  if (!bitmap || !pixels) {
+    if (bitmap) {
+      DeleteObject(bitmap);
+    }
+    return NULL;
+  }
+
+  *pixels_out = static_cast<uint32_t*>(pixels);
+  std::fill(*pixels_out, *pixels_out + (width * height), 0);
+  return bitmap;
+}
+
+static uint32_t BgraForRgba(uint32_t rgba) {
+  uint8_t r = static_cast<uint8_t>(rgba >> 24);
+  uint8_t g = static_cast<uint8_t>(rgba >> 16);
+  uint8_t b = static_cast<uint8_t>(rgba >> 8);
+  uint8_t a = static_cast<uint8_t>(rgba);
+  return (
+      (static_cast<uint32_t>(a) << 24) |
+      (static_cast<uint32_t>(r) << 16) |
+      (static_cast<uint32_t>(g) << 8) |
+      static_cast<uint32_t>(b));
+}
+
+static void DrawPopupMenuMark(
+    uint32_t* pixels,
+    size_t stride,
+    size_t mark_width,
+    size_t height,
+    PopupMenuMark mark,
+    uint32_t mark_pixel = kPopupMarkPixel) {
+  if ((mark == PopupMenuMark::None) ||
+      (mark_width < (kPopupMarkRadius * 2 + 1)) ||
+      (height < (kPopupMarkRadius * 2 + 1))) {
+    return;
+  }
+
+  int center_x = static_cast<int>(mark_width / 2);
+  int center_y = static_cast<int>(height / 2);
+  if (mark == PopupMenuMark::Mixed) {
+    for (int dx = -kPopupMarkRadius; dx <= kPopupMarkRadius; dx++) {
+      pixels[(center_y * stride) + center_x + dx] = mark_pixel;
+    }
+    return;
+  }
+
+  for (int dy = -kPopupMarkRadius; dy <= kPopupMarkRadius; dy++) {
+    int span = kPopupMarkRadius - ((dy < 0) ? -dy : dy);
+    for (int dx = -span; dx <= span; dx++) {
+      pixels[((center_y + dy) * stride) + center_x + dx] = mark_pixel;
+    }
+  }
+}
+
+static HBITMAP CreateBitmapForMenuIcon(int16_t icon_id, PopupMenuMark mark) {
+  if (icon_id <= 0) {
+    return NULL;
+  }
+
+  try {
+    auto image = DecodeCIconImage(icon_id);
+    auto icon_width = image.get_width();
+    auto height = image.get_height();
+    if (!icon_width || !height) {
+      return NULL;
+    }
+    auto width = icon_width + kPopupMarkGutterWidth;
+
+    uint32_t* dst = nullptr;
+    HBITMAP bitmap = CreateMenuBitmap(width, height, &dst);
+    if (!bitmap) {
+      return NULL;
+    }
+
+    const uint32_t* src = image.get_data();
+    for (size_t y = 0; y < height; y++) {
+      for (size_t x = 0; x < icon_width; x++) {
+        dst[(y * width) + kPopupMarkGutterWidth + x] =
+            BgraForRgba(src[(y * icon_width) + x]);
+      }
+    }
+
+    DrawPopupMenuMark(dst, width, kPopupMarkGutterWidth, height, mark);
+
+    return bitmap;
+  } catch (const std::exception& e) {
+    wmc_log.warning_f("Could not create menu icon {}: {}", icon_id, e.what());
+    return NULL;
+  }
+}
+
+static PopupMenuMark PopupMenuMarkForItem(const WinMenu::Item& item) {
+  if (item.checked || item.mark_character == kPopupDiamondMark) {
+    return PopupMenuMark::Checked;
+  }
+  return item.mark_character ? PopupMenuMark::Mixed : PopupMenuMark::None;
+}
+
+static HBITMAP CreateMixedMenuMarkBitmap() {
+  size_t width = GetSystemMetrics(SM_CXMENUCHECK);
+  size_t height = GetSystemMetrics(SM_CYMENUCHECK);
+  uint32_t* pixels = nullptr;
+  HBITMAP bitmap = CreateMenuBitmap(width, height, &pixels);
+  if (bitmap) {
+    DrawPopupMenuMark(pixels, width, width, height, PopupMenuMark::Mixed, kPopupMixedMarkPixel);
+  }
+  return bitmap;
 }
 
 // Returns {menu_id, item_id}, or {0, 0} if not found
@@ -304,11 +445,42 @@ int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu, in
 
   HMENU popupMenu = CreatePopupMenu();
 
+  std::vector<HBITMAP> owned_bitmaps;
+  HBITMAP mixed_bitmap = NULL;
+
   int i{0};
   for (const auto& item : menu->items) {
     i++;
-    auto name = item.name.c_str();
-    AppendMenu(popupMenu, (item.enabled ? MF_ENABLED : 0) | MF_STRING, i, name);
+    PopupMenuMark mark = PopupMenuMarkForItem(item);
+    HBITMAP item_bitmap = CreateBitmapForMenuIcon(item.icon_id, mark);
+    if (item_bitmap) {
+      owned_bitmaps.emplace_back(item_bitmap);
+    } else if (!mixed_bitmap && (mark == PopupMenuMark::Mixed)) {
+      mixed_bitmap = CreateMixedMenuMarkBitmap();
+      if (mixed_bitmap) {
+        owned_bitmaps.emplace_back(mixed_bitmap);
+      }
+    }
+
+    // Windows does not reserve a native check gutter beside hbmpItem. Icon rows
+    // therefore carry their marks in the bitmap; text-only rows use the check column.
+    UINT flags = MF_STRING |
+        (item.enabled ? MF_ENABLED : MF_GRAYED) |
+        ((mark == PopupMenuMark::None) ? MF_UNCHECKED : MF_CHECKED);
+    AppendMenu(popupMenu, flags, static_cast<UINT_PTR>(i), item.name.c_str());
+
+    MENUITEMINFO item_info = MENUITEMINFO{.cbSize = sizeof(MENUITEMINFO)};
+    if (!item_bitmap && mixed_bitmap && (mark == PopupMenuMark::Mixed)) {
+      item_info.fMask |= MIIM_CHECKMARKS;
+      item_info.hbmpChecked = mixed_bitmap;
+    }
+    if (item_bitmap) {
+      item_info.fMask |= MIIM_BITMAP;
+      item_info.hbmpItem = item_bitmap;
+    }
+    if (item_info.fMask) {
+      SetMenuItemInfo(popupMenu, static_cast<UINT>(i), FALSE, &item_info);
+    }
   }
 
   // TrackPopupMenu displays the menu in screen coordinates. The caller hands us the requested
@@ -326,6 +498,9 @@ int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu, in
       NULL);
 
   DestroyMenu(popupMenu);
+  for (HBITMAP bitmap : owned_bitmaps) {
+    DeleteObject(bitmap);
+  }
 
   return result;
 }
