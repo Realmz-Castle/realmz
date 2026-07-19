@@ -3,7 +3,8 @@
 
 /***************************** ShowStats ********************************/
 void ShowStats(short showprestige) {
-  short t, conditionindex = 0;
+  short t, conditionindex = 0, equipped;
+  struct itemattr saveditem;
   int32_t prestige = 0;
   char special[50], specialindex;
 
@@ -44,24 +45,45 @@ void ShowStats(short showprestige) {
   DialogNum(23, characterl.co + characterl.magco);
   DialogNum(24, characterl.lu + characterl.maglu);
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+  * NOTE(chromancer): Original displayed attack bonus (to-hit) as "(some) conditions + character.damage * 5",
+  * not accurate to game combat logic or intended behavior. Following original intent, we:
+  * Calculate the attack bonus from conditions, base to-hit, then 5 * equipped (double for penetration)
+  * Complete the defense bonus to match the manual's "all spell effects, conditions".
+  */
+  saveditem = item;
+  equipped = 0;
+  for (t = 0; (t < characterl.numitems) && (t < 30); t++)
+    if (characterl.items[t].equip) {
+      loaditem(characterl.items[t].id);
+      equipped += item.damage;
+      if (item.sp1 == 121)
+        equipped += item.damage; // Double to-hit for penetration
+    }
+  item = saveditem;
+
   temp = 0;
   if (characterl.condition[COND_STRONG])
     temp += 15; /**** strong ***/
   if (characterl.condition[COND_SLOW])
     temp -= 15; /**** slow ***/
+  if (characterl.condition[COND_CONFUSED])
+    temp -= 10;
+  if (characterl.condition[COND_BLIND])
+    temp -= 15;
   if (characterl.condition[COND_MAGIC_AURA])
-    temp += 5; /**** bless ***/
+    temp += 5;
   if (characterl.condition[COND_CURSED])
     temp -= 5; /**** curse ***/
   if (characterl.condition[COND_TANGLED])
     temp -= abs(characterl.condition[COND_TANGLED]); /*** tangled ***/
   if (characterl.condition[COND_HINDERED_ATTACKS])
     temp -= abs(characterl.condition[COND_HINDERED_ATTACKS]); /*** Hinder atk ***/
-  temp += (characterl.damage * 5); /*** Hinder atk ***/
+  temp += characterl.tohit + (5 * equipped);
 
   if (temp > 99)
     TextSize(16);
-  DialogNum(25, temp); /*** attack bonus ****/
+  DialogNum(25, temp); // Total displayed to-hit bonus (UI label "Attack Bonus").
   TextSize(20);
 
   temp = 0;
@@ -69,18 +91,26 @@ void ShowStats(short showprestige) {
     temp += 10; /*** invisible ***/
   if (characterl.condition[COND_SLOW])
     temp -= 15; /*** slow ***/
+  if (characterl.condition[COND_CONFUSED])
+    temp -= 10;
+  if (characterl.condition[COND_BLIND])
+    temp -= 15;
   if (characterl.condition[COND_MAGIC_AURA])
-    temp += 5; /*** bless ***/
+    temp += 5;
   if (characterl.condition[COND_CURSED])
     temp -= 5; /*** curse ***/
+  if (characterl.condition[COND_TANGLED])
+    temp -= abs(characterl.condition[COND_TANGLED]);
   if (characterl.condition[COND_HINDERED_DEFENSE])
     temp -= abs(characterl.condition[COND_HINDERED_DEFENSE]); /*** hinder defense ***/
   if (characterl.condition[COND_DEFENSE_BONUS])
-    temp += abs(characterl.condition[COND_DEFENSE_BONUS]); /*** defense bonus ***/
-  temp += characterl.ac; /*** Hinder atk ***/
+    temp += abs(characterl.condition[COND_DEFENSE_BONUS]);
+  temp += characterl.ac;
+  if (characterl.condition[COND_SHIELD_FROM_HITS])
+    temp += 2 * abs(characterl.condition[COND_SHIELD_FROM_HITS]);
   if (temp > 99)
     TextSize(16);
-  DialogNum(26, temp); /*** defense bonus ****/
+  DialogNum(26, temp); // Total displayed defense bonus (UI label "Defense Bonus").
   TextSize(20);
 
   templong = characterl.age / 365;

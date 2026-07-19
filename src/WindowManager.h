@@ -151,6 +151,12 @@ void TEScroll(int16_t dh, int16_t dv, TEHandle hTE);
 int WindowManager_SetEnableRecomposite(int enable);
 void WindowManager_RecompositeAlways();
 
+// Presents the current screen buffer to the window without recompositing. Used
+// to make transient graphics drawn directly onto the screen (such as a dragged
+// item icon) visible. None of the callsites of this function are part of the
+// original source.
+void WindowManager_PresentScreen(void);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus

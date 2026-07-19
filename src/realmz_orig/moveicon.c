@@ -38,12 +38,27 @@ void moveicon(void) {
   Boolean baditem = 0;
   int index;
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(akelsall): storebg is the source rect for gbuff2, which holds the screen
+   * pixels currently hidden under the dragged icon; haveold tracks whether we have
+   * a previous icon position to restore. These support drawing the dragged icon
+   * opaquely without smearing (see the larger comment below).
+   */
+  Rect storebg;
+  Boolean haveold = 0;
+  /* *** END CHANGES *** */
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
    * NOTE(danapplegate): It seems that the global screen buffer was directly accessible. We've
    * updated the implementation here to achieve a similar effect with our in-memory screen buffer.
    */
   BitMap* src;
   BitMap* dst = GetPortBitMapForCopyBits(gedge);
+  BitMap* bgbuf = GetPortBitMapForCopyBits(gbuff2);
   GetQDGlobalsScreenBits(&src);
+
+  storebg.top = 0;
+  storebg.bottom = 32;
+  storebg.left = 0;
+  storebg.right = 32;
 
   store.top = 0;
   store.bottom = 32;
@@ -267,9 +282,18 @@ void moveicon(void) {
     goto fastmove;
   }
 
-  iconop = iconpict;
   OffsetRect(&iconpict, GlobalLeft, GlobalTop);
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(akelsall): Save a pristine copy of the icon (including its white list background) into
+   * gedge. The dragged icon is always drawn from this copy, so it never re-reads
+   * overlapping screen pixels (which used to smear copies of the icon when
+   * dragging near its source) and stays opaque on top of whatever is behind it.
+   * gbuff2 holds the screen pixels currently hidden under the icon so they can
+   * be restored as the icon moves. Each move modifies the screen buffer directly
+   * rather than a window, so nothing presents it automatically; we push the
+   * buffer to the window after each step so the icon is visible while dragging. 
+   */
   CopyBits(src, dst, &iconpict, &store, 0, NIL);
   do {
     GetMouse(&point);
@@ -281,20 +305,29 @@ void moveicon(void) {
       iconnp.right = iconnp.left + 32;
 
       OffsetRect(&iconnp, GlobalLeft, GlobalTop);
-      OffsetRect(&iconop, GlobalLeft, GlobalTop);
 
-      CopyBits(dst, src, &store, &iconop, 0, NIL);
-      CopyBits(src, dst, &iconnp, &store, 0, NIL);
-      CopyBits(src, src, &iconpict, &iconnp, 39, NIL);
+      if (haveold) {
+        OffsetRect(&iconop, GlobalLeft, GlobalTop);
+        CopyBits(bgbuf, src, &storebg, &iconop, 0, NIL);
+      }
+
+      CopyBits(src, bgbuf, &iconnp, &storebg, 0, NIL);
+      CopyBits(dst, src, &store, &iconnp, transparent, NIL);
       OffsetRect(&iconnp, -GlobalLeft, -GlobalTop);
 
       iconop = iconnp;
       oldpoint = point;
+      haveold = 1;
+
+      WindowManager_PresentScreen();
     }
   } while (StillDown());
 
-  OffsetRect(&iconop, GlobalLeft, GlobalTop);
-  CopyBits(dst, src, &store, &iconop, 0, NIL);
+  if (haveold) {
+    OffsetRect(&iconop, GlobalLeft, GlobalTop);
+    CopyBits(bgbuf, src, &storebg, &iconop, 0, NIL);
+    WindowManager_PresentScreen();
+  }
   /* *** END CHANGES *** */
 
 fastmove:

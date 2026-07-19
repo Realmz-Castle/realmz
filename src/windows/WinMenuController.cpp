@@ -16,11 +16,16 @@
 
 static phosg::PrefixedLogger wmc_log("[WinMenuController] ");
 static constexpr char kPopupDiamondMark = 19;
-static constexpr size_t kPopupMarkBitmapSize = 13;
+static constexpr size_t kPopupMarkGutterWidth = 12;
 static constexpr int kPopupMarkRadius = 3;
-static constexpr uint32_t kOpaqueBlackPixel = 0xFF000000;
-static constexpr uint32_t kOpaqueWhitePixel = 0xFFFFFFFF;
-static constexpr uint32_t kTransparentPixel = 0x00000000;
+static constexpr uint32_t kPopupMarkPixel = 0xFF000000;
+static constexpr uint32_t kPopupMixedMarkPixel = 0xFF808080;
+
+enum class PopupMenuMark {
+  None,
+  Checked,
+  Mixed,
+};
 
 // QuickDraw.hpp declares Mac QuickDraw APIs whose names collide with Win32 headers here.
 phosg::ImageRGBA8888N DecodeCIconImage(int16_t iconID);
@@ -151,18 +156,49 @@ static uint32_t BgraForRgba(uint32_t rgba) {
       static_cast<uint32_t>(b));
 }
 
-static HBITMAP CreateBitmapForMenuIcon(int16_t icon_id) {
+static void DrawPopupMenuMark(
+    uint32_t* pixels,
+    size_t stride,
+    size_t mark_width,
+    size_t height,
+    PopupMenuMark mark,
+    uint32_t mark_pixel = kPopupMarkPixel) {
+  if ((mark == PopupMenuMark::None) ||
+      (mark_width < (kPopupMarkRadius * 2 + 1)) ||
+      (height < (kPopupMarkRadius * 2 + 1))) {
+    return;
+  }
+
+  int center_x = static_cast<int>(mark_width / 2);
+  int center_y = static_cast<int>(height / 2);
+  if (mark == PopupMenuMark::Mixed) {
+    for (int dx = -kPopupMarkRadius; dx <= kPopupMarkRadius; dx++) {
+      pixels[(center_y * stride) + center_x + dx] = mark_pixel;
+    }
+    return;
+  }
+
+  for (int dy = -kPopupMarkRadius; dy <= kPopupMarkRadius; dy++) {
+    int span = kPopupMarkRadius - ((dy < 0) ? -dy : dy);
+    for (int dx = -span; dx <= span; dx++) {
+      pixels[((center_y + dy) * stride) + center_x + dx] = mark_pixel;
+    }
+  }
+}
+
+static HBITMAP CreateBitmapForMenuIcon(int16_t icon_id, PopupMenuMark mark) {
   if (icon_id <= 0) {
     return NULL;
   }
 
   try {
     auto image = DecodeCIconImage(icon_id);
-    auto width = image.get_width();
+    auto icon_width = image.get_width();
     auto height = image.get_height();
-    if (!width || !height) {
+    if (!icon_width || !height) {
       return NULL;
     }
+    auto width = icon_width + kPopupMarkGutterWidth;
 
     uint32_t* dst = nullptr;
     HBITMAP bitmap = CreateMenuBitmap(width, height, &dst);
@@ -172,10 +208,13 @@ static HBITMAP CreateBitmapForMenuIcon(int16_t icon_id) {
 
     const uint32_t* src = image.get_data();
     for (size_t y = 0; y < height; y++) {
-      for (size_t x = 0; x < width; x++) {
-        dst[(y * width) + x] = BgraForRgba(src[(y * width) + x]);
+      for (size_t x = 0; x < icon_width; x++) {
+        dst[(y * width) + kPopupMarkGutterWidth + x] =
+            BgraForRgba(src[(y * icon_width) + x]);
       }
     }
+
+    DrawPopupMenuMark(dst, width, kPopupMarkGutterWidth, height, mark);
 
     return bitmap;
   } catch (const std::exception& e) {
@@ -184,36 +223,22 @@ static HBITMAP CreateBitmapForMenuIcon(int16_t icon_id) {
   }
 }
 
-static HBITMAP CreatePopupMenuMarkBitmap(bool draw_mark, uint32_t background) {
-  constexpr size_t center_x = kPopupMarkBitmapSize / 2;
-  constexpr size_t center_y = kPopupMarkBitmapSize / 2;
-
-  uint32_t* pixels = nullptr;
-  HBITMAP bitmap = CreateMenuBitmap(kPopupMarkBitmapSize, kPopupMarkBitmapSize, &pixels);
-  if (!bitmap) {
-    return NULL;
+static PopupMenuMark PopupMenuMarkForItem(const WinMenu::Item& item) {
+  if (item.checked || item.mark_character == kPopupDiamondMark) {
+    return PopupMenuMark::Checked;
   }
-
-  std::fill(pixels, pixels + (kPopupMarkBitmapSize * kPopupMarkBitmapSize), background);
-
-  if (!draw_mark) {
-    return bitmap;
-  }
-
-  for (int dy = -kPopupMarkRadius; dy <= kPopupMarkRadius; dy++) {
-    int span = kPopupMarkRadius - ((dy < 0) ? -dy : dy);
-    for (int dx = -span; dx <= span; dx++) {
-      size_t x = static_cast<size_t>(static_cast<int>(center_x) + dx);
-      size_t y = static_cast<size_t>(static_cast<int>(center_y) + dy);
-      pixels[(y * kPopupMarkBitmapSize) + x] = kOpaqueBlackPixel;
-    }
-  }
-
-  return bitmap;
+  return item.mark_character ? PopupMenuMark::Mixed : PopupMenuMark::None;
 }
 
-static bool IsPopupMenuItemMarked(const WinMenu::Item& item) {
-  return item.checked || item.mark_character == kPopupDiamondMark;
+static HBITMAP CreateMixedMenuMarkBitmap() {
+  size_t width = GetSystemMetrics(SM_CXMENUCHECK);
+  size_t height = GetSystemMetrics(SM_CYMENUCHECK);
+  uint32_t* pixels = nullptr;
+  HBITMAP bitmap = CreateMenuBitmap(width, height, &pixels);
+  if (bitmap) {
+    DrawPopupMenuMark(pixels, width, width, height, PopupMenuMark::Mixed, kPopupMixedMarkPixel);
+  }
+  return bitmap;
 }
 
 // Returns {menu_id, item_id}, or {0, 0} if not found
@@ -420,68 +445,42 @@ int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu, in
 
   HMENU popupMenu = CreatePopupMenu();
 
-  bool has_marked_item = false;
-  for (const auto& item : menu->items) {
-    if (IsPopupMenuItemMarked(item)) {
-      has_marked_item = true;
-      break;
-    }
-  }
-
   std::vector<HBITMAP> owned_bitmaps;
-  // The blank unchecked bitmap keeps icon columns aligned when only some rows are marked.
-  // Disabled rows need their own pair with an opaque background: Windows draws the mark
-  // bitmap of a grayed item through a path that ignores the alpha channel, so a transparent
-  // bitmap (black in every pixel) comes out as a solid gray block in the mark column.
-  // Indexed by [enabled][marked]; a row can be both grayed and marked, since the item's
-  // owner is marked even when they cannot use it.
-  HBITMAP mark_bitmaps[2][2] = {};
-  if (has_marked_item) {
-    for (int enabled = 0; enabled < 2; enabled++) {
-      uint32_t background = enabled ? kTransparentPixel : kOpaqueWhitePixel;
-      for (int marked = 0; marked < 2; marked++) {
-        HBITMAP bitmap = CreatePopupMenuMarkBitmap(marked, background);
-        mark_bitmaps[enabled][marked] = bitmap;
-        if (bitmap) {
-          owned_bitmaps.emplace_back(bitmap);
-        }
-      }
-    }
-  }
+  HBITMAP mixed_bitmap = NULL;
 
   int i{0};
   for (const auto& item : menu->items) {
     i++;
-    bool marked = IsPopupMenuItemMarked(item);
-    HBITMAP checked_bitmap = mark_bitmaps[item.enabled ? 1 : 0][1];
-    HBITMAP unchecked_bitmap = mark_bitmaps[item.enabled ? 1 : 0][0];
-    HBITMAP item_bitmap = CreateBitmapForMenuIcon(item.icon_id);
+    PopupMenuMark mark = PopupMenuMarkForItem(item);
+    HBITMAP item_bitmap = CreateBitmapForMenuIcon(item.icon_id, mark);
     if (item_bitmap) {
       owned_bitmaps.emplace_back(item_bitmap);
+    } else if (!mixed_bitmap && (mark == PopupMenuMark::Mixed)) {
+      mixed_bitmap = CreateMixedMenuMarkBitmap();
+      if (mixed_bitmap) {
+        owned_bitmaps.emplace_back(mixed_bitmap);
+      }
     }
 
-    // MFS_ENABLED is 0, so a disabled item must be flagged with MFS_GRAYED; passing 0
-    // would leave it enabled and clickable (e.g. party members who can't use an item).
-    UINT enabled_state = item.enabled ? MFS_ENABLED : MFS_GRAYED;
-    MENUITEMINFO item_info = MENUITEMINFO{
-        .cbSize = sizeof(MENUITEMINFO),
-        .fMask = MIIM_FTYPE | MIIM_ID | MIIM_STATE | MIIM_STRING,
-        .fType = MFT_STRING,
-        .fState = enabled_state | (marked ? MFS_CHECKED : MFS_UNCHECKED),
-        .wID = static_cast<UINT>(i),
-        .dwTypeData = const_cast<char*>(item.name.c_str()),
-        .cch = static_cast<UINT>(item.name.length())};
-    if (checked_bitmap && unchecked_bitmap) {
+    // Windows does not reserve a native check gutter beside hbmpItem. Icon rows
+    // therefore carry their marks in the bitmap; text-only rows use the check column.
+    UINT flags = MF_STRING |
+        (item.enabled ? MF_ENABLED : MF_GRAYED) |
+        ((mark == PopupMenuMark::None) ? MF_UNCHECKED : MF_CHECKED);
+    AppendMenu(popupMenu, flags, static_cast<UINT_PTR>(i), item.name.c_str());
+
+    MENUITEMINFO item_info = MENUITEMINFO{.cbSize = sizeof(MENUITEMINFO)};
+    if (!item_bitmap && mixed_bitmap && (mark == PopupMenuMark::Mixed)) {
       item_info.fMask |= MIIM_CHECKMARKS;
-      item_info.hbmpChecked = checked_bitmap;
-      item_info.hbmpUnchecked = unchecked_bitmap;
+      item_info.hbmpChecked = mixed_bitmap;
     }
     if (item_bitmap) {
       item_info.fMask |= MIIM_BITMAP;
       item_info.hbmpItem = item_bitmap;
     }
-
-    InsertMenuItem(popupMenu, i - 1, TRUE, &item_info);
+    if (item_info.fMask) {
+      SetMenuItemInfo(popupMenu, static_cast<UINT>(i), FALSE, &item_info);
+    }
   }
 
   // TrackPopupMenu displays the menu in screen coordinates. The caller hands us the requested

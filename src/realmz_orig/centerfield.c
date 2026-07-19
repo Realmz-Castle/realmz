@@ -31,8 +31,11 @@ void centerfield(short x, short y) {
 
   if (newx > 75)
     x -= (newx - 75);
-  if (newy > 76)
-    y -= (newy - 76);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Clamp fieldy at 77, not 76, so the last field row can scroll into view,
+   * matching the fieldx clamp of 75 and centerpict's 75/77. */
+  if (newy > 77)
+    y -= (newy - 77);
 
   fieldx += (x - 7);
   fieldy += (y - 6);
@@ -55,13 +58,18 @@ void centerfield(short x, short y) {
   ForeColor(blackColor);
   BackColor(whiteColor);
 
-  for (tt = fieldy; tt < fieldy + 14; tt++) // Myriad (+11)
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Bound both loops to the field (short[90][90]). At the fieldx clamp of 75
+   * the column loop reached field[90][tt], reading past the array into the
+   * globals beyond it; a stray value there became a bad body id that later
+   * smashed the stack at bq[tempicon]. */
+  for (tt = fieldy; (tt < fieldy + 14) && (tt < 90); tt++) // Myriad (+11)
   {
     icon.top += 32;
     icon.bottom += 32;
     icon.left = -32;
     icon.right = 0;
-    for (t = fieldx; t < fieldx + 16; t++) // Myriad (+11)
+    for (t = fieldx; (t < fieldx + 16) && (t < 90); t++) // Myriad (+11)
     {
       icon.left += 32;
       icon.right += 32;
@@ -82,8 +90,13 @@ void centerfield(short x, short y) {
         CopyBits(src, dst, &itemRect, &icon, 0, NIL);
 
       } else if (tempicon > -1) {
-        bodyground(tempicon, 1);
-        bq[tempicon] = TRUE;
+        /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+         * Keep the body id in range for bq (char[maxloop]) before indexing. */
+        if (tempicon < maxloop) {
+          bodyground(tempicon, 1);
+          bq[tempicon] = TRUE;
+        }
+        /* *** END CHANGES *** */
       }
     }
   }

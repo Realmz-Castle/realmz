@@ -12,7 +12,7 @@ short attack(short chare, short mon) {
   Boolean kill = 0;
   struct character character;
   struct monster monst;
-  short att, specialdam;
+  short att, specialdam, equippedbonus;
   short t;
   char addcond, amountcond, whichcond;
   Boolean success;
@@ -39,6 +39,18 @@ short attack(short chare, short mon) {
   }
 
   drawbody(chare, 1, 0); /***** This is to change fancing and highlight player prior to attack **** 0 = look, 1 = buff ******/
+
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(chromancer) Against apparent original intent, the source implementation did not
+   * correctly account for damage or to-hit bonuses from equipped items or weapons.
+   * See inline comments 1, 2, 3, and 4.
+   */
+  equippedbonus = 0; // 1: Sum over character's items for all granted to-hit.
+  for (t = 0; (t < character.numitems) && (t < 30); t++)
+    if (character.items[t].equip) {
+      loaditem(character.items[t].id);
+      equippedbonus += item.damage;
+    }
 
   if (character.armor[2]) {
     loaditem(character.armor[2]);
@@ -68,15 +80,7 @@ short attack(short chare, short mon) {
         }
       }
     }
-    damage += item.damage; /******* magic plus ****/
-    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-     * The weapon magic plus (item.damage) was added to player melee damage but
-     * never to the to-hit roll. The monster path (attack2) and missile path
-     * (resolvespell) both add 5 per point, and the character sheet attack bonus
-     * already includes it (damage * 5), so player melee was the only path that
-     * ignored it. Add the same term here. */
-    att += 5 * item.damage; /******* magic plus to hit; matches attack2 and resolvespell ****/
-    /* *** END CHANGES *** */
+    // 2: Original line that added damage removed here because damage is already summed in character.damage.
     if (item.sp1 == 121)
       att += 5 * item.damage; /******* double to hit weapon ****/
 
@@ -98,10 +102,12 @@ short attack(short chare, short mon) {
         whichcond = item.sp3;
       }
     }
-  }
+  } else
+    loaditem(0); // 3: Load null item to avoid passing results of our loop to later checks.
 
 moveon:
   att += (50 + character.tohit + 20 * behind);
+  att += 5 * equippedbonus; // 4: Add to-hit bonus here, reachable for armed, unarmed, and COND_ANIMATED paths.
   if (character.condition[COND_TANGLED])
     att -= abs(character.condition[COND_TANGLED]); /*** tangled ***/
   if (character.condition[COND_STRONG])

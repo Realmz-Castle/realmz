@@ -146,6 +146,13 @@ public:
   void recomposite(std::shared_ptr<Window> updated_window);
   bool set_enable_recomposite(bool enable);
 
+  // Uploads the current contents of screen_port to the SDL window and presents
+  // it, without recompositing the window stack first. This is used by code that
+  // draws transient graphics directly onto the screen buffer (for example, an
+  // item icon dragged by the mouse in the shop), where recompositing would
+  // immediately erase those graphics.
+  void present_screen();
+
   // Recomposites the window stack, starting with the given window. Windows below
   // the given window are not recomposited. Updates the SDL window with the
   // rendered result.

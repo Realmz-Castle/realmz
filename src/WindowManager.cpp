@@ -1384,6 +1384,10 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
     }
   }
 
+  this->present_screen();
+}
+
+void WindowManager::present_screen() {
   if (this->sdl_window) {
     auto renderer = SDL_GetRenderer(this->sdl_window.get());
     if (!renderer) {
@@ -2370,6 +2374,10 @@ int WindowManager_SetEnableRecomposite(int enable) {
 void WindowManager_RecompositeAlways() {
   auto& wm = WindowManager::instance();
   wm.set_enable_recomposite(wm.set_enable_recomposite(true));
+}
+
+void WindowManager_PresentScreen() {
+  WindowManager::instance().present_screen();
 }
 
 TEHandle TENew(const Rect* destRect, const Rect* viewRect) {

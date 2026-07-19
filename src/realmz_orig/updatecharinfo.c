@@ -6,7 +6,8 @@ void updatecharinfo(void) {
   int enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
   GrafPtr oldport;
-  short temp, conditionindex = 0;
+  short temp, conditionindex = 0, equipped;
+  struct itemattr saveditem;
   GetPort(&oldport);
   SetPortDialogPort(charstat);
 
@@ -22,43 +23,73 @@ void updatecharinfo(void) {
   DialogNum(8, c[charselectnew].de);
   DialogNum(9, c[charselectnew].co + c[charselectnew].magco);
   DialogNum(10, c[charselectnew].lu + c[charselectnew].maglu);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+  * NOTE(chromancer): Original displayed attack bonus (to-hit) as "(some) conditions + character.damage * 5",
+  * not accurate to game combat logic or intended behavior. Following original intent, we:
+  * Calculate the attack bonus from conditions, base to-hit, then 5 * equipped (double for penetration)
+  * Add absolute values for conditions that use negative values to indicate permanent status.
+  * Complete the defense bonus to match the manual's "all spell effects, conditions".
+  */
+  saveditem = item;
+  equipped = 0;
+  for (t = 0; (t < c[charselectnew].numitems) && (t < 30); t++)
+    if (c[charselectnew].items[t].equip) {
+      loaditem(c[charselectnew].items[t].id);
+      equipped += item.damage;
+      if (item.sp1 == 121)
+        equipped += item.damage; // Double to-hit for penetration
+    }
+  item = saveditem;
 
   temp = 0;
-  if (characterl.condition[COND_STRONG])
+  if (c[charselectnew].condition[COND_STRONG])
     temp += 15; /**** strong ***/
-  if (characterl.condition[COND_SLOW])
+  if (c[charselectnew].condition[COND_SLOW])
     temp -= 15; /**** slow ***/
-  if (characterl.condition[COND_MAGIC_AURA])
-    temp += 5; /**** bless ***/
-  if (characterl.condition[COND_CURSED])
+  if (c[charselectnew].condition[COND_CONFUSED])
+    temp -= 10;
+  if (c[charselectnew].condition[COND_BLIND])
+    temp -= 15;
+  if (c[charselectnew].condition[COND_MAGIC_AURA])
+    temp += 5;
+  if (c[charselectnew].condition[COND_CURSED])
     temp -= 5; /**** curse ***/
-  if (characterl.condition[COND_TANGLED])
-    temp -= characterl.condition[COND_TANGLED]; /*** tangled ***/
-  if (characterl.condition[COND_HINDERED_ATTACKS])
-    temp -= characterl.condition[COND_HINDERED_ATTACKS]; /*** Hinder atk ***/
-  temp += (characterl.damage * 5); /*** Hinder atk ***/
+  if (c[charselectnew].condition[COND_TANGLED])
+    temp -= abs(c[charselectnew].condition[COND_TANGLED]); /*** tangled ***/
+  if (c[charselectnew].condition[COND_HINDERED_ATTACKS])
+    temp -= abs(c[charselectnew].condition[COND_HINDERED_ATTACKS]); /*** Hinder atk ***/
+  temp += c[charselectnew].tohit + (5 * equipped);
   if (temp > 99)
     TextSize(16);
-  DialogNum(11, temp); /*** attack bonus ****/
+  DialogNum(11, temp); // Total displayed to-hit bonus (UI label "Attack Bonus").
   TextSize(20);
 
   temp = 0;
-  if (characterl.condition[COND_INVISIBLE])
+  if (c[charselectnew].condition[COND_INVISIBLE])
     temp += 10; /*** invisible ***/
-  if (characterl.condition[COND_SLOW])
+  if (c[charselectnew].condition[COND_SLOW])
     temp -= 15; /*** slow ***/
-  if (characterl.condition[COND_MAGIC_AURA])
-    temp += 5; /*** bless ***/
-  if (characterl.condition[COND_CURSED])
+  if (c[charselectnew].condition[COND_CONFUSED])
+    temp -= 10;
+  if (c[charselectnew].condition[COND_BLIND])
+    temp -= 15;
+  if (c[charselectnew].condition[COND_MAGIC_AURA])
+    temp += 5;
+  if (c[charselectnew].condition[COND_CURSED])
     temp -= 5; /*** curse ***/
-  if (characterl.condition[COND_HINDERED_DEFENSE])
-    temp -= characterl.condition[COND_HINDERED_DEFENSE]; /*** hinder defense ***/
-  if (characterl.condition[COND_DEFENSE_BONUS])
-    temp += characterl.condition[COND_DEFENSE_BONUS]; /*** defense bonus ***/
-  temp += characterl.ac; /*** Hinder atk ***/
+  if (c[charselectnew].condition[COND_TANGLED])
+    temp -= abs(c[charselectnew].condition[COND_TANGLED]);
+  if (c[charselectnew].condition[COND_HINDERED_DEFENSE])
+    temp -= abs(c[charselectnew].condition[COND_HINDERED_DEFENSE]); /*** hinder defense ***/
+  if (c[charselectnew].condition[COND_DEFENSE_BONUS])
+    temp += abs(c[charselectnew].condition[COND_DEFENSE_BONUS]);
+  temp += c[charselectnew].ac;
+  if (c[charselectnew].condition[COND_SHIELD_FROM_HITS])
+    temp += 2 * abs(c[charselectnew].condition[COND_SHIELD_FROM_HITS]);
   if (temp > 99)
     TextSize(16);
-  DialogNum(12, temp); /*** defense bonus ****/
+  DialogNum(12, temp); // Total displayed defense bonus (UI label "Defense Bonus").
+  
   TextSize(20);
   ForeColor(yellowColor);
   DialogNum(26, c[charselectnew].movementmax);
