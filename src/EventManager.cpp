@@ -363,19 +363,6 @@ public:
     return false;
   }
 
-  // Pumps pending host events, then reports whether a mouseDown is already
-  // queued. Used to skip non-essential per-click animations when the user is
-  // clicking faster than they play, so rapid input stays responsive.
-  bool any_mouse_down_pending() {
-    this->enqueue_pending_events(0);
-    for (const auto& ev : this->event_queue) {
-      if (ev.what == mouseDown) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   void move_mouse_to(const Point& pt) {
     SDL_WarpMouseInWindow(WindowManager::instance().get_sdl_window().get(), pt.h, pt.v);
     this->mouse_loc = pt;
@@ -614,10 +601,6 @@ Boolean Button(void) {
 
 Boolean StillDown(void) {
   return em.is_mouse_button_down() && !em.any_mouse_events_pending();
-}
-
-Boolean MouseDownPending(void) {
-  return em.any_mouse_down_pending();
 }
 
 void PushMenuEvent(int16_t menu_id, int16_t item_id) {

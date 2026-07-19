@@ -89,7 +89,6 @@ void GetMouseGlobal(Point* mouseLoc); // extension (not part of original API)
 void SetMouseLocation(const Point* mouseLoc); // extension (not part of original API)
 Boolean Button(void); // IM1-259
 Boolean StillDown(void); // IM1-259
-Boolean MouseDownPending(void); // extension (not part of original API): true if a mouseDown is already queued
 
 void FlushEvents(int16_t mask, uint16_t stop_mask); // IM2-69
 

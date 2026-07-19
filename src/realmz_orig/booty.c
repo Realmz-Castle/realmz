@@ -714,20 +714,13 @@ moveon:
 backup:
 
   PenSize(2, 2);
-  a = 0;
 
   for (;;) {
 
     if (gTheEvent.modifiers & alphaLock)
       warn(21);
 
-    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-     * Only yield the CPU when the last poll found no event. While events are
-     * queued (for example clicking through items quickly), keep draining them
-     * without the idle delay so clicks are not held up.
-     * *** END CHANGES *** */
-    if (!a)
-      SystemTask();
+    SystemTask();
     a = GetNextEvent(everyEvent, &gTheEvent);
 #ifdef PC // Myriad
     DoCorrectBugMADRepeat();
@@ -1607,15 +1600,10 @@ backup:
                       temprect = icon;
                       InsetRect(&temprect, 10, 10);
 
-                      // Skip the take flourish when another click is already queued,
-                      // so grabbing several items in quick succession stays responsive
-                      // instead of waiting on each animation. The cell repaint below
-                      // still runs, so the item is removed cleanly either way.
-                      Boolean animate = !MouseDownPending();
                       PenMode(2);
                       FrameOval(&oldbox);
                       PenMode(0);
-                      for (t = 0; animate && t < 24; t++) {
+                      for (t = 0; t < 24; t++) {
                         RGBForeColor(&tempcolor);
                         InsetRect(&icon, 1, 1);
                         InsetRect(&temprect, -1, -1);
