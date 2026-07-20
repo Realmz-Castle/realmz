@@ -1624,11 +1624,13 @@ backup:
                       FrameOval(&oldbox);
                       PenMode(0);
 
-                      // The sparkle erases itself with XOR ovals, which cancel
-                      // cleanly on the original Mac but not here (FrameOval is
-                      // antialiased), so they leave stray coloured pixels in the
-                      // cell. Repaint the emptied cell and its neighbours from the
-                      // item list to clear any leftovers before showing the result.
+                      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+                       * NOTE(afkelsall): The sparkle erases itself with XOR ovals,
+                       * which cancel cleanly on the original Mac but not here
+                       * (FrameOval is antialiased), so they leave stray coloured
+                       * pixels in the cell. Repaint the emptied cell and its
+                       * neighbours from the item list to clear any leftovers before
+                       * showing the result. */
                       {
                         short bcols = 6 + (3 * screensize);
                         short srow = downindex - bootyitemindex;
@@ -1703,13 +1705,14 @@ backup:
                         }
                       }
 
-                      // The repaint above also wiped the XOR hover oval, but the
-                      // hover code still thinks it is drawn. Clear that state so it
-                      // does not later XOR a stray oval back onto this cell: leave
-                      // the oval rects empty and mark this cell as the current one.
+                      /* The repaint above also wiped the XOR hover oval, but the
+                       * hover code still thinks it is drawn. Clear that state so it
+                       * does not later XOR a stray oval back onto this cell: leave
+                       * the oval rects empty and mark this cell as the current one. */
                       SetRect(&box, 0, 0, 0, 0);
                       SetRect(&oldbox, 0, 0, 0, 0);
                       oldinc = element;
+                      /* *** END CHANGES *** */
 
                       sound(6002);
                     } else

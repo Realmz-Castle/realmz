@@ -2163,14 +2163,14 @@ void quickinfo(int who, int itemnumber, int itemid, int where) {
   }
 
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-   * quickinfo is also called from the booty (treasure) screen in the
-   * large-window layout while an item is being hovered, and there inbooty must
-   * stay TRUE so that textbox keeps quiet. The original code unconditionally
-   * cleared inbooty after drawing the description below, which let the text
-   * blip sound fire every time the cursor afterward left the treasure area.
-   * Save the prior value and restore it instead of forcing FALSE. */
+   * NOTE(afkelsall): quickinfo is also called from the booty (treasure)
+   * screen in the large-window layout while an item is being hovered, and
+   * there inbooty must stay TRUE so that textbox keeps quiet. The original
+   * code unconditionally cleared inbooty after drawing the description below,
+   * which let the text blip sound fire every time the cursor afterward left
+   * the treasure area. Save the prior value and restore it instead of forcing
+   * FALSE. */
   savedinbooty = inbooty;
-  /* *** END CHANGES *** */
 
   if (item.iscurse) {
     if (!showcurse)
@@ -2188,6 +2188,7 @@ void quickinfo(int who, int itemnumber, int itemid, int where) {
     textbox(tempselection + 2, item.itemid - tempselection + 1, FALSE, TRUE, txtbox);
     inbooty = savedinbooty;
   }
+  /* *** END CHANGES *** */
 
   MoveTo(300, 484);
   stringnozeronoplus(item.vssmall);
