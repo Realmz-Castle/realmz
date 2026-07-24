@@ -2104,6 +2104,7 @@ void quickinfo(int who, int itemnumber, int itemid, int where) {
   GrafPtr oldPort;
   Boolean showcurse = 0;
   Boolean ident = 0;
+  Boolean savedinbooty;
 
   if (!screensize)
     return;
@@ -2161,6 +2162,16 @@ void quickinfo(int who, int itemnumber, int itemid, int where) {
       break;
   }
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(afkelsall): quickinfo is also called from the booty (treasure)
+   * screen in the large-window layout while an item is being hovered, and
+   * there inbooty must stay TRUE so that textbox keeps quiet. The original
+   * code unconditionally cleared inbooty after drawing the description below,
+   * which let the text blip sound fire every time the cursor afterward left
+   * the treasure area. Save the prior value and restore it instead of forcing
+   * FALSE. */
+  savedinbooty = inbooty;
+
   if (item.iscurse) {
     if (!showcurse)
       temp = getselection(item.iscurse);
@@ -2169,14 +2180,15 @@ void quickinfo(int who, int itemnumber, int itemid, int where) {
     inbooty = TRUE; //*** keeps the beep for text from happening
     pict(218, pictrect);
     textbox(temp + 2, item.iscurse - temp + 1, FALSE, TRUE, txtbox);
-    inbooty = FALSE;
+    inbooty = savedinbooty;
   } else {
     getselection(item.itemid);
     inbooty = TRUE; //*** keeps the beep for text from happening
     pict(218, pictrect);
     textbox(tempselection + 2, item.itemid - tempselection + 1, FALSE, TRUE, txtbox);
-    inbooty = FALSE;
+    inbooty = savedinbooty;
   }
+  /* *** END CHANGES *** */
 
   MoveTo(300, 484);
   stringnozeronoplus(item.vssmall);
