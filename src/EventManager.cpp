@@ -324,6 +324,10 @@ public:
   EventRecord get_next_event(uint32_t wait_ms) {
     this->enqueue_pending_events(wait_ms);
     if (this->event_queue.empty()) {
+      auto window = WindowManager::instance().front_window();
+      if (window) {
+        window->idle_text_caret();
+      }
       return this->make_null_event();
     } else {
       EventRecord ev = this->event_queue.front();

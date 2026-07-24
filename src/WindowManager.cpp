@@ -40,6 +40,7 @@ using ResourceDASM::ResourceFile;
 // Enable these to save an image named debug*.bmp every time the main window or dialog items are recomposited
 static constexpr bool ENABLE_RECOMPOSITE_DEBUG = false;
 static constexpr bool ENABLE_DIALOG_RECOMPOSITE_DEBUG = false;
+static constexpr uint64_t TEXT_CARET_BLINK_INTERVAL_MS = 500;
 bool enable_translucent_window_debug = false;
 static size_t debug_number = 1;
 
@@ -547,10 +548,10 @@ public:
 
         // Draw caret if this item is focused
         auto window = this->owner_window.lock();
-        if (window && window->get_focused_item().get() == this) {
+        if (window && window->is_text_caret_visible() && window->get_focused_item().get() == this) {
           int16_t caret_x = this->rect.left + port.measure_text(text) + 1;
           Point caret_top = {.h = caret_x, .v = this->rect.top};
-          Point caret_bottom = {.h = caret_x, .v = this->rect.bottom};
+          Point caret_bottom = {.h = caret_x, .v = static_cast<int16_t>(this->rect.bottom - 1)};
           port.draw_line(caret_top, caret_bottom);
         }
         break;
@@ -1055,17 +1056,50 @@ std::shared_ptr<DialogItem> Window::get_focused_item() {
   return focused_item;
 }
 
+bool Window::is_text_caret_visible() const {
+  return text_caret_visible;
+}
+
 CCGrafPort& Window::get_port() {
   return this->port;
 }
 
 void Window::set_focused_item(std::shared_ptr<DialogItem> item) {
+  if (focused_item && (focused_item != item)) {
+    text_caret_visible = false;
+    focused_item->render_in_port(this->port, true);
+  }
   focused_item = item;
+  reset_text_caret();
+  item->render_in_port(this->port, true);
+  WindowManager::instance().recomposite_from_window(this->port);
+}
+
+void Window::reset_text_caret() {
+  text_caret_visible = true;
+  text_caret_next_toggle = SDL_GetTicks() + TEXT_CARET_BLINK_INTERVAL_MS;
+}
+
+void Window::idle_text_caret() {
+  if (!focused_item) {
+    return;
+  }
+
+  uint64_t now = SDL_GetTicks();
+  if (text_caret_next_toggle && (now < text_caret_next_toggle)) {
+    return;
+  }
+
+  text_caret_visible = text_caret_next_toggle ? !text_caret_visible : true;
+  text_caret_next_toggle = now + TEXT_CARET_BLINK_INTERVAL_MS;
+  focused_item->render_in_port(this->port, true);
+  WindowManager::instance().recomposite_from_window(this->port);
 }
 
 void Window::handle_text_input(const std::string& text, std::shared_ptr<DialogItem> item) {
   this->log.debug_f("Window::handle_text_input(\"{}\", {})", text, item->str());
   item->append_text(text);
+  reset_text_caret();
   item->render_in_port(this->port, true);
   WindowManager::instance().recomposite_from_window(this->port);
 }
@@ -1073,6 +1107,7 @@ void Window::handle_text_input(const std::string& text, std::shared_ptr<DialogIt
 void Window::delete_char(std::shared_ptr<DialogItem> item) {
   this->log.debug_f("Window::delete_char({})", item->str());
   item->delete_char();
+  reset_text_caret();
   item->render_in_port(this->port, true);
   WindowManager::instance().recomposite_from_window(this->port);
 }
@@ -1996,8 +2031,8 @@ Boolean DialogSelect(const EventRecord* ev, DialogPtr* dialog, short* item_hit) 
   // return false, which takes care of (3). We may have to implement (4) to
   // activate SDL edit controls when the user clicks them (TODO). We may also
   // have to implement (5) later on. (6) is implemented; Realmz uses it for a
-  // lot of interactions. (7) and (8) don't do anything, so they're technically
-  // implemented as well.
+  // lot of interactions. (7) requires no action, and (8) is handled when the
+  // event queue is idle.
 
   auto window = WindowManager::instance().window_for_port(CCGrafPort::as_port(ev->window_port));
 
