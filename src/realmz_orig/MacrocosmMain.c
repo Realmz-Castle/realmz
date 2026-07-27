@@ -6,8 +6,12 @@ void updatecompass(void) {
   Rect testRect;
   short temphead;
 
-  testRect.top = 251 + downshift / 2;
-  testRect.bottom = testRect.top + 69;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Keep the dungeon compass docked above the lower interface panel.
+   */
+  testRect.bottom = lookrect.bottom;
+  testRect.top = testRect.bottom - 69;
+  /* *** END CHANGES *** */
   testRect.left = 93 + leftshift / 2;
   testRect.right = testRect.left + 133;
 

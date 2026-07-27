@@ -49,6 +49,8 @@ static std::unordered_map<int16_t, ResourceDASM::BitmapFontRenderer> bm_renderer
 
 std::unordered_set<const CCGrafPort*> CCGrafPort::all_ports;
 
+static phosg::ImageRGB888 reference_image_for_ppat(PixPatHandle ppat);
+
 CCGrafPort* CCGrafPort::as_port(void* ptr) {
   auto* port_ptr = reinterpret_cast<CCGrafPort*>(ptr);
   return all_ports.count(port_ptr) ? port_ptr : nullptr;
@@ -114,6 +116,24 @@ void CCGrafPort::erase_rect(const Rect& r) {
 }
 
 void CCGrafPort::fill_rect(const Rect& r) {
+  if (this->pnMode == 0x08) { // patCopy
+    if (!this->pnPixPat) {
+      throw std::logic_error("Cannot draw with patCopy mode unless PenPixPat was previously set");
+    }
+    const auto pattern = reference_image_for_ppat(this->pnPixPat);
+    ssize_t x = r.left;
+    ssize_t y = r.top;
+    ssize_t w = r.right - r.left;
+    ssize_t h = r.bottom - r.top;
+    this->data.clamp_rect(x, y, w, h);
+    for (ssize_t py = y; py < y + h; py++) {
+      for (ssize_t px = x; px < x + w; px++) {
+        this->data.write(px, py, pattern.read(px % pattern.get_width(), py % pattern.get_height()));
+      }
+    }
+    return;
+  }
+
   uint32_t color = rgba8888_for_rgb_color(this->rgbFgColor);
   this->data.write_rect(r.left, r.top, r.right - r.left, r.bottom - r.top, color);
 }
