@@ -1,3 +1,50 @@
+## [v8.1.0-beta4](https://github.com/Realmz-Castle/realmz/releases/tag/v8.1.0-beta4)
+
+- stop character hiding on empty slot click by @chromancer in https://github.com/Realmz-Castle/realmz/pull/226
+- Change TickCount() to wall clock rather than clock() by @chromancer in https://github.com/Realmz-Castle/realmz/pull/-29
+- icons restored to Mac menus and dropdowns by @chromancer in https://github.com/Realmz-Castle/realmz/pull/230
+- enable PC magic resistance by @chromancer in https://github.com/Realmz-Castle/realmz/pull/231
+- add item marks & remove sync-on-change hangs by @chromancer in https://github.com/Realmz-Castle/realmz/pull/235
+- menucontroller gets automatic memory management back by @chromancer in https://github.com/Realmz-Castle/realmz/pull/-42
+- doc: add contribution guidance by @jpetrie in https://github.com/Realmz-Castle/realmz/pull/233
+- bump SDL to 3.4.10 by @chromancer in https://github.com/Realmz-Castle/realmz/pull/250
+- Use the Control key as Command on Windows by @afkelsall in https://github.com/Realmz-Castle/realmz/pull/245
+- Fix total party level handling. by @jpetrie in https://github.com/Realmz-Castle/realmz/pull/239
+- fix: skip incorrectly-sized character files during party selection by @jpetrie in https://github.com/Realmz-Castle/-ealmz/pull/232
+- Fix Open Lock spell chance by @iSynic in https://github.com/Realmz-Castle/realmz/pull/252
+- Honor disabled Windows menu state by @iSynic in https://github.com/Realmz-Castle/realmz/pull/267
+- Apply weapon magic plus to player melee to-hit by @afkelsall in https://github.com/Realmz-Castle/realmz/pull/268
+- Load saved games in windows from the original retail Realmz on MacOS 9 by @afkelsall in https://github.com/-ealmz-Castle/realmz/pull/241
+- Fix shop scrollbars and live thumb drag by @afkelsall in https://github.com/Realmz-Castle/realmz/pull/243
+- Port menu by @chromancer in https://github.com/Realmz-Castle/realmz/pull/256
+- Use the original Black Chancery font and baseline-anchor pen text by @afkelsall in https://github.com/Realmz-Castle/-ealmz/pull/251
+- reinstate "movie" scroll and respect alpha by @chromancer in https://github.com/Realmz-Castle/realmz/pull/257
+- stop two more crashes in party select by @chromancer in https://github.com/Realmz-Castle/realmz/pull/258
+- Fix Drop All Equipment inventory handling by @iSynic in https://github.com/Realmz-Castle/realmz/pull/282
+- Fix fumbled item drops by @iSynic in https://github.com/Realmz-Castle/realmz/pull/270
+- Update changelog for beta3. by @jpetrie in https://github.com/Realmz-Castle/realmz/pull/273
+- Automatically copy resource file dependencies. by @jpetrie in https://github.com/Realmz-Castle/realmz/pull/272
+- Add Contribution Guide by @danapplegate in https://github.com/Realmz-Castle/realmz/pull/283
+- Honor synchronous SndPlay requests by @iSynic in https://github.com/Realmz-Castle/realmz/pull/253
+- Support legacy scenario resource sidecars by @iSynic in https://github.com/Realmz-Castle/realmz/pull/281
+- Fix class 6 spells like Cosmic Blast always being resisted by @afkelsall in https://github.com/Realmz-Castle/realmz/-ull/276
+- fix monster DRV and immunity indexing in savevs by @chromancer in https://github.com/Realmz-Castle/realmz/pull/288
+- Fix non-functional volume/speed menus on Windows by @afkelsall in https://github.com/Realmz-Castle/realmz/pull/236
+- Show the dragged item icon in the shop by @afkelsall in https://github.com/Realmz-Castle/realmz/pull/244
+- Fix crash plotting cicn icons that lack a monochrome bitmap by @afkelsall in https://github.com/Realmz-Castle/realmz/-ull/266
+- calculate all equipment bonuses correctly by @chromancer in https://github.com/Realmz-Castle/realmz/pull/290
+- fix attack & defense bonus in UI by @chromancer in https://github.com/Realmz-Castle/realmz/pull/291
+- Fix spell info lights by @chromancer in https://github.com/Realmz-Castle/realmz/pull/297
+- Fix on-portrait anims (spells, pots, selection) by adding missing leftshifts by @chromancer in https://github.com/-ealmz-Castle/realmz/pull/295
+- Fix combat crash from out-of-range body id in centerfield by @afkelsall in https://github.com/Realmz-Castle/realmz/-ull/277
+- Gray out disabled items in Windows popup menus by @afkelsall in https://github.com/Realmz-Castle/realmz/pull/264
+- Draw dBoxProc dialog frames by @iSynic in https://github.com/Realmz-Castle/realmz/pull/279
+- Handle missing resources consistently by @iSynic in https://github.com/Realmz-Castle/realmz/pull/285
+- Fix EDIT_TEXT caret rendering by @iSynic in https://github.com/Realmz-Castle/realmz/pull/298
+- Fix the post-fight treasure screen by @afkelsall in https://github.com/Realmz-Castle/realmz/pull/263
+- Restore 3D dungeon view presentation by @iSynic in https://github.com/Realmz-Castle/realmz/pull/303
+- add marks to Mac popups by @chromancer in https://github.com/Realmz-Castle/realmz/pull/309
+
 ## [v8.1.0-beta3](https://github.com/Realmz-Castle/realmz/releases/tag/v8.1.0-beta3)
 
 - Throttle key repeats to avoid sluggish gameplay. by @jpetrie in #201
