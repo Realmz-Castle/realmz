@@ -400,12 +400,18 @@ int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
     }
 
     std::string data = phosg::load_file(host_filename);
-    std::shared_ptr<ResourceDASM::ResourceFile> rf;
-    try {
-      rf = std::make_shared<ResourceDASM::ResourceFile>(
-          ResourceDASM::parse_applesingle_appledouble_resource_fork(data));
-      rm_log.info_f("Loaded AppleSingle/AppleDouble resource fork from {}", host_filename.c_str());
-    } catch (const std::runtime_error&) {
+    std::shared_ptr<ResourceDASM::ResourceFile> rf = nullptr;
+    if (data.length() > 0) {
+      try {
+        rf = std::make_shared<ResourceDASM::ResourceFile>(
+            ResourceDASM::parse_applesingle_appledouble_resource_fork(data));
+        rm_log.info_f("Loaded AppleSingle/AppleDouble resource fork from {}", host_filename.c_str());
+      } catch (const std::runtime_error&) {
+        rf = nullptr;
+      }
+    }
+
+    if (!rf) {
       rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
     }
     bool writable = (permission == fsCurPerm) || (permission > fsRdPerm);
