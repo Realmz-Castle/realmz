@@ -3,8 +3,6 @@
 #include <filesystem>
 #include <memory>
 #include <stddef.h>
-#include <stdexcept>
-#include <string>
 
 #include "FileManager.hpp"
 #include "MemoryManager.hpp"
@@ -343,15 +341,9 @@ static ResourceManager rm;
 // Classic Mac OS API implementation
 
 std::string host_resource_filename_for_host_filename(const std::string& host_path, bool allow_missing = false) {
-  if (allow_missing) {
-    return host_path + ".rsrc";
-  }
-
-  for (const auto* extension : {".rsrc", ".rsf"}) {
-    std::string full_path = host_path + extension;
-    if (std::filesystem::is_regular_file(full_path)) {
-      return full_path;
-    }
+  std::string full_path = host_path + ".rsrc";
+  if (allow_missing || std::filesystem::is_regular_file(full_path)) {
+    return full_path;
   }
 
   return "";
@@ -389,25 +381,17 @@ void FSpCreateResFile(const FSSpec* spec, OSType creator, OSType fileType, Scrip
 }
 
 int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
-  std::string host_filename;
-  try {
-    host_filename = host_resource_filename_for_FSSpec(spec);
-    if (host_filename.empty()) {
-      auto filename = string_for_pstr<64>(spec->name);
-      rm_log.info_f("Failed to load resource file {}", filename);
-      resError = fnfErr;
-      return -1;
-    }
+  auto host_filename = host_resource_filename_for_FSSpec(spec);
+  if (host_filename.empty()) {
+    auto filename = string_for_pstr<64>(spec->name);
+    rm_log.info_f("Failed to load resource file {}", filename);
+    resError = fnfErr;
+    return -1;
+  }
 
+  try {
     std::string data = phosg::load_file(host_filename);
-    std::shared_ptr<ResourceDASM::ResourceFile> rf;
-    try {
-      rf = std::make_shared<ResourceDASM::ResourceFile>(
-          ResourceDASM::parse_applesingle_appledouble_resource_fork(data));
-      rm_log.info_f("Loaded AppleSingle/AppleDouble resource fork from {}", host_filename.c_str());
-    } catch (const std::runtime_error&) {
-      rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
-    }
+    auto rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
     bool writable = (permission == fsCurPerm) || (permission > fsRdPerm);
     int16_t ret = rm.use(host_filename, rf, writable);
     rm_log.info_f("Loaded {} with reference number {} ({} with permission {})",
@@ -419,10 +403,6 @@ int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
   } catch (const phosg::cannot_open_file&) {
     rm_log.info_f("Failed to load resource file {}", host_filename.c_str());
     resError = fnfErr;
-    return -1;
-  } catch (const std::exception& e) {
-    rm_log.info_f("Failed to parse resource file {}: {}", host_filename.c_str(), e.what());
-    resError = resFNotFound;
     return -1;
   }
 }
