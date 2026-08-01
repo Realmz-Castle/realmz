@@ -404,16 +404,23 @@ void getpref(void) {
     serial += Rand(32000);
     MyrBitSetLong(&serial, 8);
     MyrBitSetLong(&serial, 6 + divine);
-    appnum = serial;
-
-    PtoCstr((StringPtr)myString);
-
-    if ((fp = MyrFopen((Ptr)myString, "r+b")) != NIL) {
-      CvtLongToPc(&appnum);
-      fwrite(&appnum, sizeof appnum, 1, fp);
-      CvtLongToPc(&appnum);
-      fclose(fp);
-    }
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(iSynic): Disabled the application-file serial writeback. This port
+     * persists mutable preference data through the user preference resource
+     * file, and myString may contain the current scenario name while selecting
+     * third-party scenarios.
+     */
+    // appnum = serial;
+    //
+    // PtoCstr((StringPtr)myString);
+    //
+    // if ((fp = MyrFopen((Ptr)myString, "r+b")) != NIL) {
+    //   CvtLongToPc(&appnum);
+    //   fwrite(&appnum, sizeof appnum, 1, fp);
+    //   CvtLongToPc(&appnum);
+    //   fclose(fp);
+    // }
+    /* *** END CHANGES *** */
   }
 #endif
 
