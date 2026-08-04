@@ -63,7 +63,7 @@ void showmap(short mapnumber) {
   PicHandle picture = NIL;
   Rect temprect, margin;
   Rect maprect;
-  Boolean centeredgeneratedmap = FALSE;
+  Boolean centeredmapcontent = FALSE;
   /* *** END CHANGES *** */
   short oldview, t, tt, temp, tempisdung;
 
@@ -83,31 +83,34 @@ void showmap(short mapnumber) {
 
   viewtype = -1;
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Center Classic 320x320 map content in the enlarged viewport.
+   */
+  SetRect(&maprect, 0, 0, 320, 320);
+  OffsetRect(&maprect, lookrect.left + ((lookrect.right - lookrect.left) - 320) / 2,
+      lookrect.top + ((lookrect.bottom - lookrect.top) - 320) / 2);
+  /* *** END CHANGES *** */
+
   if (themap.show < 0) {
     movie(themap.show, 129, 0);
     goto out;
   } else if (themap.pictid) {
     /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-     * NOTE(iSynic): Center picture-backed maps at native size unless the map defines a draw rect.
+     * NOTE(iSynic): Draw default picture-backed maps into the centered Classic map rect.
      */
     SetPort(GetWindowPort(look));
     picture = GetPicture(themap.pictid);
     if (picture) {
-      itemRect = (**picture).picFrame;
-      OffsetRect(&itemRect, -itemRect.left, -itemRect.top);
+      itemRect = maprect;
 
       ForeColor(blackColor);
       PaintRect(&lookrect);
 
       if ((themap.rect[2]) || (themap.rect[3])) {
-        itemRect.top = themap.rect[0];
-        itemRect.left = themap.rect[1];
-        itemRect.bottom = themap.rect[2];
-        itemRect.right = themap.rect[3];
-      } else {
-        OffsetRect(&itemRect, lookrect.left + ((lookrect.right - lookrect.left) - itemRect.right) / 2,
-            lookrect.top + ((lookrect.bottom - lookrect.top) - itemRect.bottom) / 2);
+        SetRect(&itemRect, themap.rect[1], themap.rect[0], themap.rect[3], themap.rect[2]);
+        OffsetRect(&itemRect, maprect.left, maprect.top);
       }
+      centeredmapcontent = TRUE;
 
       DrawPicture(picture, &itemRect);
     }
@@ -118,10 +121,7 @@ void showmap(short mapnumber) {
     /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
      * NOTE(iSynic): Center generated land maps at their Classic 320x320 size.
      */
-    SetRect(&maprect, 0, 0, 320, 320);
-    OffsetRect(&maprect, lookrect.left + ((lookrect.right - lookrect.left) - 320) / 2,
-        lookrect.top + ((lookrect.bottom - lookrect.top) - 320) / 2);
-    centeredgeneratedmap = !themap.isdungeon;
+    centeredmapcontent = !themap.isdungeon;
     /* *** END CHANGES *** */
 
     temp = 320 / themap.iconsize;
@@ -204,9 +204,9 @@ void showmap(short mapnumber) {
         }
 
         /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-         * NOTE(iSynic): Keep authored overlay icons aligned with the centered land map.
+         * NOTE(iSynic): Keep authored overlay icons aligned with centered map content.
          */
-        if (centeredgeneratedmap)
+        if (centeredmapcontent)
           OffsetRect(&temprect, maprect.left, maprect.top);
         /* *** END CHANGES *** */
 
@@ -238,9 +238,9 @@ void showmap(short mapnumber) {
         icon.bottom = icon.top + 64;
 
         /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-         * NOTE(iSynic): Keep the party marker aligned with the centered land map.
+         * NOTE(iSynic): Keep the party marker aligned with centered map content.
          */
-        if (centeredgeneratedmap)
+        if (centeredmapcontent)
           OffsetRect(&icon, maprect.left, maprect.top);
         /* *** END CHANGES *** */
 
@@ -250,9 +250,9 @@ void showmap(short mapnumber) {
   }
 
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-   * NOTE(iSynic): Crop generated land maps to their centered 320x320 presentation.
+   * NOTE(iSynic): Crop centered map content to its Classic 320x320 presentation.
    */
-  if (centeredgeneratedmap) {
+  if (centeredmapcontent) {
     ForeColor(blackColor);
 
     margin = lookrect;
