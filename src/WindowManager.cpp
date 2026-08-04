@@ -542,18 +542,10 @@ public:
         break;
       }
       case ResourceFile::DecodedDialogItem::Type::EDIT_TEXT: {
-        if (!port.draw_text(text, this->rect)) {
-          wm_log.error_f("Error when rendering editable text item {}: {}", resource_id, SDL_GetError());
-        }
-
-        // Draw caret if this item is focused
-        auto window = this->owner_window.lock();
-        if (window && window->is_text_caret_visible() && window->get_focused_item().get() == this) {
-          int16_t caret_x = this->rect.left + port.measure_text(text) + 1;
-          Point caret_top = {.h = caret_x, .v = this->rect.top};
-          Point caret_bottom = {.h = caret_x, .v = static_cast<int16_t>(this->rect.bottom - 1)};
-          port.draw_line(caret_top, caret_bottom);
-        }
+        Rect frame_rect = this->rect;
+        InsetRect(&frame_rect, -3, -3);
+        port.draw_rect_outline(frame_rect);
+        this->render_text_in_port(port);
         break;
       }
       case ResourceFile::DecodedDialogItem::Type::CHECKBOX:
@@ -802,6 +794,22 @@ public:
           debug_number, dialog_debug_number, this->item_id, phosg::name_for_enum(this->type),
           this->rect.left, this->rect.top, this->rect.right, this->rect.bottom);
       phosg::save_file(std::format("debug{}-dialog{}.bmp", debug_number, dialog_debug_number++), port.data.serialize(phosg::ImageFormat::WINDOWS_BITMAP));
+    }
+  }
+
+  void render_text_in_port(CCGrafPort& port) const {
+    port.erase_rect(this->rect);
+    if (!port.draw_text(text, this->rect)) {
+      wm_log.error_f("Error when rendering editable text item {}: {}", resource_id, SDL_GetError());
+    }
+
+    // Draw caret if this item is focused
+    auto window = this->owner_window.lock();
+    if (window && window->is_text_caret_visible() && window->get_focused_item().get() == this) {
+      int16_t caret_x = this->rect.left + port.measure_text(text) + 1;
+      Point caret_top = {.h = caret_x, .v = this->rect.top};
+      Point caret_bottom = {.h = caret_x, .v = static_cast<int16_t>(this->rect.bottom - 1)};
+      port.draw_line(caret_top, caret_bottom);
     }
   }
 
@@ -1067,11 +1075,11 @@ CCGrafPort& Window::get_port() {
 void Window::set_focused_item(std::shared_ptr<DialogItem> item) {
   if (focused_item && (focused_item != item)) {
     text_caret_visible = false;
-    focused_item->render_in_port(this->port, true);
+    focused_item->render_text_in_port(this->port);
   }
   focused_item = item;
   reset_text_caret();
-  item->render_in_port(this->port, true);
+  item->render_text_in_port(this->port);
   WindowManager::instance().recomposite_from_window(this->port);
 }
 
@@ -1092,7 +1100,7 @@ void Window::idle_text_caret() {
 
   text_caret_visible = text_caret_next_toggle ? !text_caret_visible : true;
   text_caret_next_toggle = now + TEXT_CARET_BLINK_INTERVAL_MS;
-  focused_item->render_in_port(this->port, true);
+  focused_item->render_text_in_port(this->port);
   WindowManager::instance().recomposite_from_window(this->port);
 }
 
@@ -1100,7 +1108,7 @@ void Window::handle_text_input(const std::string& text, std::shared_ptr<DialogIt
   this->log.debug_f("Window::handle_text_input(\"{}\", {})", text, item->str());
   item->append_text(text);
   reset_text_caret();
-  item->render_in_port(this->port, true);
+  item->render_text_in_port(this->port);
   WindowManager::instance().recomposite_from_window(this->port);
 }
 
@@ -1108,7 +1116,7 @@ void Window::delete_char(std::shared_ptr<DialogItem> item) {
   this->log.debug_f("Window::delete_char({})", item->str());
   item->delete_char();
   reset_text_caret();
-  item->render_in_port(this->port, true);
+  item->render_text_in_port(this->port);
   WindowManager::instance().recomposite_from_window(this->port);
 }
 
@@ -1130,7 +1138,11 @@ void Window::erase_and_render() {
     item->render_in_port(this->port, false);
   }
   for (auto item : this->text_items) {
-    item->render_in_port(this->port, false);
+    if (item->type == DialogItemType::EDIT_TEXT) {
+      item->render_text_in_port(this->port);
+    } else {
+      item->render_in_port(this->port, false);
+    }
   }
 
   WindowManager::instance().recomposite_from_window(this->port);
@@ -2585,7 +2597,7 @@ void TEUpdateUnstyled(const Rect& r, TEHandle te) {
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(reinterpret_cast<Handle>(te)));
   wm_log.debug_f("TEUpdateUnstyled({{x0={}, y0={}, x1={}, y1={}}}, {})", r.left, r.top, r.right, r.bottom, reinterpret_cast<void*>(te));
   auto window = item->owner_window.lock();
-  item->render_in_port(window->get_port(), true);
+  item->render_text_in_port(window->get_port());
   WindowManager::instance().recomposite_from_window(window);
 }
 
