@@ -196,11 +196,16 @@ void showmap(short mapnumber) {
     }
   }
 
-  show = GetNewDialog(169, 0L, (WindowPtr)-1L);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Use the large-screen map note dialog and match the spell
+   * description panel placement.
+   */
+  show = GetNewDialog(169 + (1000 * screensize), 0L, (WindowPtr)-1L);
   SetPortDialogPort(show);
   BackPixPat(base);
   TextFont(defaultfont);
-  MoveWindow(GetDialogWindow(show), GlobalLeft - 1 + (leftshift / 2), GlobalTop + 321 + (downshift / 2), FALSE);
+  MoveWindow(GetDialogWindow(show), GlobalLeft - 1, GlobalTop + 321 + downshift, FALSE);
+  /* *** END CHANGES *** */
   ForeColor(yellowColor);
   gCurrent = show;
   ShowWindow(GetDialogWindow(show));
@@ -217,7 +222,11 @@ void showmap(short mapnumber) {
   else
     loadland(dunglevel, TRUE);
 
-  flashmessage((StringPtr) "Click Mouse", 350, 100, 0, 30005);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Keep the map prompt over the status panel in the enlarged layout.
+   */
+  flashmessage((StringPtr) "Click Mouse", 350 + leftshift, 100, 0, 30005);
+  /* *** END CHANGES *** */
 
   xy(0);
   DisposeDialog(show);
