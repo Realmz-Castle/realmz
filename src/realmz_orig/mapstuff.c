@@ -57,7 +57,14 @@ void showmap(short mapnumber) {
   FILE* fp = NULL;
   DialogRef show;
   Boolean tag = FALSE;
-  Rect temprect;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Track the centered native-size map presentation.
+   */
+  PicHandle picture = NIL;
+  Rect temprect, margin;
+  Rect maprect;
+  Boolean centeredmapcontent = FALSE;
+  /* *** END CHANGES *** */
   short oldview, t, tt, temp, tempisdung;
 
   tempisdung = indung;
@@ -76,21 +83,46 @@ void showmap(short mapnumber) {
 
   viewtype = -1;
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Center Classic 320x320 map content in the enlarged viewport.
+   */
+  SetRect(&maprect, 0, 0, 320, 320);
+  OffsetRect(&maprect, lookrect.left + ((lookrect.right - lookrect.left) - 320) / 2,
+      lookrect.top + ((lookrect.bottom - lookrect.top) - 320) / 2);
+  /* *** END CHANGES *** */
+
   if (themap.show < 0) {
     movie(themap.show, 129, 0);
     goto out;
   } else if (themap.pictid) {
-    itemRect = lookrect;
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(iSynic): Draw default picture-backed maps into the centered Classic map rect.
+     */
     SetPort(GetWindowPort(look));
-    if ((themap.rect[2]) || (themap.rect[3])) {
-      itemRect.top = themap.rect[0];
-      itemRect.left = themap.rect[1];
-      itemRect.bottom = themap.rect[2];
-      itemRect.right = themap.rect[3];
+    picture = GetPicture(themap.pictid);
+    if (picture) {
+      itemRect = maprect;
+
+      ForeColor(blackColor);
+      PaintRect(&lookrect);
+
+      if ((themap.rect[2]) || (themap.rect[3])) {
+        SetRect(&itemRect, themap.rect[1], themap.rect[0], themap.rect[3], themap.rect[2]);
+        OffsetRect(&itemRect, maprect.left, maprect.top);
+      }
+      centeredmapcontent = TRUE;
+
+      DrawPicture(picture, &itemRect);
     }
-    pict(themap.pictid, itemRect);
+    /* *** END CHANGES *** */
   } else {
     int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(iSynic): Center generated land maps at their Classic 320x320 size.
+     */
+    centeredmapcontent = !themap.isdungeon;
+    /* *** END CHANGES *** */
 
     temp = 320 / themap.iconsize;
     if (temp * themap.iconsize < 320)
@@ -115,7 +147,12 @@ void showmap(short mapnumber) {
     temprect.top = temprect.left = 0;
     temprect.right = temprect.bottom = themap.iconsize;
 
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(iSynic): Place generated land-map tiles within the centered map rect.
+     */
     if (!indung) {
+      PaintRect(&lookrect);
+      OffsetRect(&temprect, maprect.left, maprect.top);
       for (t = themap.starty; t < temp + themap.starty; t++) {
         for (tt = themap.startx; tt < themap.startx + temp; tt++) {
           fastplotmap(field[tt][t], temprect);
@@ -123,7 +160,9 @@ void showmap(short mapnumber) {
         }
         OffsetRect(&temprect, -(themap.iconsize * temp), themap.iconsize);
       }
-    } else {
+    }
+    /* *** END CHANGES *** */
+    else {
       SetPort(GetWindowPort(look));
       ForeColor(blackColor);
       BackColor(whiteColor);
@@ -164,6 +203,13 @@ void showmap(short mapnumber) {
           InsetRect(&temprect, -((32 - themap.iconsize) / 2), -((32 - themap.iconsize) / 2));
         }
 
+        /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+         * NOTE(iSynic): Keep authored overlay icons aligned with centered map content.
+         */
+        if (centeredmapcontent)
+          OffsetRect(&temprect, maprect.left, maprect.top);
+        /* *** END CHANGES *** */
+
         if (iconhand) {
           PlotCIcon(&temprect, iconhand);
           DisposeCIcon(iconhand);
@@ -191,10 +237,43 @@ void showmap(short mapnumber) {
         icon.right = icon.left + 64;
         icon.bottom = icon.top + 64;
 
+        /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+         * NOTE(iSynic): Keep the party marker aligned with centered map content.
+         */
+        if (centeredmapcontent)
+          OffsetRect(&icon, maprect.left, maprect.top);
+        /* *** END CHANGES *** */
+
         ploticon3(138, icon);
       }
     }
   }
+
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Crop centered map content to its Classic 320x320 presentation.
+   */
+  if (centeredmapcontent) {
+    ForeColor(blackColor);
+
+    margin = lookrect;
+    margin.right = maprect.left;
+    PaintRect(&margin);
+
+    margin = lookrect;
+    margin.left = maprect.right;
+    PaintRect(&margin);
+
+    margin = maprect;
+    margin.top = lookrect.top;
+    margin.bottom = maprect.top;
+    PaintRect(&margin);
+
+    margin = maprect;
+    margin.top = maprect.bottom;
+    margin.bottom = lookrect.bottom;
+    PaintRect(&margin);
+  }
+  /* *** END CHANGES *** */
 
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
    * NOTE(iSynic): Use the large-screen map note dialog and match the spell
