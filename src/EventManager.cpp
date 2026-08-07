@@ -464,7 +464,7 @@ protected:
 #ifdef _WIN32
         // The Windows (Super) key is reserved by the OS for the Start menu and shell shortcuts, so
         // it cannot reliably act as the Mac Command key. Map the Control key to Command instead.
-        this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_LCTRL);
+        this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_CTRL);
 #else
         this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_GUI);
 #endif
