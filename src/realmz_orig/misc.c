@@ -1311,7 +1311,12 @@ void adddelscen(short mode) {
         }
       }
 
-      t = DialogSelect(&gTheEvent, &dummy, &itemHit);
+      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+       * NOTE(iSynic): Ignore dialog events that did not select an item.
+       */
+      if (!DialogSelect(&gTheEvent, &dummy, &itemHit))
+        continue;
+      /* *** END CHANGES *** */
     pushkey:
 
       if (itemHit == 1) {
