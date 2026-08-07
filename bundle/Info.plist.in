@@ -28,5 +28,7 @@
     <string>@PROJECT_COPYRIGHT@</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.3</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
 </dict>
 </plist>

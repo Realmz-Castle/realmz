@@ -1260,7 +1260,9 @@ void WindowManager::create_sdl_window() {
   this->windowed_x = prefs.window_x;
   this->windowed_y = prefs.window_y;
 
-  this->sdl_window = sdl_make_shared(SDL_CreateWindow("Realmz", prefs.window_w, prefs.window_h, SDL_WINDOW_RESIZABLE));
+  this->sdl_window = sdl_make_shared(SDL_CreateWindow(
+      "Realmz", prefs.window_w, prefs.window_h,
+      SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY));
   if (!this->sdl_window) {
     throw std::runtime_error(std::format("Could not create SDL window: {}", SDL_GetError()));
   }
