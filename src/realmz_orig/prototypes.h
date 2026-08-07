@@ -200,6 +200,11 @@ short movemonster(void);
 void moveparty(short forward);
 void movie(short textID, short dataid, short justify);
 void music(short playlist);
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(iSynic): Declare the restored Music menu synchronization helper.
+ */
+void syncmusicmenu(void);
+/* *** END CHANGES *** */
 short Name(short mode);
 short pin(short data, short low, short high);
 void addinitialitems(void);

@@ -1,6 +1,7 @@
 #include "prototypes.h"
 #include "realmzbuild.h"
 #include "variables.h"
+#include "MusicManager.h"
 
 #ifdef PC
 #define MAGIC 'RLZ0'
@@ -146,6 +147,11 @@ void getpref(void) {
   delayspeed = (**(PrefHandle)data_handle).delayspeed;
   oldspeed = (**(PrefHandle)data_handle).oldspeed;
   musicvolume = (**(PrefHandle)data_handle).oldvolume;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Apply the saved music volume to the SDL music stream.
+   */
+  RealmzMusicSetVolume(musicvolume);
+  /* *** END CHANGES *** */
   volume = (**(PrefHandle)data_handle).volume;
   defaultspell = (**(PrefHandle)data_handle).defaultspell;
   showcast = (**(PrefHandle)data_handle).showcast;
@@ -347,6 +353,11 @@ void getpref(void) {
   delayspeed = prefs->delayspeed;
   oldspeed = prefs->oldspeed;
   musicvolume = prefs->oldvolume;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Apply the saved music volume to the SDL music stream.
+   */
+  RealmzMusicSetVolume(musicvolume);
+  /* *** END CHANGES *** */
   volume = prefs->volume;
   defaultspell = prefs->defaultspell;
   showcast = prefs->showcast;
@@ -732,6 +743,20 @@ backup:
 
   GetDialogItem(preferwindow, 28, &itemType, &itemHandle, &itemRect);
   nomusic = GetControlValue((ControlHandle)itemHandle);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Keep the restored music backend in sync with the existing
+   * preference control.
+   */
+  if (nomusic)
+    music(0);
+  else
+    updatemusic();
+  /* *** END CHANGES *** */
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Synchronize the restored Music menu with the preference.
+   */
+  syncmusicmenu();
+  /* *** END CHANGES *** */
 
   GetDialogItem(preferwindow, 29, &itemType, &itemHandle, &itemRect);
   usenpc = GetControlValue((ControlHandle)itemHandle);

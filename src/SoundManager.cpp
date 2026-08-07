@@ -72,6 +72,27 @@ public:
     return channel;
   }
 
+  SDL_AudioStream* create_output_stream(const SDL_AudioSpec* spec, float gain) {
+    this->lazy_initialize();
+    if (this->device_id == 0) {
+      return nullptr;
+    }
+    auto* stream = SDL_CreateAudioStream(spec, spec);
+    if (!stream) {
+      sm_log.warning_f("Could not create SDL audio stream: {}", SDL_GetError());
+      return nullptr;
+    }
+    if (!SDL_BindAudioStream(this->device_id, stream)) {
+      sm_log.warning_f("Could not bind SDL audio stream: {}", SDL_GetError());
+      SDL_DestroyAudioStream(stream);
+      return nullptr;
+    }
+    if (!SDL_SetAudioStreamGain(stream, gain)) {
+      sm_log.warning_f("Could not set audio stream gain: {}", SDL_GetError());
+    }
+    return stream;
+  }
+
   void play_sound(SDL_AudioStream* sdlAudioStream, Handle data_handle, bool async) {
     std::shared_ptr<const Sound> sound;
     try {
@@ -198,7 +219,7 @@ private:
     return ret;
   }
 
-  SDL_AudioDeviceID device_id;
+  SDL_AudioDeviceID device_id = 0;
   float default_volume = 4.0f / 7.0f;
   std::unordered_set<std::shared_ptr<SndChannel>> all_channels;
   std::unordered_map<Handle, std::shared_ptr<const Sound>> decoded_sounds;
@@ -249,4 +270,8 @@ OSErr SetDefaultOutputVolume(uint32_t level) {
     sm_log.info_f("Default output volume set to {}", level);
   }
   return 0;
+}
+
+SDL_AudioStream* CreateDefaultOutputAudioStream(const SDL_AudioSpec* spec, float gain) {
+  return sm.create_output_stream(spec, gain);
 }

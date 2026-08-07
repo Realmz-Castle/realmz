@@ -1,5 +1,6 @@
 #include "realmzbuild.h"
 #include "variables.h"
+#include "MusicManager.h"
 
 /*************************************************************
                                 RedrawAllRealmz
@@ -25,6 +26,11 @@ Free all necessary before quitting, stop music, clear temporary files
 <= 0 si not quit, 1 si quit
 ***********************************************************/
 void DoFreeBeforeQuit(void) {
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Stop SDL music playback before shutting down the audio device.
+   */
+  RealmzMusicStop();
+  /* *** END CHANGES *** */
   MyrRemove(":Data Files:Data I1");
   MyrRemove(":Data Files:Data I2");
   MyrRemove(":Data Files:CTD3");
@@ -373,11 +379,46 @@ short HandleMenuChoice(void) {
         SetItemMark(gSound, theItem, 19);
 
         musicvolume = theItem - 12;
-        // MADDriver->VolGlobal = musicvolume * 9;
+        /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+         * NOTE(iSynic): Apply the existing music-volume preference to the SDL
+         * music stream.
+         */
+        RealmzMusicSetVolume(musicvolume);
+        /* *** END CHANGES *** */
       }
 
       savepref();
 
+      break;
+
+    case 145: /********* music menu **********/
+      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+       * NOTE(iSynic): Restore the Classic Music menu controls.
+       */
+      if (theItem == 1) {
+        Stopmusic = !Stopmusic;
+        if (Stopmusic)
+          music(0);
+        else
+          updatemusic();
+        syncmusicmenu();
+      } else if (theItem == 2) {
+        in();
+        movie(1152, 128, 0);
+        goto updateaftermovie;
+      } else if (twixt(theItem, 8, 27)) {
+        short playlist = theItem - 7;
+
+        musictoggle[playlist - 1] = (musictoggle[playlist - 1] + 1) % 3;
+        if (!musictoggle[playlist - 1])
+          SetItemMark(musicmenu, theItem, 0);
+        else if (musictoggle[playlist - 1] == 1)
+          SetItemMark(musicmenu, theItem, 19);
+        else
+          SetItemMark(musicmenu, theItem, -41);
+        updatemusic();
+      }
+      /* *** END CHANGES *** */
       break;
 
     case 137: /*********  preferences **************/

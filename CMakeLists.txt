@@ -224,6 +224,7 @@ set(SOURCES
     src/Font.cpp
     src/MemoryManager.cpp
     src/MenuManager.cpp
+    src/MusicManager.cpp
     src/PortMenuLogic.cpp
     src/PortPrefs.cpp
     src/QuickDraw.cpp
@@ -394,6 +395,7 @@ if(APPLE)
     install(FILES ${RESOURCE_FILES} DESTINATION ".")
     install(FILES ${DATA_RESOURCE_FILES} DESTINATION "Data Files")
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/base/Realmz/Scenarios" DESTINATION ".")
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/base/Realmz/Realmz Music" DESTINATION ".")
     install(FILES ${CHARACTER_DATA_FILES} DESTINATION "Character Files")
 
     # We dynamically link to the SDL* libraries (plus an asan lib that clang links against),
@@ -414,6 +416,7 @@ elseif(WIN32)
     install(FILES ${RESOURCE_FILES} DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(FILES ${DATA_RESOURCE_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/Data Files")
     install(DIRECTORY "base/Realmz/Scenarios" DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(DIRECTORY "base/Realmz/Realmz Music" DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(FILES ${CHARACTER_DATA_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/Character Files")
 
     # CMake's RUNTIME_DEPENDENCIES argument to install should work to include necessary
