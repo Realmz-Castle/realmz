@@ -100,7 +100,21 @@ short removeitem(short character, short itemnum, short play, short force) {
   }
 
   c[character].items[itemnum].equip = FALSE;
-  c[character].magst -= item.st;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(orthotope): update strength-based stats
+   */
+  if (item.st) {
+    strength(c[character].st + c[character].magst);
+    c[character].damage -= damage;
+    c[character].tohit -= temp;
+    updatespec(2);
+    c[character].magst -= item.st;
+    strength(c[character].st + c[character].magst);
+    c[character].damage += damage;
+    c[character].tohit += temp;
+    updatespec(3);
+  }
+  /* end changes */
   c[character].maglu -= item.lu;
   c[character].magres -= item.magres;
   if (c[character].ac - item.ac > 0)

@@ -249,7 +249,16 @@ waynew:
      * been moved (see my comment above) to fix a bug related to age modifier application.
      */
 
+     /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(orthotope): Increasing knowledge and judgment above 15 via improvement potions adds magic resistance. 
+     * Adding that here as well to not penalize characters for having good starting stats.
+     */
     characterl.magres = (characterl.in + characterl.wi) / 10;
+    if (characterl.in > 15)
+      characterl.magres += characterl.in - 15;
+    if (characterl.wi > 15)
+      characterl.magres += characterl.wi - 15;
+    /* end changes */
 
     characterl.magres *= caste.magres; /************ caste.magres must be 1 or higher *********/
 
@@ -268,7 +277,17 @@ waynew:
       characterl.missile = 0;
 
     characterl.movementmax = races.basemove + caste.movebonus;
-
+    
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(orthotope): Increasing vitality above 18 via improvement potions adds to DR Vs.
+     * Adding that here to not penalize characters for having good starting stats.
+     */
+    if (characterl.co > 18) {
+      for (t = 0; t < 8; t++) {
+        characterl.save[t] += 5 * (characterl.co - 18);
+      }
+    }
+    /* end changes */
     for (t = 0; t < 8; t++) {
       if (characterl.save[t] < -99)
         characterl.save[t] = -99;

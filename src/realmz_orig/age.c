@@ -123,24 +123,60 @@ void showageupdate(short who, short agegroup, short backup) {
 void applyage(short raceid, short agegroup, short direction) {
   short t;
 
-  loadprofile(raceid, 0);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(orthotope): recalculate stats based on changes
+   */
+  loadprofile(raceid, characterl.caste);
 
   characterl.currentagegroup = agegroup;
 
-  strength(characterl.st);
+  strength(characterl.st + characterl.magst);
   characterl.tohit -= temp;
   characterl.damage -= damage;
-
+  updatespec(2);
+  
   characterl.st += direction * races.agechange[agegroup - 1][0];
 
-  strength(characterl.st);
+  strength(characterl.st + characterl.magst);
   characterl.tohit += temp;
   characterl.damage += damage;
+  updatespec(3);
 
+  if (characterl.in > 15)
+    characterl.magres -= caste.magres * (characterl.in - 15);
   characterl.in += direction * races.agechange[agegroup - 1][1];
+  if (characterl.in > 15)
+    characterl.magres += caste.magres * (characterl.in - 15);
+
+  if (characterl.wi > 15)
+    characterl.magres -= caste.magres * (characterl.wi - 15);
   characterl.wi += direction * races.agechange[agegroup - 1][2];
+  if (characterl.wi > 15)
+    characterl.magres += caste.magres * (characterl.wi - 15);
+
+  characterl.dodge -= 2 * characterl.de;
+  if (characterl.de > 14)
+    characterl.ac -= 2 * (characterl.de - 14);
+  updatespec(2);
   characterl.de += direction * races.agechange[agegroup - 1][3];
+  characterl.dodge += 2 * characterl.de;
+  if (characterl.de > 14)
+    characterl.ac += 2 * (characterl.de - 14);
+  updatespec(3);
+
+  if (characterl.co > 18) {
+    for (t = 0; t < 8; t++) {
+      characterl.save[t] -= 5 * (characterl.co - 18);
+    }
+  }
   characterl.co += direction * races.agechange[agegroup - 1][4];
+  if (characterl.co > 18) {
+    for (t = 0; t < 8; t++) {
+      characterl.save[t] += 5 * (characterl.co - 18);
+    }
+  }
+  /* end changes */
+
   characterl.lu += direction * races.agechange[agegroup - 1][5];
 
   characterl.magres += direction * races.agechange[agegroup - 1][6];

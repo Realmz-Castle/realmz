@@ -76,6 +76,53 @@ void updatespec(short mode) {
         }
 
       break;
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(orthotope): Add cases 2 and 3 to remove and re-add brawn and agility-based modifiers.
+     * Includes magic strength from items in calculation.
+     * Also add bounds-checking on range array, in case someone manages to get wildly high or low stats.
+     */
+    case 2: /*** remove ***/
+      for (tt = 0; tt < 19; tt++)
+      {
+        if (range1[tt] == (characterl.st + characterl.magst)
+          || (tt == 0 && characterl.st + characterl.magst < 3)
+          || (tt == 18 && characterl.st + characterl.magst > 30) ) {
+          for (t = 0; t < 14; t++)
+            if (caste.specialability[0][t])
+              characterl.spec[t] -= stmodif[t][tt];
+        }
+      }
+
+      for (tt = 0; tt < 19; tt++)
+        if (range1[tt] == characterl.de || tt == 0 && characterl.de < 3 || tt == 18 && characterl.de > 30) {
+          for (t = 0; t < 14; t++)
+            if (caste.specialability[0][t])
+              characterl.spec[t] -= demodif[t][tt];
+        }
+
+      break;
+    
+    case 3: /*** re-add ***/
+      for (tt = 0; tt < 19; tt++)
+      {
+        if (range1[tt] == (characterl.st + characterl.magst)
+          || (tt == 0 && characterl.st + characterl.magst < 3)
+          || (tt == 18 && characterl.st + characterl.magst > 30) ) {
+          for (t = 0; t < 14; t++)
+            if (caste.specialability[0][t])
+              characterl.spec[t] += stmodif[t][tt];
+        }
+      }
+
+      for (tt = 0; tt < 19; tt++)
+        if (range1[tt] == characterl.de || tt == 0 && characterl.de < 3 || tt == 18 && characterl.de > 30) {
+          for (t = 0; t < 14; t++)
+            if (caste.specialability[0][t])
+              characterl.spec[t] += demodif[t][tt];
+        }
+
+      break;
+    /* end changes */
 
     default:
 

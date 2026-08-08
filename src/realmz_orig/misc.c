@@ -472,7 +472,11 @@ void strength(short st) {
         damage = 8;
         break;
 
+      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+      * NOTE(orthotope): add default case to handle strength over 30 gracefully
+      */
       case 30:
+      default:
         temp = 40;
         damage = 8;
         break;

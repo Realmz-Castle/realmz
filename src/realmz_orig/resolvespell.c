@@ -131,43 +131,59 @@ void resolvespell(void) {
         attr = &c[t].st;
         attr += (spellinfo.size - 1);
         if (*attr < 25) {
-          *attr += 1;
-
+     /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(orthotope): Originally *attr was incremented here, which would write into the Sorcerer spell list
+     * when using improved stamina or increased spell points. Moved into switch statement to only increase desired stats.
+     * 
+     * Recalculate special abilities based on brawn and agility.
+     */
           switch (spellinfo.size) {
             case 1: /***** Brawn ****/
-              c[t].st--;
-
-              strength(c[t].st);
+              strength(c[t].st + c[t].magst);
               c[t].damage -= damage;
               c[t].tohit -= temp;
+              updatespec(2);
 
               c[t].st++;
-              strength(c[t].st);
+              strength(c[t].st + c[t].magst);
               c[t].damage += damage;
               c[t].tohit += temp;
+              updatespec(3);
 
               break;
 
             case 2: /***** Knowledge ****/
+              c[t].in++;
               if (c[t].in > 15)
                 c[t].magres += caste.magres;
               break;
 
             case 3: /***** Judgment ****/
+              c[t].wi++;
               if (c[t].wi > 15)
                 c[t].magres += caste.magres;
               break;
 
             case 4: /***** Agility ****/
+              updatespec(2);
+              c[t].de++;
+              updatespec(3);
+              c[t].dodge += 2;
               if (c[t].de > 14)
                 c[t].ac += 2;
               break;
 
             case 5: /***** Vitality ****/
+              c[t].co++;
               if (c[t].co > 18)
                 for (tt = 0; tt < 8; tt++)
                   c[t].save[tt] += 5;
               break;
+
+            case 6: /***** Luck ****/
+              c[t].lu++;
+              break;
+            /* end changes */
 
             case 10: /***** Stamina ****/
               c[t].staminamax += Rand(8);

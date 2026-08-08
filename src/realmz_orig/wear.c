@@ -166,7 +166,22 @@ short wear(short character, short itemnum, short play) {
       warn(7);
     }
     characterr = c[character];
-    c[character].magst += item.st;
+
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(orthotope): recalculate stats based on strength
+     */
+    if (item.st) {
+      strength(c[character].st + c[character].magst);
+      c[character].damage -= damage;
+      c[character].tohit -= temp;
+      updatespec(2);
+      c[character].magst += item.st;
+      strength(c[character].st + c[character].magst);
+      c[character].damage += damage;
+      c[character].tohit += temp;
+      updatespec(3);
+    }
+    /* end changes */
 
     if (c[character].ac + item.ac < 0)
       c[character].ac = 0;
