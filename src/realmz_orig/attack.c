@@ -1119,13 +1119,17 @@ trynewweapon:
               showresults(chare, -19, mon); /****** special attack ******/
             break;
 
+          /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+           * NOTE(iSynic): Apply cold, electrical, chemical, and mental protection before
+           * accumulating special damage against monster targets.
+           */
           case 12: /**** cold damage ****/
             specdamage = Rand(monst.attacks[attackloop][1]);
             if (savevs(2, chare))
               specdamage /= 2;
-            specialdam += specdamage;
             if (monster[chare - 10].condition[COND_COLD_PROTECTION])
               specdamage /= 2;
+            specialdam += specdamage;
             if (specdamage)
               showresults(chare, -20, mon); /****** special attack ******/
             break;
@@ -1134,9 +1138,9 @@ trynewweapon:
             specdamage = Rand(monst.attacks[attackloop][1]);
             if (savevs(3, chare))
               specdamage /= 2;
-            specialdam += specdamage;
             if (monster[chare - 10].condition[COND_ELECTRICAL_PROTECTION])
               specdamage /= 2;
+            specialdam += specdamage;
             if (specdamage)
               showresults(chare, -21, mon); /****** special attack ******/
             break;
@@ -1145,9 +1149,9 @@ trynewweapon:
             specdamage = Rand(monst.attacks[attackloop][1]);
             if (savevs(4, chare))
               specdamage /= 2;
-            specialdam += specdamage;
             if (monster[chare - 10].condition[COND_CHEMICAL_PROTECTION])
               specdamage /= 2;
+            specialdam += specdamage;
             if (specdamage)
               showresults(chare, -22, mon); /****** special attack ******/
             break;
@@ -1156,12 +1160,13 @@ trynewweapon:
             specdamage = Rand(monst.attacks[attackloop][1]);
             if (savevs(5, chare))
               specdamage /= 2;
-            specialdam += specdamage;
             if (monster[chare - 10].condition[COND_MENTAL_PROTECTION])
               specdamage /= 2;
+            specialdam += specdamage;
             if (specdamage)
               showresults(chare, -23, mon); /****** special attack ******/
             break;
+          /* *** END CHANGES *** */
 
           case 18: /**** Blinded ****/
             if (!savevs(7, chare)) {
