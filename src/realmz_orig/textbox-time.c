@@ -123,7 +123,15 @@ void textbox(short class, short index, short click, short different, Rect newrec
   }
 out:
 
-  FlushEvents(everyEvent, 0);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(afkelsall): This flush ran unconditionally, so the passive path
+   * (click FALSE, used for messages drawn without waiting for a dismissal)
+   * also discarded input that had arrived while the game was busy drawing.
+   * Only the click path needs the flush, to drop the remnants of the
+   * dismissing click. */
+  if (click)
+    FlushEvents(everyEvent, 0);
+  /* *** END CHANGES *** */
   different = 0;
   TextFace(bold);
   TextFont(font);
