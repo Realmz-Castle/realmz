@@ -67,7 +67,11 @@ void MenuInit(void) {
   for (t = 0; t < 20; t++)
     SetItemMark(musicmenu, t + 8, 19);
 
-  CheckItem(musicmenu, 1, 1 - nomusic);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Synchronize the restored Music menu with playback state.
+   */
+  syncmusicmenu();
+  /* *** END CHANGES *** */
 
   if (!divine) {
     currentscenario = 10;

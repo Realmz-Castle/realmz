@@ -35,6 +35,7 @@ OSErr SndDoImmediate(SndChannelPtr chan, const SndCommand* cmd);
 OSErr SndPlay(SndChannelPtr chan, Handle sndHdl, Boolean async);
 
 OSErr SetDefaultOutputVolume(uint32_t level);
+SDL_AudioStream* CreateDefaultOutputAudioStream(const SDL_AudioSpec* spec, float gain);
 #define SetSoundVol SetDefaultOutputVolume
 
 #ifdef __cplusplus
