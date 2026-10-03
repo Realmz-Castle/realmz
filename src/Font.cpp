@@ -62,12 +62,17 @@ Font load_font(int16_t font_id) {
 void set_font_style(TTF_Font* font, int16_t face) {
   TTF_FontStyleFlags styles{TTF_STYLE_NORMAL};
 
-  if (face == bold) {
+  if (face & bold) {
     styles |= TTF_STYLE_BOLD;
-  } else if (face == outline) {
+  }
+  if (face & italic) {
+    styles |= TTF_STYLE_ITALIC;
+  }
+  if (face & underline) {
     styles |= TTF_STYLE_UNDERLINE;
   }
 
+  TTF_SetFontOutline(font, 0);
   TTF_SetFontStyle(font, styles);
 }
 

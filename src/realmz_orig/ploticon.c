@@ -75,14 +75,16 @@ void ploticon(short tempid, short showcurse) {
         GetIndString(myString, temp + lg, item.iscurse - temp + 1); // Fantasoft 7.1
     }
 
-    if (!lg)
-      TextFace(outline);
-
     if (initems)
       SetPort(GetWindowPort(itemswindow));
 
     TextSize(16);
-    TextFace(0);
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(iSynic): Classic 7.1.2 keeps the outline face active while drawing
+     * unidentified item names, then resets it afterward.
+     */
+    TextFace(lg ? 0 : outline);
+    /* *** END CHANGES *** */
     PtoCstr(myString);
     MyrDrawCString((Ptr)myString);
   }

@@ -24,6 +24,7 @@
 #include <unordered_map>
 
 #include "Font.hpp"
+#include "Font.h"
 #include "MemoryManager.hpp"
 #include "ResourceManager.h"
 #include "StringConvert.hpp"
@@ -31,6 +32,7 @@
 #include "WindowManager.hpp"
 
 static phosg::PrefixedLogger qd_log("[QuickDraw] ", DEFAULT_LOG_LEVEL);
+static const int16_t TEXT_OUTLINE_WIDTH = 1;
 
 ///////////////////////////////////////////////////////////////////////////////
 // CCGrafPort implementation
@@ -206,6 +208,25 @@ std::optional<phosg::ImageRGBA8888N> CCGrafPort::render_text_ttf(
   return image_for_sdl_surface(text_surface.get());
 }
 
+std::optional<phosg::ImageRGBA8888N> CCGrafPort::render_outlined_text_ttf(
+    TTF_Font* font, const std::string& processed_text, size_t wrap_width) {
+  TTF_SetFontOutline(font, TEXT_OUTLINE_WIDTH);
+  auto outline_img = this->render_text_ttf(font, processed_text, wrap_width + (2 * TEXT_OUTLINE_WIDTH));
+  TTF_SetFontOutline(font, 0);
+  auto glyph_mask = this->render_text_ttf(font, processed_text, wrap_width);
+  if (!outline_img || !glyph_mask) {
+    return std::nullopt;
+  }
+
+  outline_img->copy_from_with_custom(
+      *glyph_mask, TEXT_OUTLINE_WIDTH, TEXT_OUTLINE_WIDTH,
+      glyph_mask->get_width(), glyph_mask->get_height(), 0, 0,
+      [](uint32_t dst, uint32_t src) -> uint32_t {
+        return phosg::replace_alpha(dst, (phosg::get_a(dst) * (0xFF - phosg::get_a(src))) / 0xFF);
+      });
+  return outline_img;
+}
+
 bool CCGrafPort::draw_text_bitmap(const ResourceDASM::BitmapFontRenderer& renderer, const std::string& text, const Rect& rect) {
   uint32_t color32 = rgba8888_for_rgb_color(this->rgbFgColor);
   std::string wrapped_text = renderer.wrap_text_to_pixel_width(text, rect.right - rect.left);
@@ -230,13 +251,25 @@ bool CCGrafPort::draw_text(const std::string& text, const Rect& r) {
     set_font_style(tt_font, this->txFace);
     size_t w = r.right - r.left;
     size_t h = r.bottom - r.top;
-    if (auto img = this->render_text_ttf(tt_font, processed_text, w + 50)) {
-      // Dialog item text: center the rendered image in the box. This isn't exactly correct (some
-      // text appears to be off by 1 or 2 pixels sometimes) but it will do for now. There aren't
-      // good metrics provided by SDL_ttf for this (ascent/height don't match the actual amount we
-      // need to trim) so we have to do this instead.
-      size_t y_offset = (img->get_height() > h) ? ((img->get_height() - h) / 2) : 0;
-      data.copy_from_with_blend(*img, r.left, r.top, w, h, 0, y_offset);
+    auto img = (this->txFace & outline)
+        ? this->render_outlined_text_ttf(tt_font, processed_text, w + 50)
+        : this->render_text_ttf(tt_font, processed_text, w + 50);
+    if (img) {
+      // Center using the normal text height so an outline does not shift the glyphs.
+      int text_height = img->get_height();
+      if (this->txFace & outline) {
+        TTF_GetStringSizeWrapped(tt_font, processed_text.data(), processed_text.size(), w + 50, nullptr, &text_height);
+      }
+      size_t y_offset = (text_height > h) ? ((text_height - h) / 2) : 0;
+      ssize_t outline_offset = (this->txFace & outline) ? TEXT_OUTLINE_WIDTH : 0;
+      data.copy_from_with_blend(
+          *img,
+          r.left - outline_offset,
+          r.top - outline_offset,
+          static_cast<ssize_t>(w + (2 * outline_offset)),
+          static_cast<ssize_t>(h + (2 * outline_offset)),
+          0,
+          y_offset);
       success = true;
     }
 
@@ -274,7 +307,10 @@ void CCGrafPort::draw_text(const std::string& text) {
         processed_text, this->txFont, this->txSize, this->txFace);
 
     auto [w, h] = pixel_dimensions_for_text(tt_font, processed_text);
-    if (auto img = this->render_text_ttf(tt_font, processed_text, w + 50)) {
+    auto img = (this->txFace & outline)
+        ? this->render_outlined_text_ttf(tt_font, processed_text, w + 50)
+        : this->render_text_ttf(tt_font, processed_text, w + 50);
+    if (img) {
       // The pen location is at the text baseline, to the left, so we anchor on the baseline
       // rather than the upper-left corner. The rendered surface puts its own baseline
       // TTF_GetFontAscent rows below its top edge, so positioning the surface top at
@@ -282,9 +318,16 @@ void CCGrafPort::draw_text(const std::string& text) {
       // keeps the descenders; centering in a box instead sits the text slightly off, since the
       // surface includes the font's ascent above the caps and line spacing below the descent.
       int ascent = TTF_GetFontAscent(tt_font);
-      ssize_t dst_y = this->pnLoc.v - ascent;
+      ssize_t outline_offset = (this->txFace & outline) ? TEXT_OUTLINE_WIDTH : 0;
+      ssize_t dst_y = this->pnLoc.v - ascent - outline_offset;
       data.copy_from_with_blend(
-          *img, this->pnLoc.h, dst_y, static_cast<ssize_t>(w), static_cast<ssize_t>(img->get_height()), 0, 0);
+          *img,
+          this->pnLoc.h - outline_offset,
+          dst_y,
+          static_cast<ssize_t>(img->get_width()),
+          static_cast<ssize_t>(img->get_height()),
+          0,
+          0);
       width = w;
     }
 

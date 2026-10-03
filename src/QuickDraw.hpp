@@ -84,6 +84,7 @@ public:
 
 protected:
   std::optional<phosg::ImageRGBA8888N> render_text_ttf(TTF_Font* font, const std::string& processed_text, size_t wrap_width);
+  std::optional<phosg::ImageRGBA8888N> render_outlined_text_ttf(TTF_Font* font, const std::string& processed_text, size_t wrap_width);
   bool draw_text_bitmap(const ResourceDASM::BitmapFontRenderer& renderer, const std::string& text, const Rect& rect);
 };
 
