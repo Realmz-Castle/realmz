@@ -1,3 +1,4 @@
+#include <functional>
 #include "MemoryManager.h"
 
 #include <phosg/Random.hh>

@@ -8,6 +8,9 @@
 
 #include "Types.hpp"
 #include "WindowManager.hpp"
+#ifdef __linux__
+#include "linux/MenuBar.hpp"
+#endif
 
 static phosg::PrefixedLogger em_log("[EventManager] ", DEFAULT_LOG_LEVEL);
 
@@ -427,6 +430,11 @@ protected:
     if (auto* renderer = SDL_GetRenderer(WindowManager::instance().get_sdl_window().get())) {
       SDL_ConvertEventToRenderCoordinates(renderer, &e);
     }
+#ifdef __linux__
+    if (MenuBar_HandleEvent(e)) {
+      return;
+    }
+#endif
     switch (e.type) {
       // TODO: Handle any cleanup of specific window that was closed
       //  case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -450,8 +458,8 @@ protected:
         this->set_modifier_value(EVMOD_RIGHT_CONTROL_KEY_DOWN, e.key.mod & SDL_KMOD_RCTRL);
         this->set_modifier_value(EVMOD_RIGHT_OPTION_KEY_DOWN, e.key.mod & SDL_KMOD_RALT);
         this->set_modifier_value(EVMOD_RIGHT_SHIFT_KEY_DOWN, e.key.mod & SDL_KMOD_RSHIFT);
-#ifdef _WIN32
-        // On Windows the Control key stands in for the Mac Command key (see the Command mapping
+#if defined(_WIN32) || defined(__linux__)
+        // On Windows and Linux the Control key stands in for the Mac Command key (see the Command mapping
         // below), so it must not also set the Control bit. Doing both would select the
         // control-character KCHR table and break Command-key shortcuts and typed characters.
         this->set_modifier_value(EVMOD_CONTROL_KEY_DOWN, false);
@@ -461,9 +469,10 @@ protected:
         this->set_modifier_value(EVMOD_OPTION_KEY_DOWN, e.key.mod & SDL_KMOD_ALT);
         this->set_modifier_value(EVMOD_CAPS_LOCK_ENABLED, e.key.mod & SDL_KMOD_CAPS);
         this->set_modifier_value(EVMOD_SHIFT_KEY_DOWN, e.key.mod & SDL_KMOD_SHIFT);
-#ifdef _WIN32
-        // The Windows (Super) key is reserved by the OS for the Start menu and shell shortcuts, so
-        // it cannot reliably act as the Mac Command key. Map the Control key to Command instead.
+#if defined(_WIN32) || defined(__linux__)
+        // The Windows (Super) key is reserved by the OS (and by most Linux desktops) for shell
+        // shortcuts, so it cannot reliably act as the Mac Command key. Map the Control key to
+        // Command instead.
         this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_CTRL);
 #else
         this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_GUI);

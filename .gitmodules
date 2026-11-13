@@ -7,3 +7,9 @@
 [submodule "vendored/SDL_image"]
 	path = vendored/SDL_image
 	url = https://github.com/libsdl-org/SDL_image
+[submodule "vendored/phosg"]
+	path = vendored/phosg
+	url = https://github.com/fuzziqersoftware/phosg.git
+[submodule "vendored/resource_dasm"]
+	path = vendored/resource_dasm
+	url = https://github.com/fuzziqersoftware/resource_dasm

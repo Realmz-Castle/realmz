@@ -6,6 +6,9 @@
 #ifdef __APPLE__
 #include "macos/WindowAspect.h"
 #endif
+#ifdef __linux__
+#include "linux/MenuBar.hpp"
+#endif
 
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_properties.h>
@@ -1509,6 +1512,10 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
           0);
     }
   }
+
+#ifdef __linux__
+  MenuBar_Draw(this->screen_port.data);
+#endif
 
   this->present_screen();
 }
