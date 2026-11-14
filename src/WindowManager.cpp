@@ -1581,7 +1581,6 @@ void WindowManager::present_screen() {
       }
 
       SDL_RenderPresent(renderer);
-      SDL_SyncWindow(this->sdl_window.get());
     }
   }
 }
