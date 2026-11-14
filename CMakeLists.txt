@@ -42,10 +42,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/")
 
 # Library search
-find_package(phosg REQUIRED)
-message(STATUS "CMake found phosg at: ${phosg_DIR}")
-find_package(resource_file REQUIRED)
-message(STATUS "CMake found resource_file at: ${resource_file_DIR}")
 find_package(ZLIB REQUIRED)
 message(STATUS "CMake found zlib at: ${zlib_DIR}")
 
@@ -61,6 +57,29 @@ endif()
 add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/SDL_ttf EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/SDL_image EXCLUDE_FROM_ALL)
+
+# phosg and resource_dasm (which provides the resource_file library) are vendored as submodules.
+# Their sources live in `src/`, but consumers (including resource_dasm itself) include them as
+# <phosg/...> and <resource_file/...>, which matches their installed layout. Recreate that layout
+# in the build tree so the headers can be found without installing either library.
+set(VENDORED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/vendored_include")
+file(MAKE_DIRECTORY "${VENDORED_INCLUDE_DIR}")
+file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/vendored/phosg/src" "${VENDORED_INCLUDE_DIR}/phosg"
+    COPY_ON_ERROR SYMBOLIC)
+file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/vendored/resource_dasm/src" "${VENDORED_INCLUDE_DIR}/resource_file"
+    COPY_ON_ERROR SYMBOLIC)
+
+add_subdirectory(vendored/phosg EXCLUDE_FROM_ALL)
+target_include_directories(phosg PUBLIC "$<BUILD_INTERFACE:${VENDORED_INCLUDE_DIR}>")
+add_library(phosg::phosg ALIAS phosg)
+
+# resource_dasm calls `find_package(phosg REQUIRED)`. Satisfy it with the in-tree target above by
+# placing an (empty) config file in the redirects directory, which find_package searches first.
+file(WRITE "${CMAKE_FIND_PACKAGE_REDIRECTS_DIR}/phosg-config.cmake"
+    "# phosg is provided by the vendored in-tree target phosg::phosg\n")
+set(DISABLE_SDL ON) # Only needed for resource_dasm's audio playback tools, which we don't build
+add_subdirectory(vendored/resource_dasm EXCLUDE_FROM_ALL)
+add_library(resource_file::resource_file ALIAS resource_file)
 
 # Executable definition
 set(REALMZ_EXECUTABLE_SRC src/realmz_orig/main.c)
@@ -254,6 +273,9 @@ elseif(WIN32)
     list(APPEND realmz_lib_LINK_LIBRARIES
         bcrypt # Used by phosg::phosg during compilation for windows targets
     )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # No native menu bar; menus are drawn with SDL inside the game window
+    list(APPEND SOURCES src/linux/MenuController.cpp)
 endif()
 
 # Installed in Contents/Resources
@@ -302,7 +324,7 @@ set_source_files_properties(${DATA_RESOURCE_FILES} PROPERTIES
 # be shared as if they were a library to enable test executables
 add_library(realmz_lib STATIC ${SOURCES})
 target_compile_definitions(realmz_lib PUBLIC REALMZ_COCOA=1)
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug" OR ${CMAKE_BUILD_TYPE} STREQUAL RelWithDebInfo)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     message("-- REALMZ_DEBUG is enabled because CMAKE_BUILD_TYPE is \"${CMAKE_BUILD_TYPE}\"")
     target_compile_definitions(realmz_lib PUBLIC REALMZ_DEBUG=1)
 else()
@@ -313,6 +335,15 @@ target_include_directories(realmz_lib PUBLIC ${SDL3_INCLUDE_DIRS} src src/realmz
 
 if(WIN32)
   target_compile_definitions(realmz_lib PUBLIC PHOSG_WINDOWS=1)
+endif()
+
+# With -std=gnu90, glibc enables its BSD/misc extensions, under which <stdlib.h> pulls in
+# <sys/types.h> and then <sys/select.h>. That declares the POSIX select() function, which clashes
+# with the game's `select` global in variables.h. Requesting plain POSIX keeps those extensions
+# (and select()) out of the original C sources. C++ is unaffected because none of its sources
+# include variables.h.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_compile_definitions(realmz_lib PUBLIC $<$<COMPILE_LANGUAGE:C>:_POSIX_C_SOURCE=200809L>)
 endif()
 
 target_link_libraries(realmz_lib
