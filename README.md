@@ -42,6 +42,25 @@ Pull requests are welcome. Please review the [Contributing Guide](https://github
 - `cmake --preset macOS`
 - `cmake --build --preset macOS`
 
+## Building on Linux
+
+Linux builds use the vendored copies of SDL, SDL_image, SDL_ttf, phosg, and resource_dasm, so only system build tools and development headers are needed. The menu bar is drawn by the game inside its window (`src/linux/MenuController.cpp`); menu shortcuts use Ctrl in place of Command.
+
+- Install a compiler, CMake, and development headers. Clang is required (the original sources use `-fpascal-strings`, which GCC does not support). On Debian/Ubuntu:
+  - `sudo apt install build-essential clang cmake git zlib1g-dev libfreetype-dev libx11-dev libxext-dev`
+  - SDL enables additional backends (Wayland, PulseAudio/PipeWire/ALSA, XInput, XRandR, etc.) when their headers are present. See SDL's [README-linux](https://github.com/libsdl-org/SDL/blob/main/docs/README-linux.md) for the full recommended package list.
+- Download dependencies as git submodules
+  - `git submodule update --init`
+  - phosg and resource_dasm must be at the commits listed in the Mac instructions above; `git submodule update` checks out the commits recorded in the repository.
+- Configure with Clang. Use `Release` for normal play; any other build type (including the default, empty one) is built with AddressSanitizer enabled and runs noticeably slower.
+  - `CC=clang CXX=clang++ cmake -B build_release -DCMAKE_BUILD_TYPE=Release`
+  - For a debug build: `CC=clang CXX=clang++ cmake -B build -DCMAKE_BUILD_TYPE=Debug`
+  - If you reconfigure with `--fresh`, set `CC`/`CXX` again, or CMake will fall back to GCC.
+- Build: `cmake --build build_release -j`
+- Run from the build directory, where the game data and fonts are copied after each build: `cd build_release && ./Realmz`
+
+User data (preferences, saves, and characters) is stored in `~/.local/share/Fantasoft/Realmz`.
+
 ## Cross-compiling for Windows from Mac
 
 - Install [llvm-mingw](https://github.com/mstorsjo/llvm-mingw)
